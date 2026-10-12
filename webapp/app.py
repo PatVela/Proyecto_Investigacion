@@ -25,7 +25,7 @@ from werkzeug.utils import secure_filename
 
 from ecg import load, util
 from webapp import project_info as proj
-from webapp.prediction import clean_path_text, resolve_model_path, run_prediction_from_uploads
+from webapp.prediction import clean_path_text, resolve_existing_path, resolve_model_path, run_prediction_from_uploads
 from webapp.report_pdf import build_pdf_report
 
 
@@ -462,6 +462,9 @@ def create_app() -> Flask:
 
     app.config["ECG_MODEL"] = clean_path_text(os.environ.get("ECG_MODEL", ""))
     app.config["ECG_MODEL_B"] = clean_path_text(os.environ.get("ECG_MODEL_B", ""))
+    for key in ("ECG_MODEL", "ECG_MODEL_B"):                 # falla al arrancar, no en la primera predicción
+        if app.config.get(key) and not resolve_existing_path(app.config[key]).exists():
+            raise RuntimeError(f"{key} apunta a un checkpoint que no existe: {app.config[key]}")
     app.config["ECG_ALPHA"] = float(os.environ.get("ECG_ALPHA", "0.5"))
     app.config["ECG_SAVED_DIR"] = str(_resolve_dir_env("ECG_SAVED", DEFAULT_SAVED))
     app.config["ECG_UPLOADS_DIR"] = str(_resolve_dir_env("ECG_UPLOADS", DEFAULT_UPLOADS))

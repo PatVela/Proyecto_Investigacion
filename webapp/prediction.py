@@ -80,10 +80,16 @@ def resolve_existing_path(path: str | os.PathLike | None, base: Path = REPO_ROOT
 
 
 def resolve_model_path(model_path: str | None = None, saved_dir: str | None = None) -> Path:
-    """Resuelve checkpoint explícito o busca automáticamente en saved_dir."""
+    """Resuelve el checkpoint indicado o, si no se indica ninguno, busca el mejor en saved_dir.
+
+    Una ruta explícita que no existe es un error: no se sustituye en silencio por otro
+    modelo (en un ensemble eso promediaría el modelo equivocado sin avisar).
+    """
     explicit = resolve_existing_path(model_path)
-    if explicit is not None and explicit.exists():
-        return explicit
+    if explicit is not None:
+        if explicit.exists():
+            return explicit
+        raise FileNotFoundError(f"El checkpoint indicado no existe: {explicit}")
 
     saved_text = clean_path_text(saved_dir) or os.environ.get("ECG_SAVED", "saved")
     saved = Path(saved_text)
@@ -95,8 +101,6 @@ def resolve_model_path(model_path: str | None = None, saved_dir: str | None = No
         return best.resolve()
 
     message = "No se encontró un checkpoint .pt válido."
-    if model_path:
-        message += f" Checkpoint solicitado: {explicit}."
     message += f" Directorio de búsqueda: {saved}."
     raise FileNotFoundError(message)
 
