@@ -679,8 +679,12 @@ def create_app() -> Flask:
                 filename=_relative_to_results(app, str(pdf_path)),
             )
             return jsonify(_jsonable(result))
-        except Exception as exc:
-            return jsonify({"ok": False, "status": "error", "error": str(exc)}), 500
+        except ValueError as exc:                           # entrada inválida (formato, rango, extensión, etc.)
+            return jsonify({"ok": False, "status": "error", "error": str(exc)}), 400
+        except Exception as exc:                            # fallo interno: detalle solo en el registro del servidor
+            app.logger.exception("Fallo interno en /predict")
+            detail = str(exc) if os.environ.get("ECG_DEBUG_ERRORS") == "1" else                 "Error interno al procesar el ECG. Inténtelo de nuevo o pruebe con un ejemplo."
+            return jsonify({"ok": False, "status": "error", "error": detail}), 500
 
     @app.get("/results/<path:filename>")
     def result_file(filename):
