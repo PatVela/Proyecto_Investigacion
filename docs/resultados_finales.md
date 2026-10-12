@@ -24,7 +24,7 @@
 | Exact-match | 0.437 | 0.459 | 0.455 | **0.472** |
 
 Ensemble F1 = mismo promedio v1+v2 y mismas temperaturas, con umbrales optimizados con
-beta=1.0 (`ensemble-f1/`). En validación (n=6486): F1-macro 0.768, F1-micro 0.792,
+beta=1.0 (`runs/eval/ensemble-f1/`). En validación (n=6486): F1-macro 0.768, F1-micro 0.792,
 AUROC 0.953, AUPRC 0.814, exact-match 0.499.
 
 ## F1 por clase (test)
@@ -78,7 +78,7 @@ AUROC 0.953, AUPRC 0.814, exact-match 0.499.
    Q1033 (TAb 0.687 bajo el umbral F0.5 de 0.69, por dilución v1/v2: 0.80 vs 0.57).
 9. **v2−v1 significativo (bootstrap, B=1000, test).** v2 0.7180 [0.7090, 0.7270] vs
    v1 0.6835 [0.6740, 0.6928]; diferencia +0.0346 [+0.0255, +0.0430], P(diff>0)=1.000.
-   IC por clase en `bootstrap_v2-v1.json`. Solo variabilidad muestral (sistema fijo).
+   IC por clase en `runs/reports/bootstrap_v2-v1.json`. Solo variabilidad muestral (sistema fijo).
 10. **Sin brecha por sexo; tiempo real.** F1-macro 0.717 mujeres (n=3041) vs 0.716
     hombres (n=3379), Δ=0.001. Inferencia: 5.7 ms/ventana de 10 s en GPU (batch 1,
     175 ventanas/s), 4 806 668 parámetros.
@@ -90,12 +90,12 @@ AUROC 0.953, AUPRC 0.814, exact-match 0.499.
 recall 0.783, recomendado para screening y para la demo webapp, donde un FN cuesta más
 que un FP). ResNet v2 sola queda como mejor modelo individual en F1-macro con F0.5 (0.718).
 La webapp demuestra el ensemble (`--model` + `--model-b` + `--temperatures`/`--temperatures-b` +
-`--eval-dir ensemble` o `--eval-dir ensemble-f1`).
+`--eval-dir runs/eval/ensemble` o `--eval-dir runs/eval/ensemble-f1`).
 
 ## Artefactos
 
-- `eval-resnet/`, `eval-resnet-v2/`, `ensemble-noexcl/`: métricas, umbrales, predicciones, curvas (`eval-resnet-v2-nsrexcl/` conserva la ablación NSR).
-- `figs_eval_v2/`: figuras empíricas. `bootstrap_v2-v1.json`: IC. `sex_breakdown.json`: desglose por sexo.
-- `ensemble-f1/`: mismo ensemble con umbrales F1 (punto de screening).
-- `exp-files/model_comparison.csv`: v1 vs v2. `comparacion_ensemble.csv`: v2 vs ensemble.
-- `exp-files/robustness.csv`, `metrica-challenge/`, `errores_origen.csv`.
+- `runs/eval/eval-resnet/`, `runs/eval/eval-resnet-v2/`, `runs/eval/ensemble-noexcl/`: métricas, umbrales, predicciones, curvas (`runs/eval/eval-resnet-v2-nsrexcl/` conserva la ablación NSR).
+- `runs/figs/figs_eval_v2/`: figuras empíricas. `runs/reports/bootstrap_v2-v1.json`: IC. `runs/reports/sex_breakdown.json`: desglose por sexo.
+- `runs/eval/ensemble-f1/`: mismo ensemble con umbrales F1 (punto de screening).
+- `runs/reports/model_comparison.csv`: v1 vs v2. `runs/reports/comparacion_ensemble.csv`: v2 vs ensemble.
+- `runs/reports/robustness.csv`, `runs/eval/metrica-challenge/`, `runs/reports/errores_origen.csv`.

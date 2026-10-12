@@ -8,7 +8,7 @@ Sirve para verificar que cada código del esquema existe realmente en
 los encabezados y para detectar códigos Dx sin clase asignada.
 
 Uso:
-    python examples/cinc2020/audit_dx_codes.py --data_dir dataset2020 --output dx_code_audit.csv
+    python examples/cinc2020/audit_dx_codes.py --data_dir dataset2020 --output runs/reports/dx_code_audit.csv
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ def scan_headers(data_dir: Path) -> tuple[int, int, Counter]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Audita códigos Dx vs esquema de 12 clases.")
     parser.add_argument("--data-dir", default="dataset2020", help="Carpeta raíz con los .hea")
-    parser.add_argument("--output", default="dx_code_audit.csv", help="CSV de salida")
+    parser.add_argument("--output", default="runs/reports/dx_code_audit.csv", help="CSV de salida")
     parser.add_argument("--official", default=str(Path(__file__).parent / "official" / "dx_mapping_scored.csv"))
     args = parser.parse_args()
 
@@ -83,6 +83,7 @@ def main() -> None:
         raise SystemExit(f"Sin .hea en {data_dir}")
 
     out_path = Path(args.output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["snomed_code", "n_records", "frac_records", "official_abbrev", "assigned_class"])

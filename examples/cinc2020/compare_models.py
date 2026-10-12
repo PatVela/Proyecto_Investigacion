@@ -2,8 +2,8 @@
 
 Ejemplo:
     python examples/cinc2020/compare_models.py \\
-      --eval-a eval-resnet \\
-      --eval-b eval-resnet-v2 \\
+      --eval-a runs/eval/eval-resnet \\
+      --eval-b runs/eval/eval-resnet-v2 \\
       --label-a "ResNet v1" --label-b "ResNet v2" \\
       --output comparacion.csv
 """

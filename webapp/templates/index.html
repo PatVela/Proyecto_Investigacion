@@ -254,7 +254,7 @@
         <div class="help-box">
           <strong data-i18n="detail.metricsPending">Métricas pendientes.</strong>
           <p data-i18n="detail.metricsCmd">Después de entrenar, ejecute evaluación para llenar esta sección:</p>
-          <p><code>python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir eval-resnet --temperatures eval-resnet/temperatures_validation.csv --threshold-beta 0.5</code></p>
+          <p><code>python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet --temperatures runs/eval/eval-resnet/temperatures_validation.csv --threshold-beta 0.5</code></p>
           <p data-i18n="detail.varsNote">Con las variables $resnet, $resnet2, $mejor y $evalMejor definidas en el README principal.</p>
           <p data-i18n="detail.metricsHint">Ese comando también calibra los umbrales por clase que la app detecta automáticamente.</p>
         </div>
@@ -289,7 +289,7 @@
       <div class="help-box">
         <strong data-i18n="exp.pending">Resultado pendiente.</strong>
         <p data-i18n="exp.compareCmd">Genere primero métricas para ambos modelos y luego compare:</p>
-        <p><code>python examples/cinc2020/compare_models.py --eval-a eval-resnet --eval-b eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output exp-files/model_comparison.csv</code></p>
+        <p><code>python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet --eval-b runs/eval/eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output runs/reports/model_comparison.csv</code></p>
         <p data-i18n="detail.varsNote">Con las variables $resnet, $resnet2, $mejor y $evalMejor definidas en el README principal.</p>
       </div>
       {% endif %}
@@ -315,7 +315,7 @@
       <div class="help-box">
         <strong data-i18n="exp.pending">Resultado pendiente.</strong>
         <p data-i18n="exp.robustCmd">Ejecute el experimento reproducible de robustez:</p>
-        <p><code>python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --output exp-files/robustness.csv</code></p>
+        <p><code>python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --output runs/reports/robustness.csv</code></p>
         <p data-i18n="detail.varsNote">Con las variables $resnet, $resnet2, $mejor y $evalMejor definidas en el README principal.</p>
       </div>
       {% endif %}

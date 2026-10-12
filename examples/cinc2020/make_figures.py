@@ -15,7 +15,7 @@ construcción idénticos a la tabla de F1 por clase. Además imprime una tabla d
 verificación con P/R/F1/umbral por clase para cruzar con el texto.
 
 Uso:
-    python examples/cinc2020/make_figures.py --eval-dir <eval-final> --outdir figs_eval --robustness <robustness.csv>
+    python examples/cinc2020/make_figures.py --eval-dir <eval-final> --outdir runs/figs/figs_eval --robustness <robustness.csv>
 """
 
 from __future__ import annotations
@@ -177,7 +177,7 @@ def plot_learning(hist_paths: dict[str, Path], outpath: Path):
 def main() -> None:
     parser = argparse.ArgumentParser(description="Genera figuras empíricas desde una evaluación final.")
     parser.add_argument("--eval-dir", required=True, help="Directorio con los CSV de evaluate.py")
-    parser.add_argument("--outdir", default="figs_eval")
+    parser.add_argument("--outdir", default="runs/figs/figs_eval")
     parser.add_argument("--split", default="test")
     parser.add_argument("--classes", default="AF,AVBlock,TAb", help="Clases destacadas (Fig. 3)")
     parser.add_argument("--robustness", default=None, help="robustness.csv con todos los niveles")
