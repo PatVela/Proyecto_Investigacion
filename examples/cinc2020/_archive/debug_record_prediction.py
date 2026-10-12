@@ -7,7 +7,7 @@ Sirve para responder si una mala predicción proviene de:
 
 Ejemplo:
 
-python examples/cinc2020/debug_record_prediction.py \
+python examples/cinc2020/_archive/debug_record_prediction.py \
   --config examples/cinc2020/config.json \
   --checkpoint saved/cinc2020/cinc2020_resnet/<run>/best.pt \
   --record E00001 \
@@ -27,11 +27,11 @@ from pathlib import Path
 
 import numpy as np
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT))
 
 from ecg import load, predict, util  # noqa: E402
-from examples.cinc2020._record_diag import (
+from examples.cinc2020._archive._record_diag import (
     find_record_in_hdf5,
     print_table,
     read_thresholds,

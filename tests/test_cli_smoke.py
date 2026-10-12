@@ -16,8 +16,8 @@ HELP_CASES = [
     ("examples/calibrate", ["examples/cinc2020/calibrate.py"]),
     ("examples/challenge_score", ["examples/cinc2020/challenge_score.py"]),
     ("examples/compare_models", ["examples/cinc2020/compare_models.py"]),
-    ("examples/debug_record_prediction", ["examples/cinc2020/debug_record_prediction.py"]),
-    ("examples/diagnose_prediction", ["examples/cinc2020/diagnose_prediction.py"]),
+    ("examples/debug_record_prediction", ["examples/cinc2020/_archive/debug_record_prediction.py"]),
+    ("examples/diagnose_prediction", ["examples/cinc2020/_archive/diagnose_prediction.py"]),
     ("examples/ensemble_evaluate", ["examples/cinc2020/ensemble_evaluate.py"]),
     ("examples/error_analysis", ["examples/cinc2020/error_analysis.py"]),
     ("examples/evaluate", ["examples/cinc2020/evaluate.py"]),
@@ -26,6 +26,7 @@ HELP_CASES = [
     ("examples/make_synthetic", ["examples/cinc2020/make_synthetic.py"]),
     ("examples/robustness", ["examples/cinc2020/robustness.py"]),
     ("examples/sex_breakdown", ["examples/cinc2020/sex_breakdown.py"]),
+    ("examples/tune_optuna", ["examples/cinc2020/tune_optuna.py"]),
     ("tools/audit_signal_scaling", ["tools/audit_signal_scaling.py"]),
     ("tools/check_missing", ["tools/check_missing.py"]),
     ("tools/download_missing", ["tools/download_missing.py"]),
@@ -51,7 +52,7 @@ def test_lib_modules_compile():
     import py_compile
 
     for rel in (
-        "examples/cinc2020/_record_diag.py",
+        "examples/cinc2020/_archive/_record_diag.py",
         "examples/cinc2020/official/evaluate_12ECG_score.py",
         "tools/check_dataset2020.py",
     ):
