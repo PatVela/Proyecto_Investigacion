@@ -18,6 +18,15 @@ const I18N = {
     "examples.kind.mixed": "caso con diferencias",
     "examples.selected": "Ejemplo incluido",
     "examples.attribution": "Registros del PhysioNet/CinC Challenge 2020 (CC BY 4.0). Perez Alday et al., 2022, doi:10.13026/dvyd-kd57.",
+    "a11y.skip": "Saltar al contenido",
+    "a11y.nav": "Secciones",
+    "a11y.theme": "Cambiar entre modo claro y oscuro",
+    "upload.agePh": "Ej.: 54…",
+    "caption.perClass": "Métricas por clase (test)",
+    "plot.alt": "Trazado de ECG de 12 derivaciones sobre papel milimetrado del registro",
+    "chart.bars": "Gráfico de barras con F1 y AUROC por clase en test",
+    "chart.roc": "Curva ROC de la clase",
+    "chart.pr": "Curva precisión-recall de la clase",
     "upload.privacy": "Demostración académica, no es un dispositivo médico. No suba datos de pacientes reales: los archivos subidos se borran al terminar el análisis y los informes generados se eliminan del servidor en 1 hora. Máximo 5 MB por solicitud.",
     "upload.drop": "Arrastra el archivo aquí",
     "upload.dropSub": "o haz clic para seleccionarlo. Para WFDB selecciona ambos archivos del mismo registro.",
@@ -26,11 +35,11 @@ const I18N = {
     "upload.helpCsv": "CSV: columnas de derivaciones estándar I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6. Puede iniciar con # Sampling Rate: 500 Hz.",
     "upload.helpWfdb": "WFDB: sube juntos registro.hea y registro.mat. La app leerá el header, preprocesará la señal y generará un CSV convertido descargable.",
     "upload.patient": "Paciente / ID (opcional)",
-    "upload.patientPh": "Nombre o código",
+    "upload.patientPh": "Nombre o código…",
     "upload.age": "Edad (opcional)",
     "upload.threshold": "Threshold multilabel",
     "upload.trueLabels": "Etiquetas reales opcionales para CSV",
-    "upload.trueLabelsPh": "NSR, AF o 426783006,164889003",
+    "upload.trueLabelsPh": "NSR, AF o 426783006…",
     "upload.trueLabelsHint": "Si subes .hea + .mat, la comparación usa automáticamente el campo Dx del header. Para CSV puedes escribir clases o códigos SNOMED separados por coma.",
     "upload.autoModel": "La app selecciona automáticamente el mejor checkpoint disponible en la carpeta saved/ configurada.",
     "btn.analyze": "Analizar ECG",
@@ -206,6 +215,15 @@ const I18N = {
     "examples.kind.mixed": "case with differences",
     "examples.selected": "Built-in example",
     "examples.attribution": "Records from the PhysioNet/CinC Challenge 2020 (CC BY 4.0). Perez Alday et al., 2022, doi:10.13026/dvyd-kd57.",
+    "a11y.skip": "Skip to content",
+    "a11y.nav": "Sections",
+    "a11y.theme": "Switch between light and dark mode",
+    "upload.agePh": "e.g. 54…",
+    "caption.perClass": "Per-class metrics (test)",
+    "plot.alt": "12-lead ECG trace on ECG paper grid for the record",
+    "chart.bars": "Bar chart with F1 and AUROC per class on the test set",
+    "chart.roc": "ROC curve for class",
+    "chart.pr": "Precision-recall curve for class",
     "upload.privacy": "Academic demonstration, not a medical device. Do not upload real patient data: uploaded files are deleted when the analysis finishes and generated reports are removed from the server after 1 hour. Maximum 5 MB per request.",
     "upload.drop": "Drag the file here",
     "upload.dropSub": "or click to select it. For WFDB, select both files from the same record.",
@@ -214,11 +232,11 @@ const I18N = {
     "upload.helpCsv": "CSV: standard lead columns I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6. It may start with # Sampling Rate: 500 Hz.",
     "upload.helpWfdb": "WFDB: upload record.hea and record.mat together. The app reads the header, preprocesses the signal and generates a downloadable converted CSV.",
     "upload.patient": "Patient / ID (optional)",
-    "upload.patientPh": "Name or code",
+    "upload.patientPh": "Name or code…",
     "upload.age": "Age (optional)",
     "upload.threshold": "Multilabel threshold",
     "upload.trueLabels": "Optional true labels for CSV",
-    "upload.trueLabelsPh": "NSR, AF or 426783006,164889003",
+    "upload.trueLabelsPh": "NSR, AF or 426783006…",
     "upload.trueLabelsHint": "If you upload .hea + .mat, comparison uses the header Dx field automatically. For CSV, write class names or SNOMED codes separated by commas.",
     "upload.autoModel": "The app automatically selects the best available checkpoint in the configured saved/ folder.",
     "btn.analyze": "Analyze ECG",
@@ -394,10 +412,12 @@ function applyI18n() {
   document.documentElement.lang = LANG;
   document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = tr(el.dataset.i18n); });
   document.querySelectorAll("[data-i18n-placeholder]").forEach(el => { el.placeholder = tr(el.dataset.i18nPlaceholder); });
+  document.querySelectorAll("[data-i18n-aria-label]").forEach(el => { el.setAttribute("aria-label", tr(el.dataset.i18nAriaLabel)); });
+  document.querySelectorAll("[data-i18n-title]").forEach(el => { el.title = tr(el.dataset.i18nTitle); });
   const es = document.getElementById("langEs");
   const en = document.getElementById("langEn");
-  if (es) es.classList.toggle("active", LANG === "es");
-  if (en) en.classList.toggle("active", LANG === "en");
+  if (es) { es.classList.toggle("active", LANG === "es"); es.setAttribute("aria-pressed", String(LANG === "es")); }
+  if (en) { en.classList.toggle("active", LANG === "en"); en.setAttribute("aria-pressed", String(LANG === "en")); }
   refreshFileCard();
   if (typeof renderExampleOptions === "function") renderExampleOptions();
   if (typeof renderHistory === "function") renderHistory();
@@ -450,6 +470,7 @@ function escapeHtml(s) {
 function setStatus(msg, cls) {
   statusEl.textContent = msg;
   statusEl.className = "status " + (cls || "");
+  statusEl.setAttribute("role", cls === "err" ? "alert" : "status");
 }
 
 function setLoading(on) {
@@ -522,15 +543,25 @@ function validateFiles(files) {
 }
 
 // ============================================================ navigation ===
-function goTo(sec) {
-  document.querySelectorAll(".nav-link").forEach(b => b.classList.toggle("active", b.dataset.sec === sec));
+const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function goTo(sec, opts = {}) {
+  document.querySelectorAll(".nav-link").forEach(b => {
+    const on = b.dataset.sec === sec;
+    b.classList.toggle("active", on);
+    if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
   ["upload", "vis", "det", "exp"].forEach(s => {
     const el = $("sec-" + s);
     if (el) el.hidden = (s !== sec);
   });
   if (sec === "det" && typeof loadMetricBars === "function") loadMetricBars();
   if (sec === "exp" && typeof loadCurves === "function") loadCurves();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  if (opts.focus !== false) {                     // lectores de pantalla y teclado: el foco sigue a la sección
+    const heading = $("sec-" + sec) && $("sec-" + sec).querySelector("h1");
+    if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
+  }
 }
 
 document.querySelectorAll(".nav-link").forEach(b => b.addEventListener("click", () => goTo(b.dataset.sec)));
@@ -541,8 +572,9 @@ function updateThemeIcon() {
   if (!el) return;
   const dark = document.documentElement.dataset.theme === "dark";
   el.innerHTML = dark
-    ? '<svg class="ico"><use href="#i-sun"/></svg>'
-    : '<svg class="ico"><use href="#i-moon"/></svg>';
+    ? '<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-sun"/></svg>'
+    : '<svg class="ico" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg>';
+  el.setAttribute("aria-pressed", String(dark));
 }
 
 try {
@@ -592,7 +624,7 @@ function refreshFileCard() {
     const e = examplesList.find(x => x.id === selectedExample);
     fileCard.hidden = false;
     fileCard.innerHTML = `
-    <svg class="ico"><use href="#i-file"/></svg>
+    <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-file"/></svg>
     <div class="file-list"><div class="fname">${escapeHtml(e ? exampleLabel(e) : selectedExample)}</div><div class="hint muted">${escapeHtml(tr("examples.selected"))} · ${tr("status.ready")}</div></div>`;
     return;
   }
@@ -607,7 +639,7 @@ function refreshFileCard() {
   const validation = validateFiles(currentFiles);
   const validationHtml = validation ? `<div class="hint error-text">${escapeHtml(validation)}</div>` : "";
   fileCard.innerHTML = `
-    <svg class="ico"><use href="#i-file"/></svg>
+    <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-file"/></svg>
     <div class="file-list">${names}<div class="hint muted">${currentFiles.length} archivo(s) · ${size} · ${tr("status.ready")}</div>${validationHtml}</div>`;
 }
 
@@ -623,12 +655,14 @@ function handleFiles(files) {
 dropzone.addEventListener("dragover", e => { e.preventDefault(); dropzone.classList.add("drag"); });
 dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
 dropzone.addEventListener("drop", e => { e.preventDefault(); dropzone.classList.remove("drag"); handleFiles(e.dataTransfer.files); });
-dropzone.addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", () => handleFiles(fileInput.files));
 
 const fmtHelp = $("fmtHelp");
 const fmtHelpBox = $("fmtHelpBox");
-fmtHelp.addEventListener("click", () => { fmtHelpBox.hidden = !fmtHelpBox.hidden; });
+fmtHelp.addEventListener("click", () => {
+  fmtHelpBox.hidden = !fmtHelpBox.hidden;
+  fmtHelp.setAttribute("aria-expanded", String(!fmtHelpBox.hidden));
+});
 
 if (exampleSelect) {
   exampleSelect.addEventListener("change", () => {
@@ -814,7 +848,7 @@ function renderComparison(result) {
 
 function renderPlot(result) {
   if (result.plot_url) {
-    plotDiv.innerHTML = `<a href="${escapeHtml(result.plot_url)}" target="_blank" rel="noopener"><img class="plot" src="${escapeHtml(result.plot_url)}" alt="ECG paper grid 12-lead trace"></a>`;
+    plotDiv.innerHTML = `<a href="${escapeHtml(result.plot_url)}" target="_blank" rel="noopener"><img class="plot" src="${escapeHtml(result.plot_url)}" alt="${escapeHtml(tr("plot.alt"))} ${escapeHtml(result.record_name || "")}" width="2545" height="1824"></a>`;
     btnPng.href = result.plot_url;
     btnPng.hidden = false;
   } else {
@@ -848,11 +882,11 @@ function renderButtons(result) {
 }
 
 function row(label, value) {
-  return `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value ?? "—")}</td></tr>`;
+  return `<tr><th scope="row">${escapeHtml(label)}</th><td>${escapeHtml(value ?? "—")}</td></tr>`;
 }
 
 function rowHtml(label, html) {
-  return `<tr><th>${escapeHtml(label)}</th><td>${html}</td></tr>`;
+  return `<tr><th scope="row">${escapeHtml(label)}</th><td>${html}</td></tr>`;
 }
 
 function detSub(title) {
@@ -907,8 +941,10 @@ function renderTechnical(result) {
   ].join("");
 
   const rows = result.predictions || [];
+  const th = key => `<th scope="col">${tr(key)}</th>`;
   probTable.innerHTML = `
-    <thead><tr><th>${tr("prob.index")}</th><th>${tr("table.class")}</th><th>${tr("table.description")}</th><th>${tr("prob.prob")}</th><th>${tr("prob.threshold")}</th><th>${tr("prob.margin")}</th><th>${tr("prob.state")}</th></tr></thead>
+    <caption class="visually-hidden">${escapeHtml(tr("detail.probabilities"))}</caption>
+    <thead><tr>${["prob.index", "table.class", "table.description", "prob.prob", "prob.threshold", "prob.margin", "prob.state"].map(th).join("")}</tr></thead>
     <tbody>
       ${rows.map(r => {
         const color = PALETTE[r.index % PALETTE.length];
@@ -986,6 +1022,8 @@ async function loadMetricBars() {
     const f1 = rows.map(r => Number(r.f1));
     const auroc = rows.map(r => (r.auroc === null || r.auroc === undefined) ? NaN : Number(r.auroc));
     const font = { color: plotFontColor(), size: 11 };
+    box.setAttribute("role", "img");
+    box.setAttribute("aria-label", tr("chart.bars"));
     Plotly.newPlot(box, [
       { x, y: f1, name: tr("bars.f1"), type: "bar", marker: { color: "#2563eb" } },
       { x, y: auroc, name: tr("bars.auroc"), type: "bar", marker: { color: "#16a34a" } },
@@ -1048,6 +1086,12 @@ function drawClassCurves(cls) {
   }
   const font = { color: plotFontColor(), size: 11 };
   const base = { height: 320, margin: { t: 50, r: 20 }, paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font, showlegend: false };
+  rocBox.setAttribute("role", "img");
+  rocBox.setAttribute("aria-label", `${tr("chart.roc")} ${cls}`);
+  rocBox.setAttribute("aria-describedby", "curveStats");
+  prBox.setAttribute("role", "img");
+  prBox.setAttribute("aria-label", `${tr("chart.pr")} ${cls}`);
+  prBox.setAttribute("aria-describedby", "curveStats");
   if (curve.fpr && curve.tpr) {
     Plotly.newPlot(rocBox, [
       { x: curve.fpr, y: curve.tpr, type: "scatter", mode: "lines", line: { color: "#2563eb", width: 2.5 } },

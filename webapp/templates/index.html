@@ -9,6 +9,7 @@
   <link rel="icon" href="{{ url_for('static', filename='escudo-unsa.png') }}">
 </head>
 <body>
+<a class="skip-link" href="#main" data-i18n="a11y.skip">Saltar al contenido</a>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M6 9l6-5 6 5"/><path d="M4 20h16"/></symbol>
@@ -26,7 +27,7 @@
 <div class="layout">
   <aside class="sidebar">
     <div class="side-brand">
-      <span class="side-logo" aria-hidden="true">
+      <span class="side-logo">
         <img src="{{ url_for('static', filename='escudo-unsa.png') }}" alt="Escudo UNSA" width="39" height="48">
       </span>
       <div class="side-brand-txt">
@@ -35,11 +36,11 @@
       </div>
     </div>
 
-    <nav class="side-nav" id="sideNav">
-      <button type="button" class="nav-link active" data-sec="upload"><svg class="ico"><use href="#i-upload"/></svg><span data-i18n="nav.upload">Cargar ECG</span></button>
-      <button type="button" class="nav-link" data-sec="vis"><svg class="ico"><use href="#i-viz"/></svg><span data-i18n="nav.result">Resultado</span></button>
-      <button type="button" class="nav-link" data-sec="det"><svg class="ico"><use href="#i-detail"/></svg><span data-i18n="nav.detail">Detalle Técnico</span></button>
-      <button type="button" class="nav-link" data-sec="exp"><svg class="ico"><use href="#i-viz"/></svg><span data-i18n="nav.experiments">Experimentos</span></button>
+    <nav class="side-nav" id="sideNav" aria-label="Secciones" data-i18n-aria-label="a11y.nav">
+      <button type="button" class="nav-link active" data-sec="upload" aria-current="page"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-upload"/></svg><span data-i18n="nav.upload">Cargar ECG</span></button>
+      <button type="button" class="nav-link" data-sec="vis"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-viz"/></svg><span data-i18n="nav.result">Resultado</span></button>
+      <button type="button" class="nav-link" data-sec="det"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-detail"/></svg><span data-i18n="nav.detail">Detalle Técnico</span></button>
+      <button type="button" class="nav-link" data-sec="exp"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-viz"/></svg><span data-i18n="nav.experiments">Experimentos</span></button>
     </nav>
 
     <div class="side-foot">
@@ -54,27 +55,27 @@
       </div>
       <div class="foot-controls">
         <div class="seg-group" role="group" aria-label="Idioma / Language">
-          <button type="button" id="langEs" class="seg active">ES</button>
-          <button type="button" id="langEn" class="seg">EN</button>
+          <button type="button" id="langEs" class="seg active" lang="es" aria-pressed="true">ES</button>
+          <button type="button" id="langEn" class="seg" lang="en" aria-pressed="false">EN</button>
         </div>
-        <button type="button" id="themeToggle" class="icon-btn" title="Modo claro / oscuro"></button>
+        <button type="button" id="themeToggle" class="icon-btn" title="Modo claro / oscuro" aria-label="Cambiar entre modo claro y oscuro" aria-pressed="false" data-i18n-title="a11y.theme" data-i18n-aria-label="a11y.theme"></button>
       </div>
     </div>
   </aside>
 
-  <main class="main">
+  <main class="main" id="main" tabindex="-1">
     <section class="panel upload-panel" id="sec-upload">
       <div class="panel-head">
         <h1 data-i18n="upload.title">Cargar electrocardiograma</h1>
         <p class="panel-sub" data-i18n="upload.intro">Sube un ECG de 12 derivaciones en CSV o el par WFDB .hea + .mat. El análisis se ejecuta solo al pulsar Analizar ECG.</p>
       </div>
 
-      <div id="dropzone" class="dropzone">
-        <div class="dz-icon"><svg class="ico ico-lg"><use href="#i-upload"/></svg></div>
-        <p class="dz-main" data-i18n="upload.drop">Arrastra el archivo aquí</p>
-        <p class="dz-sub" data-i18n="upload.dropSub">o haz clic para seleccionarlo. Para WFDB selecciona ambos archivos del mismo registro.</p>
-        <input type="file" id="file" name="files" accept=".csv,.hea,.mat,text/csv" multiple>
-      </div>
+      <label id="dropzone" class="dropzone" for="file">
+        <span class="dz-icon"><svg class="ico ico-lg" aria-hidden="true" focusable="false"><use href="#i-upload"/></svg></span>
+        <span class="dz-main" data-i18n="upload.drop">Arrastra el archivo aquí</span>
+        <span class="dz-sub" data-i18n="upload.dropSub">o haz clic para seleccionarlo. Para WFDB selecciona ambos archivos del mismo registro.</span>
+        <input type="file" id="file" class="visually-hidden-input" name="files" accept=".csv,.hea,.mat,text/csv" multiple>
+      </label>
 
       <div id="exampleBox" class="example-box" hidden>
         <label for="exampleSelect"><span data-i18n="examples.title">¿No tienes un ECG? Prueba con un ejemplo</span>
@@ -88,7 +89,7 @@
 
       <p class="hint muted">
         <span data-i18n="upload.formats">Formatos:</span> <strong>CSV 12 derivaciones</strong> o <strong>.hea + .mat</strong>.
-        <span class="detail-toggle" id="fmtHelp" data-i18n="upload.help">¿Qué formato usar?</span>
+        <button type="button" class="link-btn" id="fmtHelp" aria-expanded="false" aria-controls="fmtHelpBox" data-i18n="upload.help">¿Qué formato usar?</button>
       </p>
       <div id="fmtHelpBox" class="help-box" hidden>
         <p data-i18n="upload.helpCsv">CSV: columnas de derivaciones estándar I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6. Puede iniciar con # Sampling Rate: 500 Hz.</p>
@@ -97,24 +98,24 @@
 
       <div class="patient-grid">
         <label><span data-i18n="upload.patient">Paciente / ID (opcional)</span>
-          <input type="text" id="patName" name="patient_name" data-i18n-placeholder="upload.patientPh" placeholder="Nombre o código"></label>
+          <input type="text" id="patName" name="patient_name" autocomplete="off" spellcheck="false" data-i18n-placeholder="upload.patientPh" placeholder="Nombre o código…"></label>
         <label><span data-i18n="upload.age">Edad (opcional)</span>
-          <input type="text" id="patAge" name="patient_age" inputmode="numeric" placeholder="—"></label>
+          <input type="text" id="patAge" name="patient_age" inputmode="numeric" autocomplete="off" data-i18n-placeholder="upload.agePh" placeholder="Ej.: 54…"></label>
         <label><span data-i18n="upload.threshold">Threshold multilabel</span>
-          <input type="number" id="threshold" name="threshold" min="0" max="1" step="0.01" value="0.50"></label>
+          <input type="number" id="threshold" name="threshold" min="0" max="1" step="0.01" value="0.50" inputmode="decimal" autocomplete="off"></label>
         <label><span data-i18n="upload.trueLabels">Etiquetas reales opcionales para CSV</span>
-          <input type="text" id="trueLabels" name="true_labels" data-i18n-placeholder="upload.trueLabelsPh" placeholder="NSR, AF o 426783006,164889003"></label>
+          <input type="text" id="trueLabels" name="true_labels" autocomplete="off" spellcheck="false" data-i18n-placeholder="upload.trueLabelsPh" placeholder="NSR, AF o 426783006…"></label>
       </div>
       <p class="hint muted" data-i18n="upload.trueLabelsHint">Si subes .hea + .mat, la comparación usa automáticamente el campo Dx del header. Para CSV puedes escribir clases o códigos SNOMED separados por coma.</p>
 
       <div class="auto-model-note">
-        <svg class="ico"><use href="#i-detail"/></svg>
+        <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-detail"/></svg>
         <span data-i18n="upload.autoModel">La app selecciona automáticamente el mejor checkpoint disponible en la carpeta saved/ configurada.</span>
       </div>
 
       <div class="btn-row">
         <button type="button" id="btnClassify" class="primary big"><span class="btn-spinner" aria-hidden="true"></span><span data-i18n="btn.analyze">Analizar ECG</span></button>
-        <button type="button" id="btnClear" class="secondary big"><svg class="ico"><use href="#i-file"/></svg><span data-i18n="btn.clear">Limpiar</span></button>
+        <button type="button" id="btnClear" class="secondary big"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-file"/></svg><span data-i18n="btn.clear">Limpiar</span></button>
       </div>
       <div id="status" class="status" role="status"></div>
     </section>
@@ -126,7 +127,7 @@
       </div>
 
       <div id="visEmpty" class="empty-state">
-        <div class="es-icon"><svg class="ico ico-lg"><use href="#i-heart"/></svg></div>
+        <div class="es-icon"><svg class="ico ico-lg" aria-hidden="true" focusable="false"><use href="#i-heart"/></svg></div>
         <p class="es-title" data-i18n="empty.title">Aún no hay resultados</p>
         <p data-i18n="empty.body">Sube un ECG y pulsa Analizar ECG.</p>
       </div>
@@ -148,17 +149,17 @@
 
         <div class="btn-row">
           <button type="button" id="btnPrint" class="secondary big">
-            <svg class="ico"><use href="#i-report"/></svg><span data-i18n="btn.pdf">Descargar informe (PDF)</span>
+            <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-report"/></svg><span data-i18n="btn.pdf">Descargar informe (PDF)</span>
           </button>
           <a id="btnCsv" class="button-like secondary big" href="#" download hidden>
-            <svg class="ico"><use href="#i-file"/></svg><span data-i18n="btn.csv">Descargar CSV convertido</span>
+            <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-file"/></svg><span data-i18n="btn.csv">Descargar CSV convertido</span>
           </a>
           <a id="btnPng" class="button-like secondary big" href="#" target="_blank" rel="noopener" hidden>
-            <svg class="ico"><use href="#i-viz"/></svg><span data-i18n="btn.png">Abrir trazado PNG</span>
+            <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-viz"/></svg><span data-i18n="btn.png">Abrir trazado PNG</span>
           </a>
         </div>
 
-        <h3 class="sec-title"><span class="sec-tag" data-i18n="history.title">Historial de sesión</span></h3>
+        <h2 class="sec-title"><span class="sec-tag" data-i18n="history.title">Historial de sesión</span></h2>
         <div id="historyBox" class="history"></div>
         <div class="btn-row">
           <button type="button" id="btnClearHistory" class="secondary"><span data-i18n="history.clear">Limpiar historial</span></button>
@@ -172,37 +173,38 @@
         <p class="panel-sub" data-i18n="detail.sub">Ficha técnica del modelo, preprocesamiento, umbrales, comparación con etiquetas reales y métricas exportadas.</p>
       </div>
       <div id="detEmpty" class="empty-state">
-        <div class="es-icon"><svg class="ico ico-lg"><use href="#i-detail"/></svg></div>
+        <div class="es-icon"><svg class="ico ico-lg" aria-hidden="true" focusable="false"><use href="#i-detail"/></svg></div>
         <p class="es-title" data-i18n="detail.emptyTitle">Aún no hay detalle de predicción</p>
         <p data-i18n="detail.emptyBody">Después de analizar un ECG se completará la ficha del registro.</p>
       </div>
       <div id="detContent" hidden>
         <div class="method" data-i18n="detail.method">Enfoque: la señal se ordena a 12 derivaciones estándar, se convierte a milivoltios con la ganancia del header, se filtra (pasa-banda 0.5–50 Hz), se recorta a ±5 mV, se remuestrea a 500 Hz, se ajusta a 5000 muestras y se clasifica con salidas sigmoid independientes y umbrales por clase.</div>
-        <h3 class="sec-title"><span class="sec-tag" data-i18n="detail.recordSheet">Ficha del registro analizado</span></h3>
-        <table class="model-table"><tbody id="technicalRows"></tbody></table>
-        <h3 class="sec-title"><span class="sec-tag" data-i18n="detail.probabilities">Probabilidades por clase</span></h3>
+        <h2 class="sec-title"><span class="sec-tag" data-i18n="detail.recordSheet">Ficha del registro analizado</span></h2>
+        <table class="model-table"><caption class="visually-hidden" data-i18n="detail.recordSheet">Ficha del registro analizado</caption><tbody id="technicalRows"></tbody></table>
+        <h2 class="sec-title"><span class="sec-tag" data-i18n="detail.probabilities">Probabilidades por clase</span></h2>
         <div class="iv-scroll"><table class="iv-table" id="probTable"></table></div>
         <p class="hint muted" id="probNote" hidden></p>
       </div>
 
-      <h3 class="sec-title"><span class="sec-tag" data-i18n="detail.modelSheet">Ficha técnica del modelo cargado automáticamente</span></h3>
+      <h2 class="sec-title"><span class="sec-tag" data-i18n="detail.modelSheet">Ficha técnica del modelo cargado automáticamente</span></h2>
       {% set cfg = model_info.config if model_info and model_info.config else {} %}
       <table class="model-table">
+        <caption class="visually-hidden" data-i18n="detail.modelSheet">Ficha técnica del modelo cargado</caption>
         <tbody>
-          <tr><th data-i18n="tech.arch">Arquitectura</th><td>{{ model_info.model_type if model_info else 'No cargado' }}</td></tr>
-          <tr><th data-i18n="tech.input">Entrada</th><td>{{ num_leads }} derivaciones · {{ sampling_rate }} Hz · {{ input_length }} muestras · {{ window_seconds }} s</td></tr>
-          <tr><th data-i18n="tech.classes">Clases</th><td>{{ num_classes }} salidas multilabel: {{ (model_info.classes if model_info else []) | join(', ') }}</td></tr>
-          <tr><th data-i18n="tech.checkpoint">Checkpoint</th><td><code title="{{ resolved_model }}">{{ resolved_model_short }}</code></td></tr>
-          {% if model_info and model_info.model_b %}<tr><th data-i18n="tech.modelB">Modelo B (ensemble)</th><td><code title="{{ model_info.model_b }}">{{ model_info.model_b_short }}</code></td></tr>{% endif %}
-          <tr><th data-i18n="tech.trained">Entrenado</th><td>{{ model_train_date or '—' }}{% if model_hash %} · id <code>{{ model_hash }}</code>{% endif %}</td></tr>
-          <tr><th data-i18n="tech.epoch">Época / val_loss</th><td>{% if model_info and model_info.meta %}{{ model_info.meta.epoch or '—' }} · {% if model_info.meta.val_loss is not none %}{{ '%.3f' % (model_info.meta.val_loss | float) }}{% else %}—{% endif %}{% else %}—{% endif %}</td></tr>
-          <tr><th data-i18n="tech.params">Parámetros</th><td>{% if model_info and model_info.num_parameters %}{{ '{:,}'.format(model_info.num_parameters.total).replace(',', ' ') }} ({{ '%.1f' % (model_info.num_parameters.total / 1000000) }} M){% else %}—{% endif %}</td></tr>
-          <tr><th data-i18n="tech.loss">Pérdida</th><td><code>BCEWithLogitsLoss</code></td></tr>
-          <tr><th data-i18n="tech.activation">Activación</th><td>Sigmoid</td></tr>
+          <tr><th scope="row" data-i18n="tech.arch">Arquitectura</th><td>{{ model_info.model_type if model_info else 'No cargado' }}</td></tr>
+          <tr><th scope="row" data-i18n="tech.input">Entrada</th><td>{{ num_leads }} derivaciones · {{ sampling_rate }} Hz · {{ input_length }} muestras · {{ window_seconds }} s</td></tr>
+          <tr><th scope="row" data-i18n="tech.classes">Clases</th><td>{{ num_classes }} salidas multilabel: {{ (model_info.classes if model_info else []) | join(', ') }}</td></tr>
+          <tr><th scope="row" data-i18n="tech.checkpoint">Checkpoint</th><td><code title="{{ resolved_model }}">{{ resolved_model_short }}</code></td></tr>
+          {% if model_info and model_info.model_b %}<tr><th scope="row" data-i18n="tech.modelB">Modelo B (ensemble)</th><td><code title="{{ model_info.model_b }}">{{ model_info.model_b_short }}</code></td></tr>{% endif %}
+          <tr><th scope="row" data-i18n="tech.trained">Entrenado</th><td>{{ model_train_date or '—' }}{% if model_hash %} · id <code>{{ model_hash }}</code>{% endif %}</td></tr>
+          <tr><th scope="row" data-i18n="tech.epoch">Época / val_loss</th><td>{% if model_info and model_info.meta %}{{ model_info.meta.epoch or '—' }} · {% if model_info.meta.val_loss is not none %}{{ '%.3f' % (model_info.meta.val_loss | float) }}{% else %}—{% endif %}{% else %}—{% endif %}</td></tr>
+          <tr><th scope="row" data-i18n="tech.params">Parámetros</th><td>{% if model_info and model_info.num_parameters %}{{ '{:,}'.format(model_info.num_parameters.total).replace(',', ' ') }} ({{ '%.1f' % (model_info.num_parameters.total / 1000000) }} M){% else %}—{% endif %}</td></tr>
+          <tr><th scope="row" data-i18n="tech.loss">Pérdida</th><td><code>BCEWithLogitsLoss</code></td></tr>
+          <tr><th scope="row" data-i18n="tech.activation">Activación</th><td>Sigmoid</td></tr>
           {% set schema = cfg.get('label_schema') or '' %}
-          <tr><th data-i18n="tech.schema">Esquema de etiquetas</th><td><code>{{ schema or '—' }}</code></td></tr>
-          <tr><th data-i18n="tech.norm">Normalización</th><td>{% if not schema %}—{% elif 'v2' in schema %}<span data-i18n="tech.normPhysical">physical: mV + pasa-banda 0.5–50 Hz + recorte ±5 mV</span>{% else %}<span data-i18n="tech.normLegacy">z-score por derivación (esquema previo)</span>{% endif %}</td></tr>
-          <tr><th data-i18n="tech.thresholds">Umbrales</th><td>{% if thresholds_info and thresholds_info.found %}<span data-i18n="tech.thresholdsCal">calibrados por clase</span> ({{ thresholds_info.num_classes }}){% else %}<span data-i18n="tech.thresholdsGlobal">global 0.5 (respaldo)</span>{% endif %}{% if metrics and metrics.summary and metrics.summary.threshold_beta is not none %} · <span data-i18n="tech.objective">objetivo</span> {{ 'F1' if metrics.summary.threshold_beta == 1.0 else ('F0.5' if metrics.summary.threshold_beta == 0.5 else 'Fβ=' ~ metrics.summary.threshold_beta) }}{% endif %}</td></tr>
+          <tr><th scope="row" data-i18n="tech.schema">Esquema de etiquetas</th><td><code>{{ schema or '—' }}</code></td></tr>
+          <tr><th scope="row" data-i18n="tech.norm">Normalización</th><td>{% if not schema %}—{% elif 'v2' in schema %}<span data-i18n="tech.normPhysical">physical: mV + pasa-banda 0.5–50 Hz + recorte ±5 mV</span>{% else %}<span data-i18n="tech.normLegacy">z-score por derivación (esquema previo)</span>{% endif %}</td></tr>
+          <tr><th scope="row" data-i18n="tech.thresholds">Umbrales</th><td>{% if thresholds_info and thresholds_info.found %}<span data-i18n="tech.thresholdsCal">calibrados por clase</span> ({{ thresholds_info.num_classes }}){% else %}<span data-i18n="tech.thresholdsGlobal">global 0.5 (respaldo)</span>{% endif %}{% if metrics and metrics.summary and metrics.summary.threshold_beta is not none %} · <span data-i18n="tech.objective">objetivo</span> {{ 'F1' if metrics.summary.threshold_beta == 1.0 else ('F0.5' if metrics.summary.threshold_beta == 0.5 else 'Fβ=' ~ metrics.summary.threshold_beta) }}{% endif %}</td></tr>
         </tbody>
       </table>
       <details class="adv-det">
@@ -217,11 +219,12 @@
         </tbody></table>
       </details>
 
-      <h3 class="sec-title"><span class="sec-tag" data-i18n="detail.schema">Esquema de clases SNOMED-CT</span></h3>
+      <h2 class="sec-title"><span class="sec-tag" data-i18n="detail.schema">Esquema de clases SNOMED-CT</span></h2>
       <p class="hint muted" data-i18n="detail.schemaNote">Referencia completa de códigos por clase (la tabla de probabilidades los omite por legibilidad).</p>
       <div class="iv-scroll class-scroll">
         <table class="iv-table">
-          <thead><tr><th>#</th><th data-i18n="table.class">Clase</th><th data-i18n="table.description">Descripción</th><th data-i18n="table.codes">Códigos</th></tr></thead>
+          <caption class="visually-hidden" data-i18n="detail.schema">Esquema de clases SNOMED-CT</caption>
+          <thead><tr><th scope="col">#</th><th scope="col" data-i18n="table.class">Clase</th><th scope="col" data-i18n="table.description">Descripción</th><th scope="col" data-i18n="table.codes">Códigos</th></tr></thead>
           <tbody>
           {% for group in class_groups %}
             <tr><td class="iv-idx">{{ loop.index0 }}</td><td><strong>{{ group.name }}</strong></td><td>{{ group.display_name }}</td><td><code>{{ group.codes | join(', ') }}</code></td></tr>
@@ -230,12 +233,13 @@
         </table>
       </div>
 
-      <h3 class="sec-title"><span class="sec-tag" data-i18n="detail.metrics">Métricas de evaluación</span></h3>
+      <h2 class="sec-title"><span class="sec-tag" data-i18n="detail.metrics">Métricas de evaluación</span></h2>
       {% if metrics and metrics.found %}
         <p class="hint muted" data-i18n="detail.metricsNote">Métricas calculadas por el script de evaluación sobre validación y test; la tabla por clase muestra el split test.</p>
         <div class="iv-scroll exp-scroll">
           <table class="iv-table exp-table">
-            <thead><tr><th>Split</th><th>n</th><th>F1 macro</th><th>F1 micro</th><th>AUROC macro</th><th>AUPRC macro</th><th>Exact match</th></tr></thead>
+            <caption class="visually-hidden" data-i18n="detail.metrics">Métricas de evaluación</caption>
+            <thead><tr><th scope="col">Split</th><th scope="col">n</th><th scope="col">F1 macro</th><th scope="col">F1 micro</th><th scope="col">AUROC macro</th><th scope="col">AUPRC macro</th><th scope="col">Exact match</th></tr></thead>
             <tbody>
               {% for row in metrics.global %}
               <tr><td>{{ row.split }}</td><td>{{ row.samples }}</td><td>{{ '%.3f' % row.f1_macro }}</td><td>{{ '%.3f' % row.f1_micro }}</td><td>{{ '%.3f' % row.auroc_macro if row.auroc_macro is not none else '—' }}</td><td>{{ '%.3f' % row.auprc_macro if row.auprc_macro is not none else '—' }}</td><td>{{ '%.3f' % row.exact_match_ratio }}</td></tr>
@@ -245,7 +249,8 @@
         </div>
         <div class="iv-scroll exp-scroll">
           <table class="iv-table exp-table">
-            <thead><tr><th data-i18n="table.class">Clase</th><th data-i18n="metric.support">Soporte +</th><th data-i18n="metric.sensitivity">Sensibilidad</th><th data-i18n="metric.specificity">Especificidad</th><th>F1</th><th>AUROC</th><th>AUPRC</th></tr></thead>
+            <caption class="visually-hidden" data-i18n="caption.perClass">Métricas por clase (test)</caption>
+            <thead><tr><th scope="col" data-i18n="table.class">Clase</th><th scope="col" data-i18n="metric.support">Soporte +</th><th scope="col" data-i18n="metric.sensitivity">Sensibilidad</th><th scope="col" data-i18n="metric.specificity">Especificidad</th><th scope="col">F1</th><th scope="col">AUROC</th><th scope="col">AUPRC</th></tr></thead>
             <tbody>
               {% for row in metrics.per_class_test %}
               <tr><td><code>{{ row['class'] }}</code></td><td>{{ row.support_positive }}</td><td>{{ '%.3f' % row.sensitivity_recall }}</td><td>{{ '%.3f' % row.specificity if row.specificity is not none else '—' }}</td><td><strong>{{ '%.3f' % row.f1 }}</strong></td><td>{{ '%.3f' % row.auroc if row.auroc is not none else '—' }}</td><td>{{ '%.3f' % row.auprc if row.auprc is not none else '—' }}</td></tr>
@@ -256,7 +261,7 @@
         {% if metrics.best_class and metrics.worst_class %}
         <p class="hint muted"><b data-i18n="detail.bestClass">Mejor clase (F1 test)</b>: <code>{{ metrics.best_class.name }} · {{ '%.3f' % metrics.best_class.value }}</code> &middot; <b data-i18n="detail.worstClass">Peor clase (F1 test)</b>: <code>{{ metrics.worst_class.name }} · {{ '%.3f' % metrics.worst_class.value }}</code></p>
         {% endif %}
-        <h3 class="sec-title"><span class="sec-tag" data-i18n="detail.barsTitle">Métricas por clase (interactivo)</span></h3>
+        <h2 class="sec-title"><span class="sec-tag" data-i18n="detail.barsTitle">Métricas por clase (interactivo)</span></h2>
         <div id="metricBars" class="plot-box"></div>
       {% else %}
         <div class="help-box">
@@ -277,12 +282,13 @@
 
       <div class="method" data-i18n="exp.method">Objetivo experimental: comparar de forma justa dos evaluaciones (por ejemplo, ResNet v1 frente a ResNet v2) usando el mismo dataset, split y métricas; y medir robustez ante degradaciones controladas de la señal.</div>
 
-      <h3 class="sec-title"><span class="sec-tag" data-i18n="exp.compare">Comparación de modelos</span></h3>
+      <h2 class="sec-title"><span class="sec-tag" data-i18n="exp.compare">Comparación de modelos</span></h2>
       {% if experiments and experiments.comparison_found %}
       <p class="hint muted" data-i18n="exp.compareNote">Comparación justa: mismo dataset, split, preprocesamiento y métricas para ambas evaluaciones. La estrella marca el mejor F1 macro en test.</p>
       <div class="iv-scroll exp-scroll">
         <table class="iv-table exp-table">
-          <thead><tr><th data-i18n="table.model">Modelo</th><th>Split</th><th>n</th><th>F1 macro</th><th>F1 micro</th><th>Sens. macro</th><th>Esp. macro</th><th>AUROC macro</th></tr></thead>
+          <caption class="visually-hidden" data-i18n="exp.compare">Comparación de modelos</caption>
+          <thead><tr><th scope="col" data-i18n="table.model">Modelo</th><th scope="col">Split</th><th scope="col">n</th><th scope="col">F1 macro</th><th scope="col">F1 micro</th><th scope="col">Sens. macro</th><th scope="col">Esp. macro</th><th scope="col">AUROC macro</th></tr></thead>
           <tbody>
           {% for row in experiments.comparison %}
             <tr><td><strong>{{ row.model }}</strong>{% if experiments.comparison_winner and row.model == experiments.comparison_winner and (row.split | lower) == 'test' %}<span class="badge ok">★</span>{% endif %}</td><td>{{ row.split }}</td><td>{{ row.samples }}</td><td>{{ '%.3f' % row.f1_macro }}</td><td>{{ '%.3f' % row.f1_micro }}</td><td>{{ '%.3f' % row.sensitivity_macro }}</td><td>{{ '%.3f' % row.specificity_macro if row.specificity_macro is not none else '—' }}</td><td>{{ '%.3f' % row.auroc_macro if row.auroc_macro is not none else '—' }}</td></tr>
@@ -302,12 +308,13 @@
       </div>
       {% endif %}
 
-      <h3 class="sec-title"><span class="sec-tag" data-i18n="exp.robust">Robustez frente a perturbaciones ECG</span></h3>
+      <h2 class="sec-title"><span class="sec-tag" data-i18n="exp.robust">Robustez frente a perturbaciones ECG</span></h2>
       {% if experiments and experiments.robustness_found %}
       <p class="hint muted" data-i18n="exp.robustNote">Cada fila aplica una degradación controlada al test y mide cuánto cae el F1 macro frente a la señal limpia.</p>
       <div class="iv-scroll exp-scroll">
         <table class="iv-table exp-table">
-          <thead><tr><th data-i18n="exp.perturbation">Perturbación</th><th data-i18n="exp.level">Nivel</th><th>n</th><th>F1 macro</th><th>F1 micro</th><th data-i18n="metric.precisionMacro">Precisión macro</th><th data-i18n="metric.sensitivityMacro">Sensibilidad macro</th><th data-i18n="exp.deltaCol">ΔF1 vs limpio</th></tr></thead>
+          <caption class="visually-hidden" data-i18n="exp.robust">Robustez frente a perturbaciones ECG</caption>
+          <thead><tr><th scope="col" data-i18n="exp.perturbation">Perturbación</th><th scope="col" data-i18n="exp.level">Nivel</th><th scope="col">n</th><th scope="col">F1 macro</th><th scope="col">F1 micro</th><th scope="col" data-i18n="metric.precisionMacro">Precisión macro</th><th scope="col" data-i18n="metric.sensitivityMacro">Sensibilidad macro</th><th scope="col" data-i18n="exp.deltaCol">ΔF1 vs limpio</th></tr></thead>
           <tbody>
           {% for row in experiments.robustness %}
             <tr><td><strong>{{ row.perturbation_label_es or row.perturbation }}</strong> <code class="dim">{{ row.perturbation }}</code></td><td>{{ row.level }}</td><td>{{ row.samples }}</td><td><strong>{{ '%.3f' % row.f1_macro }}</strong></td><td>{{ '%.3f' % row.f1_micro }}</td><td>{{ '%.3f' % row.precision_macro }}</td><td>{{ '%.3f' % row.sensitivity_macro }}</td><td>{% if row.delta_f1_macro is not none %}<span class="badge {{ 'ok' if row.delta_f1_macro >= -0.001 else 'no' }}">{{ '%+.3f' % row.delta_f1_macro }}</span>{% else %}—{% endif %}</td></tr>
@@ -328,7 +335,7 @@
       </div>
       {% endif %}
 
-      <h3 class="sec-title"><span class="sec-tag" data-i18n="curves.title">Curvas ROC/PR interactivas</span></h3>
+      <h2 class="sec-title"><span class="sec-tag" data-i18n="curves.title">Curvas ROC/PR interactivas</span></h2>
       {% if curves_found %}
       <p class="hint muted" data-i18n="curves.hint">Seleccione una clase para ver sus curvas ROC y Precision-Recall en test.</p>
       <div class="curve-controls">
