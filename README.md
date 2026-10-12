@@ -132,14 +132,14 @@ Nombres usados en la guía:
 
 | Carpeta/archivo | Contenido |
 |---|---|
-| `eval-resnet` | Calibración + evaluación ResNet v1 |
-| `eval-resnet-v2` | Calibración + evaluación ResNet v2 |
-| `exp-files` | `model_comparison.csv` (v1 vs v2) + `robustness.csv` |
-| `ensemble` | Ensemble ResNet v1 + v2 |
-| `comparacion_ensemble.csv` | Ensemble vs mejor individual |
-| `metrica-challenge` | Métrica oficial estilo Challenge |
-| `errores_origen.csv` | Errores por hospital |
-| `resnet12.onnx` | Modelo exportado |
+| `runs/eval/eval-resnet` | Calibración + evaluación ResNet v1 |
+| `runs/eval/eval-resnet-v2` | Calibración + evaluación ResNet v2 |
+| `runs/reports` | `model_comparison.csv` (v1 vs v2) + `robustness.csv` |
+| `runs/eval/ensemble` | Ensemble ResNet v1 + v2 |
+| `runs/reports/comparacion_ensemble.csv` | Ensemble vs mejor individual |
+| `runs/eval/metrica-challenge` | Métrica oficial estilo Challenge |
+| `runs/reports/errores_origen.csv` | Errores por hospital |
+| `runs/models/resnet12.onnx` | Modelo exportado |
 
 ### Paso 0 — Instalación y verificación
 
@@ -236,15 +236,15 @@ $resnet2
 **Lea las dos rutas**: deben apuntar a `cinc2020_resnet...` y `cinc2020_resnet_v2*...` respectivamente. Si ve un run abortado a medias, bórrelo primero con `Remove-Item -Recurse` apuntando a la carpeta de ese run.
 
 ```powershell
-python examples/cinc2020/calibrate.py --checkpoint $resnet --val-h5 data/cinc2020_12/val.h5 --output-dir eval-resnet
-python examples/cinc2020/calibrate.py --checkpoint $resnet2 --val-h5 data/cinc2020_12/val.h5 --output-dir eval-resnet-v2
+python examples/cinc2020/calibrate.py --checkpoint $resnet --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet
+python examples/cinc2020/calibrate.py --checkpoint $resnet2 --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet-v2
 ```
 
 ### Paso 5 — Evaluar (~10 min c/u en GPU)
 
 ```powershell
-python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir eval-resnet --temperatures eval-resnet/temperatures_validation.csv --threshold-beta 0.5
-python examples/cinc2020/evaluate.py examples/cinc2020/config_resnet_v2.json $resnet2 --output-dir eval-resnet-v2 --temperatures eval-resnet-v2/temperatures_validation.csv --threshold-beta 0.5
+python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet --temperatures runs/eval/eval-resnet/temperatures_validation.csv --threshold-beta 0.5
+python examples/cinc2020/evaluate.py examples/cinc2020/config_resnet_v2.json $resnet2 --output-dir runs/eval/eval-resnet-v2 --temperatures runs/eval/eval-resnet-v2/temperatures_validation.csv --threshold-beta 0.5
 ```
 
 Sin `--nsr-exclusive-min-prob`: esa regla resultó perjudicial en ablación (−11 pts de F1-macro sin ganancia de precisión) y no se usa. Cada directorio contendrá umbrales por clase, métricas por clase y globales, predicciones de validación/test, matrices de confusión 2×2, curvas ROC/PR y un resumen JSON (`evaluation_summary.json`).
@@ -252,26 +252,26 @@ Sin `--nsr-exclusive-min-prob`: esa regla resultó perjudicial en ablación (−
 ### Paso 6 — Comparar v1 vs v2 y elegir el mejor
 
 ```powershell
-python examples/cinc2020/compare_models.py --eval-a eval-resnet --eval-b eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output exp-files/model_comparison.csv
+python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet --eval-b runs/eval/eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output runs/reports/model_comparison.csv
 ```
 
-Abra `exp-files/model_comparison.csv` en su visor de CSV, mire F1-macro en test y defina el ganador (ajuste según lo que vea; aquí se asume v2):
+Abra `runs/reports/model_comparison.csv` en su visor de CSV, mire F1-macro en test y defina el ganador (ajuste según lo que vea; aquí se asume v2):
 
 ```powershell
 $mejor = $resnet2
-$evalMejor = "eval-resnet-v2"
+$evalMejor = "runs/eval/eval-resnet-v2"
 ```
 
 ### Paso 7 — Ensemble + experimentos (~20 min en GPU)
 
 ```powershell
-python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir ensemble --alpha 0.5 --threshold-beta 0.5 --temperatures-a eval-resnet/temperatures_validation.csv --temperatures-b eval-resnet-v2/temperatures_validation.csv
-python examples/cinc2020/compare_models.py --eval-a "$evalMejor" --eval-b ensemble --label-a "ResNet mejor" --label-b "Ensemble" --output comparacion_ensemble.csv
-python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --temperatures "$evalMejor/temperatures_validation.csv" --output exp-files/robustness.csv
-python examples/cinc2020/challenge_score.py --checkpoint $mejor --test-h5 data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --output-dir metrica-challenge
-python examples/cinc2020/error_analysis.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --output errores_origen.csv
-python examples/cinc2020/make_figures.py --eval-dir "$evalMejor" --outdir figs_eval --robustness exp-files/robustness.csv
-python examples/cinc2020/bootstrap_ci.py --predictions "$evalMejor/predictions_test.csv" --predictions-baseline eval-resnet/predictions_test.csv --output bootstrap_ci.json --n-bootstrap 1000
+python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble --alpha 0.5 --threshold-beta 0.5 --temperatures-a runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv
+python examples/cinc2020/compare_models.py --eval-a "$evalMejor" --eval-b runs/eval/ensemble --label-a "ResNet mejor" --label-b "Ensemble" --output runs/reports/comparacion_ensemble.csv
+python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --temperatures "$evalMejor/temperatures_validation.csv" --output runs/reports/robustness.csv
+python examples/cinc2020/challenge_score.py --checkpoint $mejor --test-h5 data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --output-dir runs/eval/metrica-challenge
+python examples/cinc2020/error_analysis.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --output runs/reports/errores_origen.csv
+python examples/cinc2020/make_figures.py --eval-dir "$evalMejor" --outdir runs/figs/figs_eval --robustness runs/reports/robustness.csv
+python examples/cinc2020/bootstrap_ci.py --predictions "$evalMejor/predictions_test.csv" --predictions-baseline runs/eval/eval-resnet/predictions_test.csv --output bootstrap_ci.json --n-bootstrap 1000
 ```
 
 ### Paso 8 — Diagnóstico de registros ejemplo
@@ -279,16 +279,16 @@ python examples/cinc2020/bootstrap_ci.py --predictions "$evalMejor/predictions_t
 ```powershell
 $hea1 = Get-ChildItem dataset2020 -Recurse -Filter E00001.hea | Select-Object -First 1 -ExpandProperty FullName
 $mat1 = [System.IO.Path]::ChangeExtension($hea1, '.mat')
-python examples/cinc2020/diagnose_prediction.py --checkpoint $mejor --config examples/cinc2020/config.json --thresholds "$evalMejor/thresholds_validation.csv" --record E00001 --hea $hea1 --mat $mat1
+python examples/cinc2020/_archive/diagnose_prediction.py --checkpoint $mejor --config examples/cinc2020/config.json --thresholds "$evalMejor/thresholds_validation.csv" --record E00001 --hea $hea1 --mat $mat1
 $hea14 = Get-ChildItem dataset2020 -Recurse -Filter E00014.hea | Select-Object -First 1 -ExpandProperty FullName
 $mat14 = [System.IO.Path]::ChangeExtension($hea14, '.mat')
-python examples/cinc2020/diagnose_prediction.py --checkpoint $mejor --config examples/cinc2020/config.json --thresholds "$evalMejor/thresholds_validation.csv" --record E00014 --hea $hea14 --mat $mat14
+python examples/cinc2020/_archive/diagnose_prediction.py --checkpoint $mejor --config examples/cinc2020/config.json --thresholds "$evalMejor/thresholds_validation.csv" --record E00014 --hea $hea14 --mat $mat14
 ```
 
 ### Paso 9 — Webapp (ensemble final)
 
 ```powershell
-python webapp/app.py --saved saved --eval-dir ensemble --exp-dir exp-files --model $resnet --model-b $resnet2 --temperatures eval-resnet/temperatures_validation.csv --temperatures-b eval-resnet-v2/temperatures_validation.csv --port 5002
+python webapp/app.py --saved saved --eval-dir runs/eval/ensemble --exp-dir runs/reports --model $resnet --model-b $resnet2 --temperatures runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv --port 5002
 ```
 
 Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`.
@@ -296,7 +296,7 @@ Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`.
 ### Paso 10 — ONNX y Docker (opcionales)
 
 ```powershell
-python examples/cinc2020/export_onnx.py --checkpoint $mejor --output resnet12.onnx
+python examples/cinc2020/export_onnx.py --checkpoint $mejor --output runs/models/resnet12.onnx
 docker build -t ecg-cinc2020 .
 docker run --rm -p 5002:5002 -v ./saved:/app/saved:ro ecg-cinc2020
 ```
@@ -307,7 +307,7 @@ En Linux/bash los comandos `python`, `pytest`, `bash` y `docker` son idénticos;
 resnet=$(ls -t saved/cinc2020/cinc2020_resnet/*/best.pt | head -1)
 resnet2=$(ls -t saved/cinc2020/cinc2020_resnet_v2*/*/best.pt | head -1)
 mejor=$resnet2
-evalMejor="eval-resnet-v2"
+evalMejor="runs/eval/eval-resnet-v2"
 hea1=$(find dataset2020 -name E00001.hea | head -1)
 mat1="${hea1%.hea}.mat"
 ```
@@ -374,7 +374,7 @@ Notas:
 │   ├── robustness.py / challenge_score.py
 │   ├── calibrate.py / ensemble_evaluate.py
 │   ├── error_analysis.py / export_onnx.py
-│   ├── diagnose_prediction.py / debug_record_prediction.py
+│   ├── _archive/ (diagnose_prediction.py, debug_record_prediction.py, _record_diag.py)
 │   ├── audit_dx_codes.py     # cobertura Dx→clase (frecuencia SNOMED)
 │   ├── make_figures.py / bootstrap_ci.py   # figuras empíricas e IC bootstrap
 │   ├── sex_breakdown.py / benchmark_latency.py  # auditorías: sexo y latencia
@@ -416,7 +416,7 @@ Detalles, formatos y endpoints en [webapp/README.md](webapp/README.md).
 * **Comparación de evaluaciones**: dos runs (p. ej. ResNet v1 vs v2) con idéntico dataset, split y métricas (`compare_models.py`).
 * **Robustez controlada**: ruido gaussiano, baseline wander, escalado de amplitud y apagado de derivaciones (`robustness.py`).
 * **Métrica oficial estilo Challenge 2020** sobre los 27 códigos puntuados (`challenge_score.py`).
-* **Diagnóstico por registro**: inspección de casos individuales (`diagnose_prediction.py`, `debug_record_prediction.py`).
+* **Diagnóstico por registro**: inspección de casos individuales (`_archive/diagnose_prediction.py`, `_archive/debug_record_prediction.py`).
 * **Figuras empíricas e IC bootstrap**: curvas ROC/PR con punto de operación, barras de robustez e intervalos por bootstrap (`make_figures.py`, `bootstrap_ci.py`).
 * **Auditorías**: desglose por sexo y latencia de inferencia (`sex_breakdown.py`, `benchmark_latency.py`).
 

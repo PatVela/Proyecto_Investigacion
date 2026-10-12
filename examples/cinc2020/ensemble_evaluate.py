@@ -148,7 +148,7 @@ def main():
     parser.add_argument("config", help="JSON de configuración")
     parser.add_argument("checkpoint_a", help="Checkpoint A (.pt)")
     parser.add_argument("checkpoint_b", help="Checkpoint B (.pt)")
-    parser.add_argument("--output-dir", default="ensemble")
+    parser.add_argument("--output-dir", default="runs/eval/ensemble")
     parser.add_argument("--alpha", type=float, default=0.5, help="Peso del modelo A en [0, 1] (B recibe 1-alpha)")
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--num-workers", type=int, default=None)

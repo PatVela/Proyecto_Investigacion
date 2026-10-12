@@ -16,27 +16,11 @@ webapp/results/
 logs/
 modelos/
 
-# Evaluaciones y experimentos (nombres de la guía: Pasos 4-7, 10)
-exp-files/
-metrica-challenge/
-ensemble/
-ensemble-noexcl/
-ensemble-f1/
-eval-resnet/
-eval-resnet-v2/
-eval-resnet-v2-noexcl/
-eval-resnet-fallback/
-comparacion_ensemble.csv
-errores_origen.csv
-dx_code_audit.csv
-figs_*/
-bootstrap_*.json
-sex_breakdown.json
-eval-abl-*/
-eval-regular/
-calib-regular/
+# Salidas generadas del pipeline (evaluaciones, figuras, reportes, modelos exportados)
+runs/
 
 # Modelos y reportes generados
+*.db
 *.pt
 *.onnx
 *.pdf
