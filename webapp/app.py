@@ -21,6 +21,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from flask import Flask, jsonify, render_template, request, send_from_directory, url_for
+from werkzeug.utils import secure_filename
 
 from ecg import load, util
 from webapp import project_info as proj
@@ -555,7 +556,8 @@ def create_app() -> Flask:
 
     @app.get("/models")
     def models_route():
-        saved_dir = request.args.get("saved") or app.config["ECG_SAVED_DIR"]
+        # El directorio lo fija el servidor; nunca el cliente (evita escanear/cargar rutas arbitrarias).
+        saved_dir = app.config["ECG_SAVED_DIR"]
         checkpoints = _list_checkpoints(saved_dir)
         return jsonify({
             "ok": True,
@@ -575,6 +577,9 @@ def create_app() -> Flask:
             resolved = resolve_model_path(model_path=model, saved_dir=app.config["ECG_SAVED_DIR"])
         except Exception as exc:
             return jsonify({"ok": False, "error": str(exc)}), 404
+        saved_root = Path(app.config["ECG_SAVED_DIR"]).resolve()
+        if resolved.suffix.lower() != ".pt" or not resolved.is_relative_to(saved_root):
+            return jsonify({"ok": False, "error": "El checkpoint debe ser un .pt dentro del directorio de modelos."}), 400
         app.config["ECG_MODEL"] = str(resolved)
         return jsonify({"ok": True, "model": str(resolved), "info": _checkpoint_info(str(resolved), app.config["ECG_SAVED_DIR"])})
 
@@ -641,7 +646,11 @@ def create_app() -> Flask:
                     filename=_relative_to_results(app, result["converted_csv_path"]),
                 )
 
-            pdf_path = Path(app.config["ECG_RESULTS_DIR"]) / result["job_id"] / f"{result['record_name']}_reporte.pdf"
+            results_root = Path(app.config["ECG_RESULTS_DIR"]).resolve()
+            safe_name = secure_filename(str(result["record_name"])) or "ecg"
+            pdf_path = (results_root / result["job_id"] / f"{safe_name}_reporte.pdf").resolve()
+            if not pdf_path.is_relative_to(results_root):
+                raise ValueError("Ruta de informe fuera del directorio de resultados.")
             build_pdf_report(result, pdf_path)
             result["pdf_path"] = str(pdf_path)
             result["pdf_url"] = url_for(

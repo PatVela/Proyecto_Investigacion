@@ -174,8 +174,8 @@ La app valida que el stem coincida, lee el header, preprocesa la señal, compara
 | `GET` | `/` | Dashboard (carga, resultado, detalle técnico, experimentos) |
 | `POST` | `/predict` | Analiza archivos + umbral; devuelve JSON con probabilidades, trazado y PDF |
 | `GET` | `/results/<archivo>` | Descarga artefactos generados (PDF, PNG, CSV convertido) |
-| `GET` | `/models` | Checkpoints disponibles en la carpeta configurada |
-| `POST` | `/use_model` | Cambia el checkpoint activo (vacío = selección automática) |
+| `GET` | `/models` | Checkpoints disponibles en la carpeta configurada (el cliente no puede elegir otra) |
+| `POST` | `/use_model` | Cambia el checkpoint activo (vacío = selección automática). Solo acepta `.pt` dentro de la carpeta de modelos configurada |
 | `GET` | `/metrics` | Métricas de evaluación en JSON (si existen) |
 | `GET` | `/experiments` | Comparación y robustez en JSON (si existen) |
 | `GET` | `/curves?split=test` | Curvas ROC/PR por clase en JSON (si existen) |
