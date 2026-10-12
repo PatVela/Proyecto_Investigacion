@@ -11,6 +11,9 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
+from ecg.schema import NUM_CLASSES
+from ecg.signal import NUM_LEADS, WINDOW_LENGTH
+
 
 DEFAULT_SUBSAMPLE_LENGTHS = [1, 2] * 8
 
@@ -239,6 +242,24 @@ class ECGRegularCNN(ECGClassifier):
 def build_network(**params) -> ECGClassifier:
     """Construye ResNet o CNN convencional según ``is_regular_conv``."""
     return ECGClassifier(**params)
+
+
+def params_from_config(config: dict) -> dict:
+    """kwargs de :func:`build_network` desde un config de entrenamiento o un checkpoint.
+
+    Acepta los nombres antiguos (``kernel_size``, ``filter_length``, ``drop_rate``).
+    """
+    return {
+        "num_leads": int(config.get("num_leads", NUM_LEADS)),
+        "num_classes": int(config.get("num_classes", NUM_CLASSES)),
+        "input_length": int(config.get("input_length", WINDOW_LENGTH)),
+        "conv_filter_length": int(config.get("conv_filter_length", config.get("kernel_size", 7))),
+        "conv_num_filters_start": int(config.get("conv_num_filters_start", config.get("filter_length", 32))),
+        "conv_subsample_lengths": config.get("conv_subsample_lengths", [1, 2] * 8),
+        "conv_num_skip": int(config.get("conv_num_skip", 2)),
+        "conv_dropout": float(config.get("conv_dropout", config.get("drop_rate", 0.2))),
+        "is_regular_conv": bool(config.get("is_regular_conv", False)),
+    }
 
 
 def ECG_model(config) -> ECGClassifier:

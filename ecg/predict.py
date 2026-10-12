@@ -19,119 +19,26 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 try:
-    from . import load, network, util
+    from . import hdf5_dataset, load, network, util
 except ImportError:
     import sys
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-    from ecg import load, network, util
+    from ecg import hdf5_dataset, load, network, util
 
 
-class HDF5PredictionDataset(Dataset):
-    """Dataset HDF5 mínimo para inferencia/evaluación.
-
-    Con ``preload=True`` (defecto) carga signals/labels a RAM una sola vez
-    (~1.5 GB para val/test CINC2020). Úselo con ``num_workers=0``: en Windows
-    los workers con spawn duplicarían esos GB por worker. Si el archivo
-    supera ``max_preload_gb``, cae automáticamente a lectura por disco.
-    """
-
-    def __init__(self, h5_path: str | Path, preload: bool = True, max_preload_gb: float = 16):
-        import h5py
-
-        self.h5_path = str(util.resolve_path(h5_path))
-        if not os.path.exists(self.h5_path):
-            raise FileNotFoundError(f"No existe HDF5: {self.h5_path}")
-        self._signals = None
-        self._labels = None
-        self._in_ram = False
-        with h5py.File(self.h5_path, "r") as h5:
-            self.length = int(h5["signals"].shape[0])
-            self.signal_shape = tuple(h5["signals"].shape)
-            self.label_shape = tuple(h5["labels"].shape) if "labels" in h5 else None
-            classes = h5.attrs.get("classes", None)
-            self.classes = [_decode(c) for c in classes] if classes is not None else load.CLASS_NAMES.copy()
-            if "record_names" in h5:
-                self.record_names = [_decode(x) for x in h5["record_names"][:]]
-            else:
-                self.record_names = [f"record_{i}" for i in range(self.length)]
-            nbytes = int(h5["signals"].size * 4 + (h5["labels"].size * 4 if "labels" in h5 else 0))
-            if preload and nbytes <= max_preload_gb * 1024 ** 3:
-                print(f"Precargando a RAM {self.h5_path} ({nbytes / 1024 ** 3:.1f} GB)...", flush=True)
-                self._signals = np.asarray(h5["signals"][:], dtype=np.float32)
-                self._labels = np.asarray(h5["labels"][:], dtype=np.float32) if "labels" in h5 else None
-                self._in_ram = True
-            elif preload:
-                print(f"AVISO: {self.h5_path} pesa {nbytes / 1024 ** 3:.1f} GB; lectura por disco (lento).")
-        self.h5 = None
-
-    def _open(self):
-        if self.h5 is None:
-            import h5py
-            self.h5 = h5py.File(self.h5_path, "r")
-
-    def __len__(self):
-        return self.length
-
-    def __getitem__(self, index):
-        if self._in_ram:
-            x = self._signals[index].T
-            y = self._labels[index] if self._labels is not None else np.zeros(load.NUM_CLASSES, dtype=np.float32)
-        else:
-            self._open()
-            x = np.asarray(self.h5["signals"][index], dtype=np.float32).T
-            if "labels" in self.h5:
-                y = np.asarray(self.h5["labels"][index], dtype=np.float32)
-            else:
-                y = np.zeros(load.NUM_CLASSES, dtype=np.float32)
-        return torch.from_numpy(x), torch.from_numpy(y)
-
-    def __del__(self):
-        try:
-            if self.h5 is not None:
-                self.h5.close()
-        except Exception:
-            pass
+# Definidos una sola vez (ecg.hdf5_dataset / ecg.util / ecg.network); se reexportan
+# aquí porque los scripts de examples/ los usan como ``predict.<nombre>``.
+HDF5PredictionDataset = hdf5_dataset.HDF5ECGDataset
+get_device = util.get_device
+model_params_from_config = network.params_from_config
 
 
 def _loader_kwargs(batch_size: int, num_workers: int, pin_memory: bool, prefetch_factor: int = 4) -> dict:
-    """kwargs de DataLoader seguros con num_workers=0 (evita error de persistent/prefetch)."""
-    kwargs: dict = dict(batch_size=int(batch_size), shuffle=False,
-                        num_workers=int(num_workers), pin_memory=bool(pin_memory))
-    if int(num_workers) > 0:
-        kwargs.update(persistent_workers=True, prefetch_factor=int(prefetch_factor))
-    return kwargs
-
-
-def _decode(value) -> str:
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    return str(value)
-
-
-def get_device(requested: str = "auto") -> torch.device:
-    if requested == "cpu":
-        return torch.device("cpu")
-    if requested in {"auto", "cuda"} and torch.cuda.is_available():
-        return torch.device("cuda")
-    return torch.device("cpu")
-
-
-def model_params_from_config(config: dict) -> dict:
-    return {
-        "num_leads": int(config.get("num_leads", load.NUM_LEADS)),
-        "num_classes": int(config.get("num_classes", load.NUM_CLASSES)),
-        "input_length": int(config.get("input_length", load.WINDOW_LENGTH)),
-        "conv_filter_length": int(config.get("conv_filter_length", config.get("kernel_size", 7))),
-        "conv_num_filters_start": int(config.get("conv_num_filters_start", config.get("filter_length", 32))),
-        "conv_subsample_lengths": config.get("conv_subsample_lengths", [1, 2] * 8),
-        "conv_num_skip": int(config.get("conv_num_skip", 2)),
-        "conv_dropout": float(config.get("conv_dropout", config.get("drop_rate", 0.2))),
-        "is_regular_conv": bool(config.get("is_regular_conv", False)),
-    }
+    return util.dataloader_kwargs(batch_size, num_workers, pin_memory, prefetch_factor)
 
 
 def load_model(checkpoint_path: str | Path, device: torch.device | None = None, strict_classes: bool = False):

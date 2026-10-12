@@ -25,11 +25,7 @@ from sklearn.metrics import f1_score
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-
-def _decode(value) -> str:
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    return str(value)
+from ecg.util import decode_h5_strings  # noqa: E402
 
 
 def load_sources(h5_path: str | Path) -> dict[str, str]:
@@ -38,8 +34,8 @@ def load_sources(h5_path: str | Path) -> dict[str, str]:
     with h5py.File(h5_path, "r") as h5:
         if "source_dbs" not in h5 or "record_names" not in h5:
             raise ValueError(f"{h5_path} no tiene source_dbs/record_names; regenere el HDF5.")
-        names = [_decode(v) for v in h5["record_names"][:]]
-        sources = [_decode(v) for v in h5["source_dbs"][:]]
+        names = decode_h5_strings(h5["record_names"][:])
+        sources = decode_h5_strings(h5["source_dbs"][:])
     for name, src in zip(names, sources):
         mapping.setdefault(name, src)
         mapping.setdefault(name.split(":")[0], src)

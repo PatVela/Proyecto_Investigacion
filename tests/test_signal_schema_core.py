@@ -112,3 +112,42 @@ def test_preprocessing_matches_checkpoint_schema():
 
 def test_load_facade_exposes_the_same_schema():
     assert load.CLASS_NAMES == schema.CLASS_NAMES and load.LABEL_SCHEMA == schema.LABEL_SCHEMA
+
+
+# --------------------------------------------------------------------------- #
+# preprocesamiento según el esquema del checkpoint: sin fallbacks silenciosos
+# --------------------------------------------------------------------------- #
+def test_missing_schema_warns_and_assumes_current_preprocessing():
+    for missing in (None, "", "   "):
+        with pytest.warns(UserWarning, match="no declara label_schema"):
+            assert schema.preprocessing_for_schema(missing) == {"norm_mode": "physical", "bandpass": True}
+
+
+def test_unknown_schema_is_rejected_instead_of_guessed():
+    with pytest.raises(ValueError, match="desconocido"):
+        schema.preprocessing_for_schema("cinc2020_12_grouped_snomed_v3")
+
+
+def test_known_schemas_do_not_warn(recwarn):
+    schema.preprocessing_for_schema(schema.LABEL_SCHEMA)
+    schema.preprocessing_for_schema(schema.LEGACY_LABEL_SCHEMA)
+    assert not [w for w in recwarn if issubclass(w.category, UserWarning)]
+
+
+def test_save_checkpoint_always_stamps_the_real_schema(tmp_path):
+    import torch
+
+    from ecg import network, util
+
+    path = tmp_path / "ckpt.pt"
+    util.save_checkpoint(path, network.build_network(num_leads=12, num_classes=12), class_names=schema.CLASS_NAMES)
+    assert util.load_checkpoint(path)["label_schema"] == schema.LABEL_SCHEMA
+
+
+def test_checkpoint_without_schema_warns_through_predict_helper():
+    from ecg import predict
+
+    with pytest.warns(UserWarning):
+        assert predict.preprocessing_for_checkpoint({"class_names": schema.CLASS_NAMES})["norm_mode"] == "physical"
+    with pytest.raises(ValueError):
+        predict.preprocessing_for_checkpoint({"label_schema": "otra_cosa"})

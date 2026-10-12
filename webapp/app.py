@@ -205,29 +205,32 @@ def _candidate_result_dirs() -> list[Path]:
     ]
 
 
-def _load_thresholds_for_app(model_path: str | None, saved_dir: str | None) -> tuple[dict | None, str | None]:
-    """Busca thresholds_validation.csv generado por evaluate.py.
+def _find_class_values_csv(
+    filename: str,
+    value_column: str,
+    valid_name_sets: list[list[str]],
+    model_path: str | None,
+    saved_dir: str | None,
+    env_var: str,
+) -> tuple[dict | None, str | None]:
+    """Busca un CSV ``class,<value_column>`` y devuelve ``({clase: valor}, ruta)``.
 
-    Si existe, la webapp usa umbrales por clase en lugar del fallback global 0.5.
-    Esto reduce falsos positivos por clases desbalanceadas y hace la demo más
-    consistente con la evaluación final.
+    Orden de búsqueda: ruta explícita (``env_var``), carpeta del checkpoint (y su
+    padre) y las carpetas de evaluación. Se usa el primer archivo válido, es
+    decir, con las columnas esperadas y con todos los nombres de alguno de
+    ``valid_name_sets``; los inválidos se ignoran.
     """
     candidates: list[Path] = []
     try:
         resolved = resolve_model_path(model_path=model_path, saved_dir=saved_dir)
-        candidates.extend([
-            resolved.parent / "thresholds_validation.csv",
-            resolved.parent.parent / "thresholds_validation.csv",
-        ])
+        candidates.extend([resolved.parent / filename, resolved.parent.parent / filename])
     except Exception:
         pass
-    explicit_thresholds = clean_path_text(os.environ.get("ECG_THRESHOLDS", ""))
-    if explicit_thresholds:
-        p = Path(explicit_thresholds)
+    explicit = clean_path_text(os.environ.get(env_var, ""))
+    if explicit:
+        p = Path(explicit)
         candidates.insert(0, p if p.is_absolute() else REPO_ROOT / p)
-
-    for folder in _candidate_result_dirs():
-        candidates.append(folder / "thresholds_validation.csv")
+    candidates.extend(folder / filename for folder in _candidate_result_dirs())
 
     seen = set()
     for path in candidates:
@@ -238,16 +241,26 @@ def _load_thresholds_for_app(model_path: str | None, saved_dir: str | None) -> t
         try:
             import pandas as pd
             df = pd.read_csv(path)
-            if "class" not in df.columns or "threshold" not in df.columns:
+            if "class" not in df.columns or value_column not in df.columns:
                 continue
-            values = {str(row["class"]): float(row["threshold"]) for _, row in df.iterrows()}
-            if all(name in values for name in load.CLASS_NAMES):
-                return values, str(path)
-            if all(name in values for name in load.LEGACY_CLASS_NAMES):
+            values = {str(row["class"]): float(row[value_column]) for _, row in df.iterrows()}
+            if any(all(name in values for name in names) for names in valid_name_sets):
                 return values, str(path)
         except Exception:
             continue
     return None, None
+
+
+def _load_thresholds_for_app(model_path: str | None, saved_dir: str | None) -> tuple[dict | None, str | None]:
+    """Busca thresholds_validation.csv generado por evaluate.py (``ECG_THRESHOLDS`` tiene prioridad).
+
+    Si existe, la webapp usa umbrales por clase en lugar del fallback global 0.5.
+    Esto reduce falsos positivos por clases desbalanceadas y hace la demo más
+    consistente con la evaluación final. Acepta también los nombres de clase v1.
+    """
+    return _find_class_values_csv(
+        "thresholds_validation.csv", "threshold", [load.CLASS_NAMES, load.LEGACY_CLASS_NAMES],
+        model_path, saved_dir, "ECG_THRESHOLDS")
 
 
 def _load_temperatures_for_app(model_path: str | None, saved_dir: str | None, env_var: str = "ECG_TEMPERATURES") -> tuple[dict | None, str | None]:
@@ -257,40 +270,9 @@ def _load_temperatures_for_app(model_path: str | None, saved_dir: str | None, en
     umbrales, igual que ``evaluate.py --temperatures``. Con ``env_var`` se
     distingue el modelo A del B en modo ensemble.
     """
-    candidates: list[Path] = []
-    try:
-        resolved = resolve_model_path(model_path=model_path, saved_dir=saved_dir)
-        candidates.extend([
-            resolved.parent / "temperatures_validation.csv",
-            resolved.parent.parent / "temperatures_validation.csv",
-        ])
-    except Exception:
-        pass
-    explicit = clean_path_text(os.environ.get(env_var, ""))
-    if explicit:
-        p = Path(explicit)
-        candidates.insert(0, p if p.is_absolute() else REPO_ROOT / p)
-
-    for folder in _candidate_result_dirs():
-        candidates.append(folder / "temperatures_validation.csv")
-
-    seen = set()
-    for path in candidates:
-        path = path.resolve()
-        if path in seen or not path.exists():
-            continue
-        seen.add(path)
-        try:
-            import pandas as pd
-            df = pd.read_csv(path)
-            if "class" not in df.columns or "temperature" not in df.columns:
-                continue
-            values = {str(row["class"]): float(row["temperature"]) for _, row in df.iterrows()}
-            if all(name in values for name in load.CLASS_NAMES):
-                return values, str(path)
-        except Exception:
-            continue
-    return None, None
+    return _find_class_values_csv(
+        "temperatures_validation.csv", "temperature", [load.CLASS_NAMES],
+        model_path, saved_dir, env_var)
 
 
 PERTURBATION_LABELS = {

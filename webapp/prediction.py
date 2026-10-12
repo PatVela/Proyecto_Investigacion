@@ -33,6 +33,8 @@ LEADS = load.STANDARD_LEAD_ORDER
 
 # Traducción de nombres v2 -> v1 para comparar contra checkpoints legacy.
 V2_TO_V1_CLASS = {"AxisDev": "LAD", "BBB": "RBBB"}
+# Texto mostrado cuando el checkpoint no declara esquema (no se presenta como si lo declarara).
+UNDECLARED_SCHEMA_TEXT = "sin esquema declarado (se asumió el actual)"
 SLIDING_WINDOWS_MAX = 4
 SLIDING_AGGREGATE = "max"
 
@@ -699,7 +701,7 @@ def run_prediction_from_saved_paths(
         "per_window_probabilities": per_window.tolist(),
         "norm_mode": pre["norm_mode"],
         "bandpass": bool(pre["bandpass"]),
-        "label_schema": ckpt_schema or load.LABEL_SCHEMA,
+        "label_schema": ckpt_schema or UNDECLARED_SCHEMA_TEXT,
         "dx_codes": prepared.get("dx_codes", []),
         "matched_classes": ckpt_matched,
         "label_comparison": label_comparison,
@@ -711,7 +713,7 @@ def run_prediction_from_saved_paths(
                 f"{' + bandpass 0.5-50Hz' if pre['bandpass'] else ''} -> "
                 f"{windows.shape[0]} ventana(s) de 5000 ({aggregate_used})"
             ),
-            "label_schema": ckpt_schema or load.LABEL_SCHEMA,
+            "label_schema": ckpt_schema or UNDECLARED_SCHEMA_TEXT,
             "norm_mode": pre["norm_mode"],
             "activation": "sigmoid por clase",
             "loss": "BCEWithLogitsLoss durante entrenamiento",

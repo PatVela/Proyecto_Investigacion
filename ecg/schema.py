@@ -7,6 +7,7 @@ de PyTorch.
 
 from __future__ import annotations
 
+import warnings
 from typing import Iterable
 
 import numpy as np
@@ -280,8 +281,11 @@ codes_to_12_vector = codes_to_vector
 def preprocessing_for_schema(label_schema: str | None) -> dict:
     """Devuelve parámetros de preprocesamiento compatibles con un checkpoint.
 
-    - Esquema v2 (o desconocido/nuevo): ``physical`` + bandpass.
+    - Esquema v2: ``physical`` + bandpass.
     - Esquema v1 legacy: ``per_lead_zscore`` sin bandpass.
+    - Sin esquema (checkpoint antiguo sin el campo): se asume v2 y se emite un
+      ``UserWarning``; es ambiguo y puede dar predicciones erróneas si era v1.
+    - Esquema desconocido: ``ValueError``. No se adivina el preprocesamiento.
 
     Usar SIEMPRE esta función en inferencia (webapp/predict) para no mezclar
     un checkpoint v1 con preprocesamiento v2 (o viceversa), lo que produce
@@ -289,7 +293,20 @@ def preprocessing_for_schema(label_schema: str | None) -> dict:
     """
     if label_schema == LEGACY_LABEL_SCHEMA:
         return {"norm_mode": "per_lead_zscore", "bandpass": False}
-    return {"norm_mode": DEFAULT_NORM_MODE, "bandpass": True}
+    if label_schema == LABEL_SCHEMA:
+        return {"norm_mode": DEFAULT_NORM_MODE, "bandpass": True}
+    if label_schema is None or str(label_schema).strip() == "":
+        warnings.warn(
+            "El checkpoint no declara label_schema: se asume el esquema v2 "
+            f"({LABEL_SCHEMA}). Si fue entrenado con v1 las predicciones serán incorrectas.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return {"norm_mode": DEFAULT_NORM_MODE, "bandpass": True}
+    raise ValueError(
+        f"label_schema desconocido: {label_schema!r}. Esquemas soportados: "
+        f"{LABEL_SCHEMA!r} y {LEGACY_LABEL_SCHEMA!r} (legacy)."
+    )
 
 
 def is_legacy_schema(label_schema: str | None) -> bool:
