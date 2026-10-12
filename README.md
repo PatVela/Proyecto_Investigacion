@@ -21,7 +21,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/PatVela/Proyectos-Universidad">
+  <a href="https://github.com/PatVela/Proyecto_Investigacion">
     <img src="images/escudo-unsa.png" alt="Escudo UNSA" height="110">
   </a>
 
@@ -37,9 +37,9 @@
     <br />
     <a href="webapp/README.md">Ver demo web</a>
     &middot;
-    <a href="https://github.com/PatVela/Proyectos-Universidad/issues/new?labels=bug">Reportar Bug</a>
+    <a href="https://github.com/PatVela/Proyecto_Investigacion/issues/new?labels=bug">Reportar Bug</a>
     &middot;
-    <a href="https://github.com/PatVela/Proyectos-Universidad/issues/new?labels=enhancement">Pedir Funcionalidad</a>
+    <a href="https://github.com/PatVela/Proyecto_Investigacion/issues/new?labels=enhancement">Pedir Funcionalidad</a>
   </p>
 </div>
 
@@ -144,8 +144,8 @@ Nombres usados en la guía:
 ### Paso 0 — Instalación y verificación
 
 ```powershell
-git clone -b Paper_Replica_V3 https://github.com/PatVela/Proyectos-Universidad.git
-cd Proyectos-Universidad
+git clone https://github.com/PatVela/Proyecto_Investigacion.git
+cd Proyecto_Investigacion
 pip install -r requirements-cuda.txt
 pip install -r requirements.txt
 pip install -r requirements-dev.txt   # solo para correr pytest (incluye requirements.txt)
@@ -167,7 +167,7 @@ python -m ecg.train examples/cinc2020/config_synthetic.json -e smoke_test --epoc
 pytest tests/ -q
 ```
 
-Debe decir `78 passed`. No use el dataset sintético para reportar métricas científicas.
+Debe terminar sin fallos (los tests que necesitan datos locales se omiten solos). No use el dataset sintético para reportar métricas científicas.
 
 ### Paso 1 — Descargar datos (~15 GB)
 
@@ -267,13 +267,16 @@ $evalMejor = "runs/eval/eval-resnet-v2"
 
 ```powershell
 python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble --alpha 0.5 --threshold-beta 0.5 --temperatures-a runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv
+python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble-f1 --alpha 0.5 --threshold-beta 1.0 --temperatures-a runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv
 python examples/cinc2020/compare_models.py --eval-a "$evalMejor" --eval-b runs/eval/ensemble --label-a "ResNet mejor" --label-b "Ensemble" --output runs/reports/comparacion_ensemble.csv
 python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --temperatures "$evalMejor/temperatures_validation.csv" --output runs/reports/robustness.csv
 python examples/cinc2020/challenge_score.py --checkpoint $mejor --test-h5 data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --output-dir runs/eval/metrica-challenge
 python examples/cinc2020/error_analysis.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --output runs/reports/errores_origen.csv
 python examples/cinc2020/make_figures.py --eval-dir "$evalMejor" --outdir runs/figs/figs_eval --robustness runs/reports/robustness.csv
-python examples/cinc2020/bootstrap_ci.py --predictions "$evalMejor/predictions_test.csv" --predictions-baseline runs/eval/eval-resnet/predictions_test.csv --output bootstrap_ci.json --n-bootstrap 1000
+python examples/cinc2020/bootstrap_ci.py --predictions "$evalMejor/predictions_test.csv" --predictions-baseline runs/eval/eval-resnet/predictions_test.csv --output runs/reports/bootstrap_v2-v1.json --n-bootstrap 1000
 ```
+
+Son dos puntos de operación del mismo ensemble: `runs/eval/ensemble` (umbrales F0.5, mayor precisión) y `runs/eval/ensemble-f1` (umbrales F1, recomendado para screening; es el que se empaqueta para la demo pública). Sin `--nsr-exclusive-min-prob`: esa regla resultó perjudicial.
 
 ### Paso 8 — Diagnóstico de registros ejemplo
 
@@ -289,7 +292,7 @@ python examples/cinc2020/_archive/diagnose_prediction.py --checkpoint $mejor --c
 ### Paso 9 — Webapp (ensemble final)
 
 ```powershell
-python webapp/app.py --saved saved --eval-dir runs/eval/ensemble --exp-dir runs/reports --model $resnet --model-b $resnet2 --temperatures runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv --port 5002
+python webapp/app.py --saved saved --eval-dir runs/eval/ensemble-f1 --exp-dir runs/reports --model $resnet --model-b $resnet2 --temperatures runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv --port 5002
 ```
 
 Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`.
@@ -301,6 +304,8 @@ python examples/cinc2020/export_onnx.py --checkpoint $mejor --output runs/models
 docker build -t ecg-cinc2020 .
 docker run --rm -p 5002:5002 -v ./saved:/app/saved:ro ecg-cinc2020
 ```
+
+El `Dockerfile` actual arranca el servidor de desarrollo y espera `saved/` montada. Para servir sin `saved/` ni `runs/` use el bundle versionado (`bash deploy/start.sh`, ver [Aplicación web](#aplicación-web)); adaptar la imagen a ese bundle es la tarea T7 de `tasks/todo.md`.
 
 En Linux/bash los comandos `python`, `pytest`, `bash` y `docker` son idénticos; solo cambia cómo se definen las variables (usar `$resnet`, `$mejor`, etc. dentro de los comandos funciona igual):
 
@@ -364,6 +369,7 @@ Notas:
 │   ├── schema.py           # esquema SNOMED 12 clases + mapeo a vectores
 │   ├── signal.py           # lectores WFDB/CSV, normalización y ventanas
 │   ├── datasets.py         # escaneo, splits y construcción de HDF5
+│   ├── hdf5_dataset.py     # Dataset de PyTorch sobre los HDF5 (train, evaluación, ensemble)
 │   ├── network.py          # ResNet-34 tipo Hannun
 │   ├── predict.py          # inferencia desde checkpoints (CSV/HDF5)
 │   ├── train.py            # entrenamiento + logs reproducibles
@@ -381,15 +387,23 @@ Notas:
 │   ├── sex_breakdown.py / benchmark_latency.py  # auditorías: sexo y latencia
 │   ├── config*.json        # configs ResNet, ResNet v2, regular y sintético
 │   └── official/           # scripts y tablas oficiales (vendored, no modificar)
-├── tools/                  # descarga/verificación CINC2020 + auditorías de dataset
+├── tools/                  # descarga/verificación CINC2020, auditorías, bundle de despliegue y prueba de humo
 ├── webapp/                 # dashboard Flask + informe PDF
 │   ├── app.py / prediction.py / report_pdf.py / wsgi.py
+│   ├── limits.py / examples.py   # límites públicos y registros de ejemplo
+│   ├── examples/           # 7 registros de test (CC BY 4.0)
 │   ├── project_info.py     # datos institucionales
 │   └── templates/ + static/
+├── models/ + deploy/       # bundle de inferencia versionado (pesos, umbrales, métricas, arranque)
+├── tests/                  # suite pytest
 ├── docs/                   # informe técnico y guías de experimentos
+├── tasks/                  # plan y tareas del despliegue público
 ├── images/                 # logo y capturas para documentación
-├── requirements.txt / requirements-cuda.txt
-├── descargar_datos_2020.sh
+├── runs/ saved/ data/      # producto generado (git-ignored)
+├── requirements.txt / requirements-cuda.txt / requirements-dev.txt
+├── Dockerfile / Procfile
+├── descargar_datos_2020.sh / setup.sh   # descarga de datos / instalación rápida con verificación de CUDA
+├── CLAUDE.md / CONTEXT.md  # contrato del repo y definición del pipeline (ICM)
 └── README.md
 ```
 
@@ -401,10 +415,11 @@ Notas:
 Dashboard Flask en español/inglés: carga CSV o par WFDB `.hea + .mat`, predicción multilabel con probabilidades por clase, trazado en papel milimetrado, comparación automática contra el campo `Dx`, informe PDF descargable y secciones de detalle técnico, métricas y experimentos.
 
 ```sh
-python webapp/app.py --saved saved
+python webapp/app.py --saved saved        # desarrollo: usa los checkpoints de saved/
+bash deploy/start.sh                      # producción: waitress + bundle versionado (models/, deploy/), sin saved/ ni runs/
 ```
 
-Detalles, formatos y endpoints en [webapp/README.md](webapp/README.md).
+El bundle (pesos de inferencia de 19 MB por modelo, umbrales, métricas y siete ECG de ejemplo) permite servir la demo desde cualquier equipo con Python; requiere ≥ 2 GB de RAM. Detalles, formatos, variables de entorno y endpoints en [webapp/README.md](webapp/README.md); estado del despliegue público en [tasks/todo.md](tasks/todo.md).
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
@@ -433,11 +448,15 @@ pytest tests/ -q
 ```
 
 ```sh
+python tools/smoke_deployment.py http://127.0.0.1:5002 --expect-ensemble   # con la app en marcha: 19 comprobaciones por HTTP
+```
+
+```sh
 docker build -t ecg-cinc2020 .
 docker run --rm -p 5002:5002 -v ./saved:/app/saved:ro ecg-cinc2020
 ```
 
-Monte su carpeta local `saved/` con el checkpoint entrenado.
+Monte su carpeta local `saved/` con el checkpoint entrenado (la imagen todavía no usa el bundle; ver el Paso 10).
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
@@ -468,14 +487,17 @@ Monte su carpeta local `saved/` con el checkpoint entrenado.
 - [x] Exportación a ONNX verificada numéricamente contra PyTorch
 - [x] Historial de análisis por sesión en la webapp
 - [x] Suite de tests automatizados + Dockerfile CPU
+- [x] Revisión de seguridad de la webapp (carga de checkpoints, subidas, rutas) y de la interfaz (accesibilidad, contraste, carga)
+- [x] Bundle de inferencia + configuración por entorno + waitress: la webapp corre sin `saved/` ni `runs/`
+- [ ] Publicar la demo en un host y citarla en el artículo (ver [tasks/todo.md](tasks/todo.md))
 - [ ] Entrenamiento distribuido multi-GPU
-- [ ] Búsqueda de hiperparámetros con Optuna
+- [x] Script de búsqueda de hiperparámetros con Optuna (`tune_optuna.py`)
 - [ ] Tracking de experimentos con MLflow
 - [ ] Informe comparativo multi-registro (lotes de ECG)
 - [x] Aumentación de datos específica para ECG
 - [ ] Evaluar migración de la webapp a Flet (quizás; habilitaría empaquetado móvil)
 
-Ver los [issues abiertos](https://github.com/PatVela/Proyectos-Universidad/issues) para la lista completa de propuestas y problemas conocidos.
+Ver los [issues abiertos](https://github.com/PatVela/Proyecto_Investigacion/issues) para la lista completa de propuestas y problemas conocidos.
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
@@ -498,16 +520,16 @@ Distribuido bajo licencia GPL-3.0. Ver `LICENSE` para más información.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/PatVela/Proyectos-Universidad.svg?style=for-the-badge
-[contributors-url]: https://github.com/PatVela/Proyectos-Universidad/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/PatVela/Proyectos-Universidad.svg?style=for-the-badge
-[forks-url]: https://github.com/PatVela/Proyectos-Universidad/network/members
-[stars-shield]: https://img.shields.io/github/stars/PatVela/Proyectos-Universidad.svg?style=for-the-badge
-[stars-url]: https://github.com/PatVela/Proyectos-Universidad/stargazers
-[issues-shield]: https://img.shields.io/github/issues/PatVela/Proyectos-Universidad.svg?style=for-the-badge
-[issues-url]: https://github.com/PatVela/Proyectos-Universidad/issues
-[license-shield]: https://img.shields.io/github/license/PatVela/Proyectos-Universidad.svg?style=for-the-badge
-[license-url]: https://github.com/PatVela/Proyectos-Universidad/blob/Paper_Replica_V3/LICENSE
+[contributors-shield]: https://img.shields.io/github/contributors/PatVela/Proyecto_Investigacion.svg?style=for-the-badge
+[contributors-url]: https://github.com/PatVela/Proyecto_Investigacion/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/PatVela/Proyecto_Investigacion.svg?style=for-the-badge
+[forks-url]: https://github.com/PatVela/Proyecto_Investigacion/network/members
+[stars-shield]: https://img.shields.io/github/stars/PatVela/Proyecto_Investigacion.svg?style=for-the-badge
+[stars-url]: https://github.com/PatVela/Proyecto_Investigacion/stargazers
+[issues-shield]: https://img.shields.io/github/issues/PatVela/Proyecto_Investigacion.svg?style=for-the-badge
+[issues-url]: https://github.com/PatVela/Proyecto_Investigacion/issues
+[license-shield]: https://img.shields.io/github/license/PatVela/Proyecto_Investigacion.svg?style=for-the-badge
+[license-url]: https://github.com/PatVela/Proyecto_Investigacion/blob/main/LICENSE
 [python-shield]: https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python
 [python-url]: https://www.python.org/
 [pytorch-shield]: https://img.shields.io/badge/pytorch-2.8-ee4c2c?style=for-the-badge&logo=pytorch

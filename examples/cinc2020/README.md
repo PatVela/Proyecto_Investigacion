@@ -9,7 +9,7 @@
 
 <br />
 <div align="center">
-  <a href="https://github.com/PatVela/Proyectos-Universidad">
+  <a href="https://github.com/PatVela/Proyecto_Investigacion">
     <img src="../../images/escudo-unsa.png" alt="Escudo UNSA" height="90">
   </a>
 
@@ -25,9 +25,9 @@
     <br />
     <a href="../../webapp/README.md">Ver demo web</a>
     &middot;
-    <a href="https://github.com/PatVela/Proyectos-Universidad/issues/new?labels=bug">Reportar Bug</a>
+    <a href="https://github.com/PatVela/Proyecto_Investigacion/issues/new?labels=bug">Reportar Bug</a>
     &middot;
-    <a href="https://github.com/PatVela/Proyectos-Universidad/issues/new?labels=enhancement">Pedir Funcionalidad</a>
+    <a href="https://github.com/PatVela/Proyecto_Investigacion/issues/new?labels=enhancement">Pedir Funcionalidad</a>
   </p>
 </div>
 
@@ -69,6 +69,7 @@ Esta carpeta contiene el pipeline experimental completo del proyecto: desde la d
 | `bootstrap_ci.py` | IC 95 % bootstrap de F1-macro y diferencia pareada |
 | `sex_breakdown.py` | F1-macro por sexo (auditoría de sesgo) |
 | `benchmark_latency.py` | Latencia de inferencia y conteo de parámetros |
+| `tune_optuna.py` | Búsqueda de hiperparámetros con Optuna (escribe `config_resnet_v3.json`; ese config no está versionado) |
 | `make_synthetic.py` | Dataset sintético para smoke tests |
 | `config*.json` | Configs de ResNet, ResNet v2, regular y sintético |
 | `official/` | Scripts y tablas oficiales (vendored, no modificar) |
@@ -204,7 +205,7 @@ python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --out
 
 `--threshold-beta 1.0` = F1 (equilibrio, valor por defecto); `0.5` = menos FPs; `2.0` = menos FNs. La opción `--nsr-exclusive-min-prob` (predecir solo NSR si P(NSR) es muy alta) resultó perjudicial en ablación (−11 pts de F1-macro sin ganancia de precisión, porque NSR coexiste legítimamente con clases morfológicas); no se recomienda. La columna `validation_objective` de `thresholds_validation.csv` registra el objetivo optimizado.
 
-Ensemble promedio de dos checkpoints (mismo layout de salida que `evaluate.py`):
+Ensemble promedio de dos checkpoints (mismo layout de salida que `evaluate.py`). Con `--threshold-beta 1.0` y `--output-dir runs/eval/ensemble-f1` se obtiene el punto de operación de screening (F1), el que usa la demo pública:
 
 ```powershell
 python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble --alpha 0.5 --threshold-beta 0.5 --temperatures-a runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv
@@ -235,7 +236,7 @@ Traza curvas ROC/PR empíricas por clase con punto de operación (idéntico a la
 ### 15. Intervalos bootstrap (IC 95 %)
 
 ```powershell
-python examples/cinc2020/bootstrap_ci.py --predictions $evalMejor/predictions_test.csv --predictions-baseline runs/eval/eval-resnet/predictions_test.csv --output bootstrap_ci.json --n-bootstrap 1000
+python examples/cinc2020/bootstrap_ci.py --predictions $evalMejor/predictions_test.csv --predictions-baseline runs/eval/eval-resnet/predictions_test.csv --output runs/reports/bootstrap_v2-v1.json --n-bootstrap 1000
 ```
 
 Remuestrea registros del test (sistema fijo): IC de F1-macro, por clase y de la diferencia pareada entre modelos. Sin `--predictions-baseline` reporta solo el modelo.
@@ -272,9 +273,9 @@ Desglose de F1-macro por sexo, ms/ventana y parámetros, y entrenamiento de la C
 - [x] Aumentación de señal durante el entrenamiento
 - [x] Umbrales F-beta + selección de checkpoint por F1-macro
 - [x] Ensemble promedio de checkpoints (evaluación e inferencia webapp)
-- [x] Tuning de hiperparámetros con Optuna (config v3)
+- [x] Script de tuning con Optuna (`tune_optuna.py`; genera `config_resnet_v3.json`, no versionado)
 
-Ver los [issues abiertos](https://github.com/PatVela/Proyectos-Universidad/issues) para más propuestas.
+Ver los [issues abiertos](https://github.com/PatVela/Proyecto_Investigacion/issues) para más propuestas.
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 

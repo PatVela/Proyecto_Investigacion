@@ -11,11 +11,12 @@
 | `datasets.py` | Escaneo, splits estratificados, construcción HDF5 (CLI) | `schema`, `signal` |
 | `load.py` | **Fachada** que reexporta schema/signal/datasets (compatibilidad) | los tres anteriores |
 | `augment.py` | Aumentación solo de train, preserva etiquetas | — |
-| `network.py` | ResNet-34 tipo Hannun y CNN convencional | torch |
-| `calibration.py` | Temperature scaling por clase | — |
-| `util.py` | Seeds, paths, checkpoints, conteo de parámetros | — |
-| `train.py` | Entrenamiento reproducible (`python -m ecg.train`) | `load`, `network`, `augment`, `util` |
-| `predict.py` | Inferencia desde checkpoint (CLI/CSV), usada por webapp | `load`, `network`, `util` |
+| `hdf5_dataset.py` | `HDF5ECGDataset` único (train, evaluación, ensemble): valida el HDF5 antes de precargarlo | `util`, `schema`, `signal`, `augment` |
+| `network.py` | ResNet-34 tipo Hannun y CNN convencional | `schema`, `signal`, torch |
+| `calibration.py` | Temperature scaling por clase, ECE y Brier | — |
+| `util.py` | Seeds, dispositivo, `dataloader_kwargs`, `decode_h5_string`, guardar/cargar checkpoints (`load_checkpoint(..., trusted=False)` usa `weights_only=True`) | `schema` |
+| `train.py` | Entrenamiento reproducible (`python -m ecg.train`) | `hdf5_dataset`, `load`, `network`, `util` |
+| `predict.py` | Inferencia desde checkpoint (CLI/CSV), usada por webapp | `hdf5_dataset`, `load`, `network`, `util` |
 
 ## Qué toca un cambio
 
@@ -23,9 +24,9 @@
   - `examples/cinc2020/config*.json` fijan `label_schema`/`num_classes`; `train.py` aborta si no coinciden con `NUM_CLASSES`, y `predict.py` rechaza checkpoints con otro número de clases.
   - **Valores duplicados a mano** (no se actualizan solos): alias v2→v1 (`AxisDev→LAD`, `BBB→RBBB`) en `webapp/prediction.py` y en `examples/cinc2020/_archive/{diagnose,debug_record}_prediction.py`; el texto "27 diagnósticos … 12 clases" en `webapp/report_pdf.py`; `EXPECTED_CLASSES = 12` en `tools/check_dataset2020.py`; el 12 en `tests/` (`test_network`, `test_schema`, `test_robustness`, `test_make_figures`, `test_tools_check`).
   - Evaluación: `challenge_score.py` mapea los 27 códigos oficiales a grupos; `audit_dx_codes.py` marca códigos puntuados sin clase.
-  - Salidas generadas (`runs/`, `webapp/static/metrics/metrics.json`) quedan obsoletas hasta regenerarlas.
-- **`signal.py` (preproceso):** debe ser idéntico en entrenamiento e inferencia (causa histórica del bug en `docs/fix_prediccion_cinc2020.md`); revisar `predict.py`, `webapp/prediction.py`, `tools/audit_signal_scaling.py`.
-- **`network.py`:** cambia el formato de `best.pt`; revisar `predict.load_model`, `export_onnx.py`.
+  - Salidas generadas (`runs/`) y el bundle de despliegue (`models/`, `deploy/`, `webapp/examples/`) quedan obsoletos hasta regenerarlos (`tools/export_inference_bundle.py`, `tools/build_examples.py`).
+- **`signal.py` (preproceso):** debe ser idéntico en entrenamiento e inferencia (causa histórica del bug en `docs/fix_prediccion_cinc2020.md`); revisar `predict.py`, `webapp/prediction.py`, `tools/audit_signal_scaling.py`. `resample_signal` solo acepta frecuencias de 50 a 10 000 Hz (`MIN/MAX_SAMPLING_RATE_HZ`); `preprocessing_for_schema` avisa si el checkpoint no declara esquema y falla si es desconocido.
+- **`network.py`:** cambia el formato de `best.pt`; revisar `predict.load_model`, `export_onnx.py` y regenerar `models/*.pt`.
 - **`calibration.py`:** afecta `calibrate.py`, `evaluate.py`, `robustness.py`, webapp.
 
 ## Chequeo humano

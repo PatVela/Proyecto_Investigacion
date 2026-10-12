@@ -8,10 +8,12 @@ Réplica académica de Hannun et al. (Nat Med 2019): clasificador multilabel de 
 |---|---|---|
 | `ecg/` | Librería: esquema, señal, datasets, red, entrenamiento, calibración, inferencia | `ecg/CONTEXT.md` |
 | `examples/cinc2020/` | Scripts del pipeline experimental + configs (`config*.json`) + `official/` (vendored, no tocar) | `examples/cinc2020/CONTEXT.md` |
-| `webapp/` | Demo Flask de inferencia + informe PDF | `webapp/CONTEXT.md` |
-| `tools/` | Chequeos y descarga de datos CINC2020 | `tools/CONTEXT.md` |
+| `webapp/` | Demo Flask de inferencia + informe PDF + ejemplos incluidos | `webapp/CONTEXT.md` |
+| `tools/` | Chequeos y descarga de datos CINC2020, bundle de despliegue, prueba de humo | `tools/CONTEXT.md` |
 | `tests/` | Suite pytest | `tests/CONTEXT.md` |
 | `docs/` | Informe técnico, experimentos, resultados, fix histórico | `docs/CONTEXT.md` |
+| `models/`, `deploy/` | **Versionados.** Bundle de inferencia (pesos `models/*.pt`, `deploy/ensemble.env`, umbrales, métricas) con el que la webapp corre sin `saved/` ni `runs/`. Se regenera con `tools/export_inference_bundle.py`; no editar a mano | `webapp/README.md` (Despliegue) |
+| `tasks/` | Plan y lista de tareas del despliegue público (`plan.md`, `todo.md`) | — |
 
 La definición del pipeline (etapas 01–08, entradas, salidas, chequeos humanos) está en `CONTEXT.md`.
 
@@ -26,14 +28,14 @@ Todo lo que produce el pipeline vive bajo `runs/` (ignorado por git y Docker). N
 | `runs/reports/` | `model_comparison.csv`, `robustness.csv`, `bootstrap_*.json`, `runs/reports/sex_breakdown.json`, `*.csv` de auditoría y errores |
 | `runs/models/` | `runs/models/resnet12.onnx`, `runs/models/optuna_cinc2020.db` |
 
-Fuera de `runs/` (también ignorado): `data/` (HDF5), `dataset2017/`, `dataset2020/` (crudos), `saved/` (checkpoints).
+Fuera de `runs/` (también ignorado): `data/` (HDF5), `dataset2017/`, `dataset2020/` (crudos), `saved/` (checkpoints completos), `webapp/uploads/` y `webapp/results/` (temporales de la webapp).
 
 ## Enrutamiento por tarea
 
 - Entrenar o cambiar el modelo → `CONTEXT.md` etapas 02–03, luego `ecg/CONTEXT.md`.
 - Evaluar / comparar / robustez / figuras → `CONTEXT.md` etapas 04–07.
 - Cambiar etiquetas o preprocesamiento → `ecg/CONTEXT.md` (sección "qué toca un cambio"); afecta checkpoints ya entrenados.
-- Demo web → `webapp/CONTEXT.md`. Resultados citables → `docs/resultados_finales.md`.
+- Demo web → `webapp/CONTEXT.md`. Desplegarla sin localhost → `webapp/README.md` (Despliegue) y `tasks/todo.md`. Resultados citables → `docs/resultados_finales.md`.
 
 ## Reglas
 
@@ -41,3 +43,4 @@ Fuera de `runs/` (también ignorado): `data/` (HDF5), `dataset2017/`, `dataset20
 - `examples/cinc2020/official/` es código oficial vendored: no modificar.
 - Las rutas bajo `runs/` están hardcodeadas en README, docs y defaults de scripts; no renombrarlas sin actualizar todos los referentes.
 - `examples/cinc2020/_archive/` guarda scripts de depuración fuera de la secuencia; no los uses como referencia del pipeline.
+- Si cambia el significado de las salidas del modelo, regenerar el bundle (`models/`, `deploy/`) además de reentrenar; `tests/test_inference_bundle.py` y `tests/test_deploy_config.py` comprueban que el bundle sea coherente.

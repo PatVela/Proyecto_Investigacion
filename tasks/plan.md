@@ -6,6 +6,9 @@ carpetas locales que no están en git (`saved/`, `runs/`). Objetivo: que cualqui
 trabajo de investigación pueda abrirla con una URL estable (o, como mínimo, ver los resultados
 sin instalar nada), con costo cero o muy bajo y sin exponer datos de pacientes.
 
+## Estado (2026-10-12)
+Fase 1 (T1–T6) completa y fusionada en `main`; la interfaz se auditó y corrigió en tres PRs (accesibilidad, carga/contraste/tema, contenido), también fusionados. Falta la Fase 2: elegir host y publicar.
+
 ## Qué se midió (hechos, no suposiciones)
 | Dato | Valor | Implicación |
 |---|---|---|
@@ -49,7 +52,7 @@ configuración por variables de entorno, límites) se hace una vez y sirve a cua
 | Datos sensibles subidos por un usuario | Alto | no persistir, aviso visible, ejemplos incluidos para no necesitar datos propios |
 | Distinta versión de torch en el servidor | Medio | humo con la versión fijada; test de paridad del bundle (Tarea 1) |
 | URL que deja de existir con el tiempo | Medio | snapshot con DOI en Zenodo (Tarea 10) |
-| El host exige contenedor y se había descartado el Dockerfile | Medio | decisión abierta 2 (abajo) |
+| El host exige contenedor y el `Dockerfile` actual usa el servidor de desarrollo y `saved/` | Medio | decisión 2 (abajo) permite Dockerfile: adaptarlo al bundle y a `waitress` en T7 |
 
 ## Orden y dependencias
 ```

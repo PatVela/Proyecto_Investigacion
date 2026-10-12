@@ -9,7 +9,7 @@
 
 <br />
 <div align="center">
-  <a href="https://github.com/PatVela/Proyectos-Universidad">
+  <a href="https://github.com/PatVela/Proyecto_Investigacion">
     <img src="../images/escudo-unsa.png" alt="Escudo UNSA" height="90">
   </a>
 
@@ -25,9 +25,9 @@
     <br />
     <a href="../examples/cinc2020/README.md">Ver pipeline</a>
     &middot;
-    <a href="https://github.com/PatVela/Proyectos-Universidad/issues/new?labels=bug">Reportar Bug</a>
+    <a href="https://github.com/PatVela/Proyecto_Investigacion/issues/new?labels=bug">Reportar Bug</a>
     &middot;
-    <a href="https://github.com/PatVela/Proyectos-Universidad/issues/new?labels=enhancement">Pedir Funcionalidad</a>
+    <a href="https://github.com/PatVela/Proyecto_Investigacion/issues/new?labels=enhancement">Pedir Funcionalidad</a>
   </p>
 </div>
 
@@ -58,13 +58,15 @@
 
 ![Informe de ejemplo](../images/informe-ejemplo.png)
 
-Aplicación Flask tipo dashboard: se sube un ECG, se analiza con el mejor checkpoint disponible y se presenta el resultado con probabilidades por clase, comparación contra etiquetas reales, trazado ECG e informe PDF descargable. Incluye secciones de detalle técnico, métricas de evaluación y experimentos cuando existen archivos generados por el pipeline.
+Aplicación Flask tipo dashboard: se sube un ECG, se analiza con el ensemble de dos modelos (o con el mejor checkpoint disponible en desarrollo) y se presenta el resultado con probabilidades por clase, comparación contra etiquetas reales, trazado ECG e informe PDF descargable. Incluye secciones de detalle técnico, métricas de evaluación y experimentos cuando existen archivos generados por el pipeline.
 
 ### Funcionalidades
 
 * Carga por arrastrar/seleccionar archivo (CSV o par WFDB `.hea + .mat`).
 * Conversión automática del par `.hea + .mat` a CSV preprocesado descargable.
-* Selección automática del mejor checkpoint disponible en la carpeta `saved/` configurada.
+* Ensemble de dos modelos con calibración por modelo; sin configuración se elige el mejor checkpoint de la carpeta `saved/`.
+* Siete ECG de ejemplo incluidos (CC BY 4.0) para probar sin datos propios, y límites de uso público (tamaño, tasa por IP, borrado de subidas).
+* Interfaz accesible: navegación por teclado, enlace para saltar al contenido, contraste AA en ambos temas, secciones direccionables por URL (`#upload`, `#vis`, `#det`, `#exp`) y carga diferida de las gráficas.
 * Predicción multilabel con probabilidades, márgenes y umbrales por clase.
 * Detección automática de los umbrales calibrados por la evaluación; respaldo global 0.5 si no existen.
 * Trazado ECG con cuadrícula tipo papel milimetrado.
@@ -84,7 +86,7 @@ Aplicación Flask tipo dashboard: se sube un ECG, se analiza con el mejor checkp
 ### Prerrequisitos
 
 * Instalación base del proyecto (ver [README principal](../README.md#instalación)).
-* Al menos un checkpoint entrenado (`best.pt`) dentro de `saved/`.
+* Para desarrollo: al menos un checkpoint entrenado (`best.pt`) dentro de `saved/`. Para servir el bundle versionado basta `requirements.txt` (ver [Despliegue](#despliegue-sin-depender-de-localhost)).
 
 ### Ejecución
 
@@ -95,10 +97,10 @@ $resnet = Get-ChildItem saved/cinc2020/cinc2020_resnet/*/best.pt | Sort-Object L
 $resnet2 = Get-ChildItem saved/cinc2020/cinc2020_resnet_v2*/*/best.pt | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
 ```
 
-Modo ensemble (modelo final recomendado): promedia dos checkpoints con calibración por modelo y usa los umbrales del directorio del ensemble:
+Modo ensemble (modelo final recomendado): promedia dos checkpoints con calibración por modelo y usa los umbrales del directorio del ensemble (`ensemble-f1` = umbrales F1, el punto de operación de la demo; `ensemble` = umbrales F0.5):
 
 ```powershell
-python webapp/app.py --saved saved --eval-dir runs/eval/ensemble --exp-dir runs/reports --model $resnet --model-b $resnet2 --temperatures runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv --port 5002
+python webapp/app.py --saved saved --eval-dir runs/eval/ensemble-f1 --exp-dir runs/reports --model $resnet --model-b $resnet2 --temperatures runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv --port 5002
 ```
 
 Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`.
@@ -149,7 +151,7 @@ Las 12 derivaciones estándar como columnas:
 I,II,III,aVR,aVL,aVF,V1,V2,V3,V4,V5,V6
 ```
 
-Opcionalmente puede empezar con `# Sampling Rate: 500 Hz`; si no se indica, se asume 500 Hz. Para comparar contra etiquetas reales, use el campo opcional de la interfaz:
+Opcionalmente puede empezar con `# Sampling Rate: 500 Hz`; si no se indica, se asume 500 Hz. La frecuencia debe estar entre 50 y 10 000 Hz (fuera de ese rango se rechaza el archivo). Solo se aceptan `.csv`, `.hea` y `.mat`, hasta 2 archivos por solicitud y 5 MB en total. Para comparar contra etiquetas reales, use el campo opcional de la interfaz:
 
 ```text
 NSR, AF
@@ -172,7 +174,8 @@ La app valida que el stem coincida, lee el header, preprocesa la señal, compara
 | Método | Ruta | Descripción |
 |---|---|---|
 | `GET` | `/` | Dashboard (carga, resultado, detalle técnico, experimentos) |
-| `POST` | `/predict` | Analiza archivos + umbral; devuelve JSON con probabilidades, trazado y PDF |
+| `POST` | `/predict` | Analiza archivos (o `example=<id>`) + umbral; devuelve JSON con probabilidades, trazado y PDF. 400 si el archivo no es válido, 413 si pesa demasiado, 429 si se excede la tasa |
+| `GET` | `/examples` | Lista de registros de ejemplo incluidos (id, origen, clases verdaderas y predichas de referencia) |
 | `GET` | `/results/<archivo>` | Descarga artefactos generados (PDF, PNG, CSV convertido) |
 | `GET` | `/models` | Checkpoints disponibles en la carpeta configurada (el cliente no puede elegir otra) |
 | `POST` | `/use_model` | Cambia el checkpoint activo (vacío = selección automática). Solo acepta `.pt` dentro de la carpeta de modelos configurada |
@@ -251,12 +254,16 @@ sin datos propios.
 ```text
 webapp/
 ├── app.py            # Flask + rutas + carga de métricas/experimentos
-├── prediction.py     # inferencia, conversión WFDB→CSV y gráficos
+├── prediction.py     # inferencia con caché de modelos, conversión WFDB→CSV y gráficos
+├── limits.py         # límite de solicitudes por IP, limpieza de informes, enteros de entorno
+├── examples.py       # carga y validación de los registros de ejemplo
+├── examples/         # 7 registros .hea/.mat + examples.json (ver su README)
 ├── report_pdf.py     # informe PDF profesional
 ├── project_info.py   # datos institucionales y referencia bibliográfica
-├── wsgi.py           # entrada WSGI para despliegue
+├── wsgi.py           # entrada WSGI para despliegue (carga deploy/ensemble.env)
+├── run_https.sh / run_public.sh   # HTTPS con certificado propio / túnel público (no forman parte del despliegue probado)
 ├── templates/index.html
-└── static/           # app.js (dashboard + i18n ES/EN), style.css (temas + UNSA)
+└── static/           # app.js (dashboard + i18n ES/EN), style.css (temas + UNSA), plotly.min.js (carga diferida)
 ```
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
@@ -276,7 +283,7 @@ webapp/
 - [ ] Historial persistente en servidor (multi-sesión)
 - [ ] Evaluar migración a Flet (quizás)
 
-Ver los [issues abiertos](https://github.com/PatVela/Proyectos-Universidad/issues) para más propuestas.
+Ver los [issues abiertos](https://github.com/PatVela/Proyecto_Investigacion/issues) para más propuestas.
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
