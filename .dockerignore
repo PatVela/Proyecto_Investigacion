@@ -12,6 +12,7 @@ webapp/results/
 images/
 *.pdf
 *.pt
+!models/*.pt
 *.db
 *.h5
 *.onnx
