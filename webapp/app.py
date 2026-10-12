@@ -775,7 +775,7 @@ def main(argv: list[str] | None = None) -> None:
     print("Modelo CLI :", runtime_app.config["ECG_MODEL"] or "(auto)")
     if runtime_app.config["ECG_MODEL_B"]:
         print("Modelo B   :", runtime_app.config["ECG_MODEL_B"])
-        print("Ensemble α :", runtime_app.config["ECG_ALPHA"])
+        print("Ensemble alpha:", runtime_app.config["ECG_ALPHA"])
     print("Resuelto   :", _resolve_model_for_display(runtime_app.config["ECG_MODEL"], runtime_app.config["ECG_SAVED_DIR"]))
     _ths, _ths_source = _load_thresholds_for_app(runtime_app.config["ECG_MODEL"], runtime_app.config["ECG_SAVED_DIR"])
     print("Búsqueda   :", runtime_app.config["ECG_SAVED_DIR"])
