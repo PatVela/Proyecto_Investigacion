@@ -12,6 +12,12 @@ const I18N = {
     "model.pending": "Modelo pendiente",
     "upload.title": "Cargar electrocardiograma",
     "upload.intro": "Sube un ECG de 12 derivaciones en CSV o el par WFDB .hea + .mat. El análisis se ejecuta solo al pulsar Analizar ECG.",
+    "examples.title": "¿No tienes un ECG? Prueba con un ejemplo",
+    "examples.choose": "Elegir un ejemplo…",
+    "examples.kind.correct": "predicción acertada",
+    "examples.kind.mixed": "caso con diferencias",
+    "examples.selected": "Ejemplo incluido",
+    "examples.attribution": "Registros del PhysioNet/CinC Challenge 2020 (CC BY 4.0). Perez Alday et al., 2022, doi:10.13026/dvyd-kd57.",
     "upload.privacy": "Demostración académica, no es un dispositivo médico. No suba datos de pacientes reales: los archivos subidos se borran al terminar el análisis y los informes generados se eliminan del servidor en 1 hora. Máximo 5 MB por solicitud.",
     "upload.drop": "Arrastra el archivo aquí",
     "upload.dropSub": "o haz clic para seleccionarlo. Para WFDB selecciona ambos archivos del mismo registro.",
@@ -194,6 +200,12 @@ const I18N = {
     "model.pending": "Model pending",
     "upload.title": "Upload electrocardiogram",
     "upload.intro": "Upload a 12-lead ECG as CSV or the WFDB .hea + .mat pair. Analysis starts only when you press Analyze ECG.",
+    "examples.title": "No ECG at hand? Try an example",
+    "examples.choose": "Choose an example…",
+    "examples.kind.correct": "correct prediction",
+    "examples.kind.mixed": "case with differences",
+    "examples.selected": "Built-in example",
+    "examples.attribution": "Records from the PhysioNet/CinC Challenge 2020 (CC BY 4.0). Perez Alday et al., 2022, doi:10.13026/dvyd-kd57.",
     "upload.privacy": "Academic demonstration, not a medical device. Do not upload real patient data: uploaded files are deleted when the analysis finishes and generated reports are removed from the server after 1 hour. Maximum 5 MB per request.",
     "upload.drop": "Drag the file here",
     "upload.dropSub": "or click to select it. For WFDB, select both files from the same record.",
@@ -387,6 +399,7 @@ function applyI18n() {
   if (es) es.classList.toggle("active", LANG === "es");
   if (en) en.classList.toggle("active", LANG === "en");
   refreshFileCard();
+  if (typeof renderExampleOptions === "function") renderExampleOptions();
   if (typeof renderHistory === "function") renderHistory();
   if (lastResult) render(lastResult, false);
 }
@@ -549,7 +562,40 @@ $("langEn").addEventListener("click", () => { LANG = "en"; try { localStorage.se
 updateThemeIcon();
 
 // ============================================================ file upload ==
+let examplesList = [];
+let selectedExample = null;
+const exampleSelect = $("exampleSelect");
+const exampleBox = $("exampleBox");
+
+function exampleLabel(e) {
+  return `${e.record} · ${(e.true_classes || []).join(", ") || "—"} (${tr("examples.kind." + e.kind)})`;
+}
+
+function renderExampleOptions() {
+  if (!exampleSelect) return;
+  exampleBox.hidden = !examplesList.length;
+  exampleSelect.innerHTML = `<option value="">${escapeHtml(tr("examples.choose"))}</option>` +
+    examplesList.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(exampleLabel(e))}</option>`).join("");
+  exampleSelect.value = selectedExample || "";
+}
+
+async function loadExamples() {
+  try {
+    const data = await (await fetch("/examples")).json();
+    examplesList = data.examples || [];
+  } catch (e) { examplesList = []; }
+  renderExampleOptions();
+}
+
 function refreshFileCard() {
+  if (selectedExample && !currentFiles.length) {
+    const e = examplesList.find(x => x.id === selectedExample);
+    fileCard.hidden = false;
+    fileCard.innerHTML = `
+    <svg class="ico"><use href="#i-file"/></svg>
+    <div class="file-list"><div class="fname">${escapeHtml(e ? exampleLabel(e) : selectedExample)}</div><div class="hint muted">${escapeHtml(tr("examples.selected"))} · ${tr("status.ready")}</div></div>`;
+    return;
+  }
   if (!currentFiles.length) {
     fileCard.hidden = true;
     return;
@@ -567,6 +613,8 @@ function refreshFileCard() {
 
 function handleFiles(files) {
   if (!files || !files.length) return;
+  selectedExample = null;
+  if (exampleSelect) exampleSelect.value = "";
   currentFiles = Array.from(files);
   refreshFileCard();
   setStatus("", "");
@@ -582,7 +630,18 @@ const fmtHelp = $("fmtHelp");
 const fmtHelpBox = $("fmtHelpBox");
 fmtHelp.addEventListener("click", () => { fmtHelpBox.hidden = !fmtHelpBox.hidden; });
 
+if (exampleSelect) {
+  exampleSelect.addEventListener("change", () => {
+    selectedExample = exampleSelect.value || null;
+    if (selectedExample) { currentFiles = []; fileInput.value = ""; }
+    refreshFileCard();
+    setStatus("", "");
+  });
+}
+
 btnClear.addEventListener("click", () => {
+  selectedExample = null;
+  if (exampleSelect) exampleSelect.value = "";
   currentFiles = [];
   lastResult = null;
   fileInput.value = "";
@@ -597,7 +656,7 @@ btnClear.addEventListener("click", () => {
 
 // ============================================================ submit ======
 async function postFiles() {
-  const validation = validateFiles(currentFiles);
+  const validation = selectedExample ? "" : validateFiles(currentFiles);
   if (validation) {
     setStatus(validation, "err");
     refreshFileCard();
@@ -605,7 +664,8 @@ async function postFiles() {
   }
 
   const fd = new FormData();
-  currentFiles.forEach(file => fd.append("files", file, file.name));
+  if (selectedExample) fd.append("example", selectedExample);
+  else currentFiles.forEach(file => fd.append("files", file, file.name));
   fd.append("patient_name", patName.value || "");
   fd.append("patient_age", patAge.value || "");
   fd.append("threshold", threshold.value || "0.5");
@@ -1054,3 +1114,4 @@ function renderHistory() {
 })();
 
 applyI18n();
+loadExamples();

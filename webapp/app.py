@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import sys
@@ -21,9 +22,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from flask import Flask, jsonify, render_template, request, send_from_directory, url_for
+from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from ecg import load, util
+from webapp import examples as example_store
 from webapp import project_info as proj
 from webapp.limits import SlidingWindowLimiter, cleanup_old_jobs, int_env
 from webapp.prediction import clean_path_text, resolve_existing_path, resolve_model_path, run_prediction_from_uploads
@@ -32,6 +35,7 @@ from webapp.report_pdf import build_pdf_report
 
 DEFAULT_UPLOADS = REPO_ROOT / "webapp" / "uploads"
 DEFAULT_RESULTS = REPO_ROOT / "webapp" / "results"
+DEFAULT_EXAMPLES = REPO_ROOT / "webapp" / "examples"
 DEFAULT_SAVED = REPO_ROOT / "saved"
 
 
@@ -479,6 +483,8 @@ def create_app() -> Flask:
     app.config["ECG_UPLOADS_DIR"] = str(_resolve_dir_env("ECG_UPLOADS", DEFAULT_UPLOADS))
     app.config["ECG_RESULTS_DIR"] = str(_resolve_dir_env("ECG_RESULTS", DEFAULT_RESULTS))
     app.config["ECG_REFERENCE"] = clean_path_text(os.environ.get("ECG_REFERENCE", ""))
+    app.config["ECG_EXAMPLES_DIR"] = str(Path(clean_path_text(os.environ.get("ECG_EXAMPLES_DIR", "")) or DEFAULT_EXAMPLES))
+    examples_manifest = example_store.load_manifest(app.config["ECG_EXAMPLES_DIR"])
     app.config["ECG_THRESHOLDS"] = clean_path_text(os.environ.get("ECG_THRESHOLDS", ""))
     app.config["ECG_NORMAL_FALLBACK_MIN_PROB"] = float(os.environ.get("ECG_NORMAL_FALLBACK_MIN_PROB", "0.40"))
 
@@ -586,12 +592,24 @@ def create_app() -> Flask:
         app.config["ECG_MODEL"] = str(resolved)
         return jsonify({"ok": True, "model": str(resolved), "info": _checkpoint_info(str(resolved), app.config["ECG_SAVED_DIR"])})
 
+    @app.get("/examples")
+    def examples_route():
+        return jsonify({"ok": True, "examples": example_store.public_listing(examples_manifest)})
+
     @app.post("/predict")
     def predict_route():
-        files = request.files.getlist("files")
-        if not files:
-            one = request.files.get("file")
-            files = [one] if one is not None else []
+        example_id = clean_path_text(request.form.get("example", ""))
+        if example_id:                                   # registro de ejemplo incluido: mismo flujo que una subida
+            try:
+                stored = example_store.example_files(examples_manifest, app.config["ECG_EXAMPLES_DIR"], example_id)
+            except KeyError:
+                return jsonify({"ok": False, "status": "error", "error": f"Ejemplo desconocido: {example_id[:40]}"}), 400
+            files = [FileStorage(stream=io.BytesIO(data), filename=name) for name, data in stored]
+        else:
+            files = request.files.getlist("files")
+            if not files:
+                one = request.files.get("file")
+                files = [one] if one is not None else []
         if not files or all(not getattr(f, "filename", "") for f in files):
             return jsonify({"ok": False, "status": "error", "error": "Suba un CSV o el par .hea + .mat."}), 400
 

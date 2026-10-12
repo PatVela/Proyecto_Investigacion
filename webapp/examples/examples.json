@@ -1,0 +1,216 @@
+[
+  {
+    "id": "HR10268",
+    "record": "HR10268",
+    "kind": "correct",
+    "source_db": "ptb-xl",
+    "dx_codes": [
+      "426783006"
+    ],
+    "true_classes": [
+      "NSR"
+    ],
+    "reference_predicted_classes": [
+      "NSR"
+    ],
+    "reference_probabilities": {
+      "NSR": 0.9877,
+      "AxisDev": 0.28516,
+      "MI": 0.13281,
+      "TAb": 0.44255,
+      "AF": 0.01373,
+      "LVH": 0.10581,
+      "VEctopy": 0.04223,
+      "AVBlock": 0.05708,
+      "STach": 0.02278,
+      "BBB": 0.16074,
+      "SB": 0.06132,
+      "AEctopy_Junctional": 0.07006
+    }
+  },
+  {
+    "id": "A3763",
+    "record": "A3763",
+    "kind": "correct",
+    "source_db": "cpsc_2018",
+    "dx_codes": [
+      "164889003"
+    ],
+    "true_classes": [
+      "AF"
+    ],
+    "reference_predicted_classes": [
+      "AF"
+    ],
+    "reference_probabilities": {
+      "NSR": 0.17468,
+      "AxisDev": 0.25358,
+      "MI": 0.27533,
+      "TAb": 0.54758,
+      "AF": 0.94902,
+      "LVH": 0.1215,
+      "VEctopy": 0.60924,
+      "AVBlock": 0.28448,
+      "STach": 0.41419,
+      "BBB": 0.59562,
+      "SB": 0.11663,
+      "AEctopy_Junctional": 0.6294
+    }
+  },
+  {
+    "id": "E02917",
+    "record": "E02917",
+    "kind": "correct",
+    "source_db": "georgia",
+    "dx_codes": [
+      "427084000"
+    ],
+    "true_classes": [
+      "STach"
+    ],
+    "reference_predicted_classes": [
+      "STach"
+    ],
+    "reference_probabilities": {
+      "NSR": 0.07911,
+      "AxisDev": 0.05774,
+      "MI": 0.07443,
+      "TAb": 0.4673,
+      "AF": 0.01124,
+      "LVH": 0.38624,
+      "VEctopy": 0.11089,
+      "AVBlock": 0.0632,
+      "STach": 0.99572,
+      "BBB": 0.11218,
+      "SB": 0.05113,
+      "AEctopy_Junctional": 0.13113
+    }
+  },
+  {
+    "id": "E07527",
+    "record": "E07527",
+    "kind": "correct",
+    "source_db": "georgia",
+    "dx_codes": [
+      "426177001"
+    ],
+    "true_classes": [
+      "SB"
+    ],
+    "reference_predicted_classes": [
+      "SB"
+    ],
+    "reference_probabilities": {
+      "NSR": 0.44504,
+      "AxisDev": 0.06367,
+      "MI": 0.05495,
+      "TAb": 0.20317,
+      "AF": 0.03196,
+      "LVH": 0.13532,
+      "VEctopy": 0.11005,
+      "AVBlock": 0.04554,
+      "STach": 0.0231,
+      "BBB": 0.05225,
+      "SB": 0.97901,
+      "AEctopy_Junctional": 0.09023
+    }
+  },
+  {
+    "id": "A4268",
+    "record": "A4268",
+    "kind": "correct",
+    "source_db": "cpsc_2018",
+    "dx_codes": [
+      "59118001"
+    ],
+    "true_classes": [
+      "BBB"
+    ],
+    "reference_predicted_classes": [
+      "BBB"
+    ],
+    "reference_probabilities": {
+      "NSR": 0.05525,
+      "AxisDev": 0.13834,
+      "MI": 0.10884,
+      "TAb": 0.17039,
+      "AF": 0.03918,
+      "LVH": 0.12844,
+      "VEctopy": 0.07013,
+      "AVBlock": 0.08734,
+      "STach": 0.01998,
+      "BBB": 0.98709,
+      "SB": 0.04859,
+      "AEctopy_Junctional": 0.32411
+    }
+  },
+  {
+    "id": "Q1259",
+    "record": "Q1259",
+    "kind": "correct",
+    "source_db": "cpsc_2018_extra",
+    "dx_codes": [
+      "164867002"
+    ],
+    "true_classes": [
+      "MI"
+    ],
+    "reference_predicted_classes": [
+      "MI"
+    ],
+    "reference_probabilities": {
+      "NSR": 0.01558,
+      "AxisDev": 0.03385,
+      "MI": 0.97664,
+      "TAb": 0.10501,
+      "AF": 0.01184,
+      "LVH": 0.09935,
+      "VEctopy": 0.37058,
+      "AVBlock": 0.04846,
+      "STach": 0.01659,
+      "BBB": 0.03008,
+      "SB": 0.05406,
+      "AEctopy_Junctional": 0.1667
+    }
+  },
+  {
+    "id": "HR09549",
+    "record": "HR09549",
+    "kind": "mixed",
+    "source_db": "ptb-xl",
+    "dx_codes": [
+      "164884008",
+      "164889003",
+      "164934002",
+      "698252002"
+    ],
+    "true_classes": [
+      "TAb",
+      "AF",
+      "VEctopy",
+      "BBB"
+    ],
+    "reference_predicted_classes": [
+      "MI",
+      "TAb",
+      "AF",
+      "LVH",
+      "VEctopy",
+      "BBB"
+    ],
+    "reference_probabilities": {
+      "NSR": 0.11344,
+      "AxisDev": 0.72515,
+      "MI": 0.89795,
+      "TAb": 0.59838,
+      "AF": 0.9932,
+      "LVH": 0.86934,
+      "VEctopy": 1.0,
+      "AVBlock": 0.18893,
+      "STach": 0.44284,
+      "BBB": 0.74531,
+      "SB": 0.0216,
+      "AEctopy_Junctional": 0.32671
+    }
+  }
+]
