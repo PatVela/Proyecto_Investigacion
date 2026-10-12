@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import threading
 import uuid
 from collections import OrderedDict
@@ -817,23 +818,28 @@ def run_prediction_from_uploads(
     job_id = uuid.uuid4().hex[:12]
     upload_dir = Path(upload_root) / job_id
     result_dir = Path(results_root) / job_id
-    saved_paths = save_uploaded_files(file_storages, upload_dir)
-    result = run_prediction_from_saved_paths(
-        saved_paths=saved_paths,
-        model_path=model_path,
-        saved_dir=saved_dir,
-        result_dir=result_dir,
-        threshold=threshold,
-        reference_labels=reference_labels,
-        thresholds=thresholds,
-        threshold_source=threshold_source,
-        temperatures=temperatures,
-        temperature_source=temperature_source,
-        normal_fallback_min_prob=normal_fallback_min_prob,
-        model_path_b=model_path_b,
-        temperatures_b=temperatures_b,
-        temperature_source_b=temperature_source_b,
-        alpha=alpha,
-    )
+    try:
+        saved_paths = save_uploaded_files(file_storages, upload_dir)
+        result = run_prediction_from_saved_paths(
+            saved_paths=saved_paths,
+            model_path=model_path,
+            saved_dir=saved_dir,
+            result_dir=result_dir,
+            threshold=threshold,
+            reference_labels=reference_labels,
+            thresholds=thresholds,
+            threshold_source=threshold_source,
+            temperatures=temperatures,
+            temperature_source=temperature_source,
+            normal_fallback_min_prob=normal_fallback_min_prob,
+            model_path_b=model_path_b,
+            temperatures_b=temperatures_b,
+            temperature_source_b=temperature_source_b,
+            alpha=alpha,
+        )
+    finally:
+        # El ECG subido no se conserva: solo quedan los informes generados (que caducan).
+        if os.environ.get("ECG_KEEP_UPLOADS") != "1":
+            shutil.rmtree(upload_dir, ignore_errors=True)
     result["job_id"] = job_id
     return result
