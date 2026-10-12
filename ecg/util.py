@@ -123,13 +123,15 @@ def save_checkpoint(
     torch.save(payload, path)
 
 
-def load_checkpoint(path: str | os.PathLike, map_location="cpu") -> dict:
-    """Carga checkpoint PyTorch; ``weights_only=False`` por compatibilidad."""
+def load_checkpoint(path: str | os.PathLike, map_location="cpu", trusted: bool = False) -> dict:
+    """Carga un checkpoint PyTorch con ``weights_only=True`` (sin ejecutar pickle).
+
+    Un ``.pt`` es un pickle: cargarlo con ``weights_only=False`` ejecuta código
+    arbitrario. Use ``trusted=True`` solo para archivos propios que no se
+    pueden cargar en modo seguro.
+    """
     import torch
-    try:
-        return torch.load(path, map_location=map_location, weights_only=False)
-    except TypeError:
-        return torch.load(path, map_location=map_location)
+    return torch.load(path, map_location=map_location, weights_only=not trusted)
 
 
 def find_checkpoints(models_dir: str | os.PathLike) -> list[Path]:

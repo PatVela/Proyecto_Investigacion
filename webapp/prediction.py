@@ -102,6 +102,10 @@ def resolve_model_path(model_path: str | None = None, saved_dir: str | None = No
 # ---------------------------------------------------------------------------
 # Preparación de entradas
 # ---------------------------------------------------------------------------
+ALLOWED_UPLOAD_SUFFIXES = {".csv", ".hea", ".mat"}
+MAX_UPLOAD_FILES = 2
+
+
 def save_uploaded_files(file_storages: Iterable, upload_dir: str | Path) -> list[Path]:
     upload_dir = Path(upload_dir)
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -113,6 +117,12 @@ def save_uploaded_files(file_storages: Iterable, upload_dir: str | Path) -> list
         filename = secure_filename(storage.filename)
         if not filename:
             continue
+        if Path(filename).suffix.lower() not in ALLOWED_UPLOAD_SUFFIXES:
+            raise ValueError(
+                f"Extensión no permitida: {filename!r}. Suba un .csv o el par .hea + .mat."
+            )
+        if len(saved_paths) >= MAX_UPLOAD_FILES:
+            raise ValueError(f"Máximo {MAX_UPLOAD_FILES} archivos por solicitud.")
         path = upload_dir / filename
         storage.save(path)
         saved_paths.append(path)
