@@ -11,7 +11,7 @@ ecg/        paquete principal
 examples/   scripts de experimento
 webapp/     Flask + inferencia + reportes
 tools/      chequeos de datos, bundle de despliegue y prueba de humo
-models/ + deploy/   bundle de inferencia versionado (pesos, umbrales, métricas)
+models/ + deploy/   bundle de inferencia versionado (pesos, umbrales, métricas, scripts de Windows)
 docs/       documentación experimental
 ```
 
@@ -95,7 +95,7 @@ Implementación: `examples/cinc2020/evaluate.py`.
 
 ## Inferencia y despliegue
 
-La webapp usa el mismo preprocesamiento que el entrenamiento (`ecg/signal.py`), acepta frecuencias de muestreo de 50 a 10 000 Hz y carga los pesos con `weights_only=True`. Para publicarla sin las carpetas locales, `tools/export_inference_bundle.py` genera `models/*.pt` (solo pesos, ≈19 MB) y `deploy/`; el procedimiento y los límites de uso público están en `webapp/README.md`.
+La webapp usa el mismo preprocesamiento que el entrenamiento (`ecg/signal.py`), acepta frecuencias de muestreo de 50 a 10 000 Hz y carga los pesos con `weights_only=True`. La demo se ejecuta en la propia PC del autor, sin servidor ni nube: `tools/export_inference_bundle.py` genera `models/*.pt` (solo pesos, ≈19 MB) y `deploy/`, y `deploy\start_local.ps1` la sirve con waitress en CPU (≈2,4 s por análisis, ≈0,9 GB de RAM). El procedimiento, los modos de acceso y los límites de uso están en `webapp/README.md`.
 
 ## Diferencias frente al paper original
 

@@ -1,84 +1,60 @@
-# Plan: webapp de resultados que no dependa de localhost
+# Plan: webapp de resultados ejecutada en esta PC (Windows 11)
 
 ## Resumen
-Hoy la webapp solo corre en la máquina del autor (`python webapp/app.py`, `127.0.0.1`) y necesita
-carpetas locales que no están en git (`saved/`, `runs/`). Objetivo: que cualquier lector del
-trabajo de investigación pueda abrirla con una URL estable (o, como mínimo, ver los resultados
-sin instalar nada), con costo cero o muy bajo y sin exponer datos de pacientes.
-
-## Estado (2026-10-12)
-Fase 1 (T1–T6) completa y fusionada en `main`; la interfaz se auditó y corrigió en tres PRs (accesibilidad, carga/contraste/tema, contenido), también fusionados. Falta la Fase 2: elegir host y publicar.
+La webapp es una demostración de los resultados del trabajo de investigación. **Decisión del autor (2026-10-12):
+se ejecuta en su propia PC**, que permanece encendida; no se usa nube, servidor ni contenedor. El artículo solo
+menciona que existe una webapp (sin URL), así que no hace falta una dirección fija ni pública. La app ya no depende de
+carpetas locales sueltas: todo lo que necesita está versionado en `models/`, `deploy/` y `webapp/examples/`.
 
 ## Qué se midió (hechos, no suposiciones)
+PC: Windows 11, Intel Core i5-11400H, 24 GB de RAM, NVIDIA RTX 3050 Laptop (4 GB). Servida con waitress y el bundle:
+
 | Dato | Valor | Implicación |
 |---|---|---|
-| Modelo completo (`best.pt`) | 57,9 MB c/u | incluye estado del optimizador; no hace falta para inferir |
-| Modelo solo para inferencia | **19,4 MB** c/u (2 modelos ≈ 39 MB) | cabe en GitHub/HF sin problemas |
-| Resultados que muestra la app (`ensemble-f1`, reportes, estáticos) | ≈ 3,1 MB + 4,6 MB | despreciable |
-| Memoria máxima del proceso (ensemble, solo CPU) | **≈ 1,04 GB** | descarta hosts de 256–512 MB |
-| Latencia `/predict` solo CPU | 2,4–4,2 s (media 2,9 s) | aceptable para una demo sin GPU |
-| Torch instalado vs fijado | 2.14.0+cu130 instalado, `requirements.txt` fija 2.8.0 | hay que probar con la versión que se despliegue |
+| Modelo solo para inferencia | 19,4 MB c/u (2 modelos ≈ 39 MB) | caben en git |
+| Memoria del proceso (ensemble) | 0,89 GB en CPU; 1,17 GB con GPU | sobra con 24 GB |
+| Latencia por análisis | CPU 2,36 s (primera 4,0 s); GPU 2,45 s | la GPU no ayuda |
+| Inferencia pura por modelo y ventana | CPU 44 ms; GPU 9 ms | el tiempo está en el PDF y los gráficos (≈ 1 s el PDF) |
+| 5 solicitudes simultáneas | 10,7 s en total (en cola) | suficiente para una demostración |
+| Probabilidades CPU vs GPU | coinciden a 4 decimales | servir en CPU no cambia resultados |
+| Plan de energía "Equilibrado" | suspende a las 3 h con corriente, 3 min con batería | solo importa si se deja corriendo (T8) |
+| Escucha por defecto del lanzador | solo `127.0.0.1` (la IP de la red local no responde) | no se expone sin pedirlo |
 
-## Opciones consideradas
-| Opción | Qué es | A favor | En contra | Veredicto |
-|---|---|---|---|---|
-| **A. Demo en vivo en un servidor** | misma app Flask en un host con ≥ 2 GB RAM | todas las funciones (subir ECG, PDF, curvas); URL estable | hay que cuidar abuso, privacidad y modelos | **Recomendada** |
-| **B. Sitio estático de resultados** | métricas, curvas y ejemplos precalculados (GitHub Pages) | gratis, permanente, sin servidor ni riesgo | no clasifica ECG nuevos | **Complemento** (respaldo permanente) |
-| C. App de escritorio | PyInstaller/pywebview con torch dentro | funciona sin internet | 0,6–1,5 GB por instalador, un build por sistema operativo, avisos de SmartScreen | No recomendada para un artículo |
-| D. Inferencia en el navegador | ONNX Runtime Web | sin servidor | hay que reescribir filtro, remuestreo y ventanas en JS y mantener paridad numérica | Descartada |
-| E. Backend ligero con ONNX Runtime | reemplaza torch por `onnxruntime` en el servidor | menos RAM/imagen | reescribir la ruta de predicción y validar paridad | Opcional, solo si el host elegido no alcanza |
-
-**Recomendación:** A + B. A da la demo interactiva; B asegura que los resultados sigan visibles
-aunque el servidor gratuito se duerma o desaparezca. Todo lo común (modelos empaquetados,
-configuración por variables de entorno, límites) se hace una vez y sirve a cualquier host.
+## Opciones
+| Opción | Veredicto |
+|---|---|
+| **A. Ejecutar en esta PC con waitress y el bundle** | **Elegida**: sin costo, sin cuentas, resultados idénticos |
+| B. Red local (`-Lan`) | Disponible para mostrarla desde un teléfono o proyector en la misma red |
+| C. Túnel temporal de Cloudflare (`-Tunnel`) | Opcional: URL `https://….trycloudflare.com` que cambia en cada ejecución; sin cuenta |
+| D. Nube / contenedor (Hugging Face, Render, Cloud Run, Docker) | Descartada por el autor; se eliminaron `Dockerfile`, `.dockerignore`, `Procfile` y los scripts de host |
+| E. Sitio estático en GitHub Pages | No necesario: el artículo no cita URL |
+| F. App de escritorio / inferencia en el navegador / backend ONNX | Descartadas: no aportan frente a A |
 
 ## Decisiones de arquitectura
-- **Empaquetar solo pesos de inferencia** (`models/`), generados por un script reproducible desde
-  los checkpoints; la app no depende de `saved/` ni `runs/` en producción. Se cargan con
-  `weights_only=True` (ya soportado).
-- **Configuración solo por variables de entorno** (ya existen: `ECG_MODEL`, `ECG_MODEL_B`,
-  `ECG_ALPHA`, `ECG_THRESHOLDS`, `ECG_TEMPERATURES[_B]`, `ECG_EVAL_DIR`, `ECG_EXP_DIR`); un
-  manifiesto en `deploy/` documenta los valores del ensemble final.
-- **Servidor de producción** (`waitress`, ya en `requirements.txt`) y `PORT` del entorno; sin servidor de desarrollo.
-- **Modelos en caché** en memoria: hoy `/predict` vuelve a cargar los dos checkpoints en cada petición.
-- **Sin persistencia de ECG subidos**: borrar archivos tras predecir; resultados con vida corta.
-- **Privacidad:** la demo es académica; avisar que no se suban datos de pacientes reales.
+- **Pesos de inferencia empaquetados** (`models/`, generados con `tools/export_inference_bundle.py`); se cargan con `weights_only=True`.
+- **Configuración por variables de entorno** (`deploy/ensemble.env` + `ECG_*`, documentadas en `webapp/README.md`).
+- **Servidor waitress** lanzado por `deploy/start_local.ps1`: solo `127.0.0.1`, CPU (`ECG_DEVICE=cpu`), 4 hilos.
+- **Arranque a demanda**: el servidor se inicia cuando se necesita y se detiene con Ctrl+C; sin arranque automático.
+- **Modelos en caché** y concurrencia acotada; **sin persistencia** de ECG subidos (se borran al terminar; informes caducan a la hora).
+- **Privacidad:** la demo es académica; la interfaz pide no subir datos de pacientes reales; hay siete ejemplos incluidos.
+- **Túnel (opcional):** exige `ECG_TRUST_PROXY=1` (si no, todos los visitantes comparten un límite de 20 solicitudes por minuto) y solo es seguro con la app en `127.0.0.1`; el lanzador lo impone.
 
 ## Riesgos y mitigaciones
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
-| Host gratuito con poca RAM o que se duerme | Alto | elegir ≥ 2 GB; cold start documentado; respaldo estático (Tarea 9) |
-| Abuso público (cargas grandes, ráfagas) | Alto | límite de 5 MB, tasa por IP, concurrencia acotada (Tarea 4) |
-| Datos sensibles subidos por un usuario | Alto | no persistir, aviso visible, ejemplos incluidos para no necesitar datos propios |
-| Distinta versión de torch en el servidor | Medio | humo con la versión fijada; test de paridad del bundle (Tarea 1) |
-| URL que deja de existir con el tiempo | Medio | snapshot con DOI en Zenodo (Tarea 10) |
-| El host exige contenedor y el `Dockerfile` actual usa el servidor de desarrollo y `saved/` | Medio | decisión 2 (abajo) permite Dockerfile: adaptarlo al bundle y a `waitress` en T7 |
+| La PC se suspende o se apaga | Alto | `powercfg` sin suspensión con corriente y cargador conectado si se deja corriendo (T8); si está apagada, la demo no existe (aceptado) |
+| Windows Update reinicia la PC | Bajo | se vuelve a iniciar el servidor a demanda; fijar las horas activas si se deja corriendo mucho tiempo |
+| Exponer la app por error | Alto | escucha solo en `127.0.0.1`; `-Lan` y `-Tunnel` son opciones explícitas e incompatibles entre sí |
+| Mucha gente a la vez | Bajo | cola de inferencia + límite por IP; ≈ 2 s por análisis |
+| `cloudflared` no probado de extremo a extremo | Bajo | es opcional; solo están probados el rechazo cuando falta y la incompatibilidad con `-Lan` |
+| Datos sensibles subidos por un usuario | Alto | no se persisten, aviso visible, ejemplos incluidos |
+| Cambio de versión de torch | Medio | `requirements.txt` fija `torch==2.8.0`; el entorno actual usa 2.14.0 y el bundle pasa el humo con ella |
 
 ## Orden y dependencias
 ```
-T1 bundle de modelos ─┬─ T2 config/manifiesto ─┬─ T5 limites publicos ─┐
-                      ├─ T3 servidor prod      ├─ T4 cache de modelos ─┤
-                      └─ T6 ejemplos ──────────┘                       ├─ CHECKPOINT 1 → T7 deploy → T8 humo remoto → CHECKPOINT 2
-T9 modo estatico (independiente, tras T1/T6) ───────────────────────────┘                  T10 Zenodo/README
+Fase 1 (hecha): T1 bundle → T2 config → T3 servidor → T4 caché → T5 límites → T6 ejemplos
+Fase 2: T7 lanzador + ECG_DEVICE → T8 guía de uso y energía (documentada) → T9 prueba de uso real (autor)
 ```
 
-## Decisiones tomadas (autor)
-1. **Público:** revisores/jurado con una URL → la demo en vivo (opción A) es obligatoria; B es su respaldo.
-2. **Contenedor:** se permite un Dockerfile (habilita Hugging Face Spaces o Cloud Run).
-3. **Alcance inmediato:** solo la Fase 1 (T1–T6); nada se publica todavía.
-4. Sin servidor/VM de la universidad por ahora.
-
-## Preguntas que quedan para la Fase 2
-Qué host concreto (RAM, inactividad, límites y términos vigentes) y qué URL se citará en el artículo.
-
-## (Histórico) Preguntas abiertas antes de decidir
-1. **¿Quién va a abrir la demo?** (jurado/revisores con URL pública, o solo presentación en vivo).
-   Si es solo presentación, basta B + A local; si es público, A es obligatoria.
-2. **¿Se permite un contenedor (Dockerfile) para desplegar?** Hugging Face Spaces y Cloud Run lo
-   piden; Render/Railway pueden usar `requirements.txt` + comando de inicio pero necesitan ≥ 2 GB (plan de pago).
-3. **¿Hay servidor o VM de la universidad disponible?** Sería el host más estable y sin límites de inactividad.
-4. **Políticas del host a verificar antes de elegir:** RAM, CPU, tiempo de inactividad, tamaño máximo de
-   archivos y términos de uso (los límites cambian; no se asumen aquí).
-
 ## Fuera de alcance
-App de escritorio (C) e inferencia en el navegador (D), salvo que la decisión 1 lo exija.
+Hosting en la nube, contenedores, URL pública estable, DOI/Zenodo, sitio estático, app de escritorio e inferencia en el navegador.
