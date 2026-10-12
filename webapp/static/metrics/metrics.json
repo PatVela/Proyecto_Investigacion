@@ -1,0 +1,80 @@
+{
+  "labels": [
+    "A",
+    "N",
+    "O",
+    "~"
+  ],
+  "accuracy": 0.8747,
+  "macro_f1": 0.7643,
+  "weighted_f1": 0.8714,
+  "challenge_f1": 0.8604,
+  "n": 854,
+  "per_class": {
+    "A": {
+      "precision": 0.8,
+      "recall": 0.8947,
+      "f1": 0.8447,
+      "tp": 68,
+      "n_true": 76,
+      "n_pred": 85
+    },
+    "N": {
+      "precision": 0.922,
+      "recall": 0.9311,
+      "f1": 0.9265,
+      "tp": 473,
+      "n_true": 508,
+      "n_pred": 513
+    },
+    "O": {
+      "precision": 0.8099,
+      "recall": 0.8099,
+      "f1": 0.8099,
+      "tp": 196,
+      "n_true": 242,
+      "n_pred": 242
+    },
+    "~": {
+      "precision": 0.7143,
+      "recall": 0.3571,
+      "f1": 0.4762,
+      "tp": 10,
+      "n_true": 28,
+      "n_pred": 14
+    }
+  },
+  "confusion": {
+    "A": {
+      "A": 68,
+      "N": 0,
+      "O": 8,
+      "~": 0
+    },
+    "N": {
+      "A": 4,
+      "N": 473,
+      "O": 30,
+      "~": 1
+    },
+    "O": {
+      "A": 12,
+      "N": 31,
+      "O": 196,
+      "~": 3
+    },
+    "~": {
+      "A": 1,
+      "N": 9,
+      "O": 8,
+      "~": 10
+    }
+  },
+  "data_json": "C:\\Users\\juerg\\Investigacion\\TIF-Biomedica\\examples\\cinc17\\dev.json",
+  "model_path": "C:\\Users\\juerg\\Investigacion\\TIF-Biomedica\\saved\\cinc17\\1788562612-256\\0.371-0.870-013-0.247-0.916.pt",
+  "meta": {
+    "n_records": 854,
+    "level_notes": "La métrica oficial del paper/CinC2017 es el Challenge-F1 (N/A/O) a nivel de registro."
+  },
+  "generated_at": "2026-09-04T23:48:14"
+}

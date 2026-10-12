@@ -1,0 +1,28 @@
+# Pipeline CINC2020-12
+
+Secuencia que se repite por cada modelo/receta. Detalle de comandos: `examples/cinc2020/README.md`. Estado = qué existe en la columna "Salida" (el sistema de archivos es la máquina de estados).
+
+| # | Etapa | Script / módulo | Entrada | Salida | Chequeo humano |
+|---|---|---|---|---|---|
+| 01 | Datos | `descargar_datos_2020.sh`, `tools/check_dataset2020.py`, `examples/cinc2020/build_datasets.py` | `dataset2020/` (WFDB) | `data/cinc2020_12/{train,val,test}.h5` + CSV de distribución | Distribución de clases y sin registros faltantes |
+| 02 | Entrenar | `python -m ecg.train <config> -e <nombre>` | `config*.json`, HDF5 | `saved/cinc2020/<nombre>/*/best.pt` | Curva de val sin sobreajuste |
+| 03 | Calibrar | `calibrate.py` | checkpoint, val.h5 | `temperatures_validation.csv`, reporte ECE/Brier | ECE razonable |
+| 04 | Evaluar | `evaluate.py`, `ensemble_evaluate.py`, `challenge_score.py` | checkpoint, umbrales/temperaturas | `eval-*/` (métricas, umbrales, curvas, predicciones), `ensemble*/` | F1-macro vs. `docs/resultados_finales.md` |
+| 05 | Comparar | `compare_models.py`, `bootstrap_ci.py` | dos `eval-*/` | `exp-files/model_comparison.csv`, `bootstrap_*.json` | IC 95 % de la diferencia |
+| 06 | Robustez y sesgo | `robustness.py`, `sex_breakdown.py`, `error_analysis.py`, `audit_dx_codes.py` | checkpoint, test.h5 | `exp-files/robustness.csv`, `sex_breakdown.json`, `errores_origen.csv`, `dx_code_audit.csv` | Degradación aceptable por perturbación y sexo |
+| 07 | Figuras | `make_figures.py` | `eval-*/`, `exp-files/` | `figs_eval_v1/`, `figs_eval_v2/` | Figuras legibles para la tesis |
+| 08 | Despliegue | `export_onnx.py`, `benchmark_latency.py`, `webapp/`, `Dockerfile` | checkpoint | `resnet12.onnx`, latencias, app en :5002 | Predicción web = predicción CLI |
+
+Opcional, fuera de la secuencia: `tune_optuna.py` (búsqueda de hiperparámetros → `optuna_cinc2020.db`), `make_synthetic.py` (dataset sintético para smoke tests).
+
+## Factory (estable entre corridas)
+
+`ecg/` (librería), `examples/cinc2020/config*.json` (recetas), `examples/cinc2020/official/` (métrica oficial, vendored), `requirements*.txt`, `Dockerfile`, `tests/`.
+
+## Product (nuevo en cada corrida, git-ignored)
+
+Todo lo listado en la columna "Salida", más `saved/` y `data/`. Respaldo: no está en git; si importa, copiarlo aparte.
+
+## Recetas existentes
+
+`config.json` (ResNet-34 v1), `config_resnet_v2.json` (v2 anti-sobreajuste, modelo recomendado), `config_regular_cnn.json` (línea base CNN), `config_synthetic.json` (smoke tests).
