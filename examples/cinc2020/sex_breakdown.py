@@ -5,7 +5,7 @@ Cruza ``predictions_test.csv`` (record_name/true_*/pred_*) con los datasets
 grupo. No requiere GPU ni torch.
 
 Uso:
-    python examples/cinc2020/sex_breakdown.py --predictions <eval>/predictions_test.csv --test-h5 data/cinc2020_12/test.h5 --output sex_breakdown.json
+    python examples/cinc2020/sex_breakdown.py --predictions <eval>/predictions_test.csv --test-h5 data/cinc2020_12/test.h5 --output runs/reports/sex_breakdown.json
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="F1-macro por sexo (test).")
     parser.add_argument("--predictions", required=True)
     parser.add_argument("--test-h5", required=True)
-    parser.add_argument("--output", default="sex_breakdown.json")
+    parser.add_argument("--output", default="runs/reports/sex_breakdown.json")
     args = parser.parse_args()
 
     pred = pd.read_csv(args.predictions)
@@ -70,6 +70,7 @@ def main() -> None:
         flag = " (n<30: no concluyente)" if len(sub) < 30 else ""
         print(f"{sex}: n={len(sub)} F1-macro={f1:.4f}{flag}")
 
+    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output).write_text(json.dumps({"predictions": str(args.predictions),
                                              "test_h5": str(args.test_h5),
                                              "groups": groups}, indent=2), encoding="utf-8")

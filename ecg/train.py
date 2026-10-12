@@ -302,7 +302,15 @@ def write_history(save_dir: Path, history: list[dict]) -> None:
             writer.writerow(row)
 
 
-def train(args, params: dict):
+def train(args, params: dict, epoch_callback=None):
+    """Entrena y guarda artefactos en un save_dir timestamped.
+
+    Args:
+        epoch_callback: opcional ``f(epoch_1based, row_dict)`` invocado tras
+            cada época (row trae train_loss/val_loss/val_f1_macro/...).
+            Solo observa: si lanza una excepción (p. ej. poda Optuna),
+            el entrenamiento se aborta y la excepción se propaga.
+    """
     seed = args.seed if args.seed is not None else params.get("seed", 42)
     util.set_seed(seed)
     params["seed"] = int(seed)
@@ -453,6 +461,8 @@ def train(args, params: dict):
         write_history(save_dir, history)
 
         print(f"train_loss={train_loss:.6f} | val_loss={val_loss:.6f} | val_f1={val_f1:.4f} | lr={lr:.8f} | {epoch_seconds:.1f}s")
+        if epoch_callback is not None:
+            epoch_callback(epoch + 1, row)
         if no_improve >= patience:
             print("Early stopping activado")
             break

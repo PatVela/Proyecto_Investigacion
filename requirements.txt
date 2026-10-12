@@ -24,5 +24,6 @@ six==1.17.0
 
 scikit-multilearn==0.2.0
 iterative-stratification==0.1.9
+optuna==5.0.0
 
 pip-tools==7.5.1

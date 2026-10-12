@@ -10,7 +10,7 @@ Variables PowerShell usadas en todos los bloques (definir una vez por terminal):
 $resnet = Get-ChildItem saved/cinc2020/cinc2020_resnet/*/best.pt | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
 $resnet2 = Get-ChildItem saved/cinc2020/cinc2020_resnet_v2*/*/best.pt | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
 $mejor = $resnet2
-$evalMejor = "eval-resnet-v2"
+$evalMejor = "runs/eval/eval-resnet-v2"
 ```
 
 ## Preparación
@@ -26,16 +26,16 @@ En Windows, la primera línea corre en una terminal Git Bash.
 
 ```powershell
 python -m ecg.train examples/cinc2020/config.json -e cinc2020_resnet
-python examples/cinc2020/calibrate.py --checkpoint $resnet --val-h5 data/cinc2020_12/val.h5 --output-dir eval-resnet
-python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir eval-resnet --temperatures eval-resnet/temperatures_validation.csv --threshold-beta 0.5
+python examples/cinc2020/calibrate.py --checkpoint $resnet --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet
+python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet --temperatures runs/eval/eval-resnet/temperatures_validation.csv --threshold-beta 0.5
 ```
 
 ## Experimento B — ResNet-34 v2 (receta anti-sobreajuste)
 
 ```powershell
 python -m ecg.train examples/cinc2020/config_resnet_v2.json -e cinc2020_resnet_v2
-python examples/cinc2020/calibrate.py --checkpoint $resnet2 --val-h5 data/cinc2020_12/val.h5 --output-dir eval-resnet-v2
-python examples/cinc2020/evaluate.py examples/cinc2020/config_resnet_v2.json $resnet2 --output-dir eval-resnet-v2 --temperatures eval-resnet-v2/temperatures_validation.csv --threshold-beta 0.5
+python examples/cinc2020/calibrate.py --checkpoint $resnet2 --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet-v2
+python examples/cinc2020/evaluate.py examples/cinc2020/config_resnet_v2.json $resnet2 --output-dir runs/eval/eval-resnet-v2 --temperatures runs/eval/eval-resnet-v2/temperatures_validation.csv --threshold-beta 0.5
 ```
 
 ## Comparación justa
@@ -50,14 +50,14 @@ Ambos modelos deben usar:
 - mismas métricas de evaluación.
 
 ```powershell
-python examples/cinc2020/compare_models.py --eval-a eval-resnet --eval-b eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output exp-files/model_comparison.csv
+python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet --eval-b runs/eval/eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output runs/reports/model_comparison.csv
 ```
 
 ## Experimento C — Ensemble v1+v2 (modelo final)
 
 ```powershell
-python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir ensemble --alpha 0.5 --threshold-beta 0.5 --temperatures-a eval-resnet/temperatures_validation.csv --temperatures-b eval-resnet-v2/temperatures_validation.csv
-python examples/cinc2020/compare_models.py --eval-a "$evalMejor" --eval-b ensemble --label-a "ResNet mejor" --label-b "Ensemble" --output comparacion_ensemble.csv
+python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble --alpha 0.5 --threshold-beta 0.5 --temperatures-a runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv
+python examples/cinc2020/compare_models.py --eval-a "$evalMejor" --eval-b runs/eval/ensemble --label-a "ResNet mejor" --label-b "Ensemble" --output runs/reports/comparacion_ensemble.csv
 ```
 
 Promedio simple con calibración por modelo y umbrales F0.5 tuneados sobre el promedio.
@@ -79,7 +79,7 @@ Ver resultados en [resultados_finales.md](resultados_finales.md).
 ## Robustez controlada
 
 ```powershell
-python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --temperatures "$evalMejor/temperatures_validation.csv" --output exp-files/robustness.csv
+python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --temperatures "$evalMejor/temperatures_validation.csv" --output runs/reports/robustness.csv
 ```
 
 Perturbaciones incluidas: ruido gaussiano, baseline wander, escalado de amplitud y dropout de derivaciones.

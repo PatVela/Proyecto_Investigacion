@@ -10,7 +10,7 @@ Verifica, en orden, las causas más frecuentes de "predice mal":
 
 Ejemplo::
 
-    python examples/cinc2020/diagnose_prediction.py \\
+    python examples/cinc2020/_archive/diagnose_prediction.py \\
       --checkpoint saved/cinc2020/.../best.pt \\
       --config examples/cinc2020/config.json \\
       --thresholds results/.../thresholds_validation.csv \\
@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT))
 
 from ecg import load, predict, util  # noqa: E402
@@ -130,7 +130,7 @@ def calibration_spotcheck(checkpoint_path: str, h5_path: str, thresholds: np.nda
 
 
 def debug_record(args, class_names: list[str], thresholds: np.ndarray, pre: dict) -> None:
-    from examples.cinc2020._record_diag import find_record_in_hdf5, rows_from_probabilities, print_table
+    from examples.cinc2020._archive._record_diag import find_record_in_hdf5, rows_from_probabilities, print_table
     config = json.loads(util.resolve_path(args.config).read_text(encoding="utf-8"))
     device = predict.get_device(args.device)
     model, _ckpt, _names = predict.load_model(args.checkpoint, device=device)

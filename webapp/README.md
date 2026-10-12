@@ -98,7 +98,7 @@ $resnet2 = Get-ChildItem saved/cinc2020/cinc2020_resnet_v2*/*/best.pt | Sort-Obj
 Modo ensemble (modelo final recomendado): promedia dos checkpoints con calibración por modelo y usa los umbrales del directorio del ensemble:
 
 ```powershell
-python webapp/app.py --saved saved --eval-dir ensemble --exp-dir exp-files --model $resnet --model-b $resnet2 --temperatures eval-resnet/temperatures_validation.csv --temperatures-b eval-resnet-v2/temperatures_validation.csv --port 5002
+python webapp/app.py --saved saved --eval-dir runs/eval/ensemble --exp-dir runs/reports --model $resnet --model-b $resnet2 --temperatures runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv --port 5002
 ```
 
 Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`.
@@ -114,13 +114,13 @@ python webapp/app.py --saved saved
 Deja que la app elija el mejor checkpoint automáticamente.
 
 ```powershell
-python webapp/app.py --saved saved --eval-dir eval-resnet-v2 --model $resnet2
+python webapp/app.py --saved saved --eval-dir runs/eval/eval-resnet-v2 --model $resnet2
 ```
 
 Un solo modelo (v2) con sus umbrales calibrados.
 
 ```powershell
-python webapp/app.py --saved saved --thresholds eval-resnet-v2/thresholds_validation.csv
+python webapp/app.py --saved saved --thresholds runs/eval/eval-resnet-v2/thresholds_validation.csv
 ```
 
 Si los umbrales calibrados están en una ruta no estándar, páselos explícitamente.
