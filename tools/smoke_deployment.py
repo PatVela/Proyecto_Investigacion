@@ -1,8 +1,9 @@
 """Prueba de humo de una instancia de la webapp (local o desplegada).
 
 Comprueba por HTTP: página, /health, métricas, experimentos, curvas, modelos,
-una predicción real con un ECG sintético (CSV), los artefactos descargables
-(PDF/PNG) y los rechazos esperados (sin archivo, extensión no permitida).
+una predicción real con un ECG sintético (CSV), un registro de ejemplo incluido,
+los artefactos descargables (PDF/PNG) y los rechazos esperados (sin archivo,
+extensión no permitida, ejemplo inexistente).
 Solo usa la biblioteca estándar, así que funciona contra cualquier URL.
 
     python tools/smoke_deployment.py http://127.0.0.1:5002
@@ -117,6 +118,22 @@ def run_smoke(base_url: str, expect_ensemble: bool | None = None, timeout: float
         for label, key, magic in (("PDF", "pdf_url", b"%PDF-"), ("PNG del trazado", "plot_url", b"\x89PNG")):
             status, content, _ = get(pred.get(key) or "/missing")
             check(f"artefacto: {label} descargable", status == 200 and content[:len(magic)] == magic, f"{len(content) // 1024} KB")
+
+    status, body, _ = get("/examples")
+    listing = _json(body).get("examples", []) if status == 200 else []
+    check("/examples responde", status == 200)
+    if listing:
+        chosen = listing[0]["id"]
+        payload, ctype = _multipart([], {"example": chosen})
+        start = time.time()
+        status, body, _ = _request(base + "/predict", payload, {"Content-Type": ctype}, timeout)
+        example = _json(body)
+        check(f"/predict con el ejemplo incluido {chosen}",
+              status == 200 and example.get("ok") is True and example.get("record_name") == chosen,
+              f"{time.time() - start:.1f}s")
+        payload, ctype = _multipart([], {"example": "../../etc/passwd"})
+        status, body, _ = _request(base + "/predict", payload, {"Content-Type": ctype}, timeout)
+        check("/predict rechaza un ejemplo inexistente", status == 400 and _json(body).get("ok") is False, str(status))
 
     status, body, _ = _request(base + "/predict", b"", {"Content-Type": "multipart/form-data; boundary=x"}, timeout)
     check("/predict sin archivos se rechaza (4xx, JSON)", 400 <= status < 500 and _json(body).get("ok") is False, str(status))
