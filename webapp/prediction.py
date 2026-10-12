@@ -361,6 +361,24 @@ def _robust_ylim(values: np.ndarray) -> tuple[float, float]:
     return lo, hi
 
 
+_MINOR_GRID_ZORDER = 1.6
+
+
+def _grid_positions(lo: float, hi: float, step: float, major: float | None = None) -> np.ndarray:
+    """Múltiplos de ``step`` dentro de [lo, hi] (equivale a MultipleLocator).
+
+    Con ``major`` se omiten los que caen sobre una línea mayor, igual que hace
+    Matplotlib con los ticks menores que coinciden con los mayores.
+    """
+    first = int(np.ceil(lo / step - 1e-9))
+    last = int(np.floor(hi / step + 1e-9))
+    idx = np.arange(first, last + 1)
+    if major is not None:
+        ratio = round(major / step)
+        idx = idx[idx % ratio != 0]
+    return idx * step
+
+
 def plot_ecg_array(signal: np.ndarray, output_dir: str | Path, stem: str) -> Path:
     """Grafica las 12 derivaciones con estilo de papel milimetrado ECG."""
     from matplotlib.ticker import MultipleLocator
@@ -390,13 +408,15 @@ def plot_ecg_array(signal: np.ndarray, output_dir: str | Path, stem: str) -> Pat
         y0, y1 = _robust_ylim(signal[:, i])
         ax.set_ylim(y0, y1)
         ax.xaxis.set_major_locator(MultipleLocator(0.20))
-        ax.xaxis.set_minor_locator(MultipleLocator(0.04))
         ax.yaxis.set_major_locator(MultipleLocator(0.50))
-        ax.yaxis.set_minor_locator(MultipleLocator(0.10))
-        ax.grid(which="minor", color="#f7c8c8", linewidth=0.35)
         ax.grid(which="major", color="#e48b8b", linewidth=0.75)
+        # Cuadrícula fina como líneas directas: 250 ticks menores por eje hacían
+        # que la figura tardara ~5 s; así es el mismo dibujo en una fracción.
+        ax.vlines(_grid_positions(0.0, load.WINDOW_SECONDS, 0.04, major=0.20), y0, y1,
+                  colors="#f7c8c8", linewidths=0.35, zorder=_MINOR_GRID_ZORDER)
+        ax.hlines(_grid_positions(y0, y1, 0.10, major=0.50), 0.0, load.WINDOW_SECONDS,
+                  colors="#f7c8c8", linewidths=0.35, zorder=_MINOR_GRID_ZORDER)
         ax.tick_params(axis="both", which="major", labelsize=7, colors="#7f1d1d", length=0)
-        ax.tick_params(axis="both", which="minor", length=0)
         for spine in ax.spines.values():
             spine.set_color("#e48b8b")
             spine.set_linewidth(0.6)

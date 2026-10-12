@@ -13,7 +13,7 @@ Ejemplo::
     python examples/cinc2020/_archive/diagnose_prediction.py \\
       --checkpoint saved/cinc2020/.../best.pt \\
       --config examples/cinc2020/config.json \\
-      --thresholds results/.../thresholds_validation.csv \\
+      --thresholds runs/eval/<eval>/thresholds_validation.csv \\
       --record E00001 --hea dataset2020/.../E00001.hea --mat dataset2020/.../E00001.mat
 """
 

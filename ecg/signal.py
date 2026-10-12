@@ -111,27 +111,30 @@ def parse_adc_spec(lead_line: str) -> tuple[float, float, str]:
     """Extrae (ganancia, baseline, unidades) de una línea de derivación WFDB.
 
     Ejemplo: ``A0001.mat 16+24 1000/mV 16 0 28 -1716 0 I`` -> (1000.0, 0.0, 'mV').
-    Acepta variantes como ``1000.0(0)/mV``. Si algo falla, usa ganancia 1000 y
-    baseline 0 (valores uniformes observados en los 6 subconjuntos CINC2020).
+    Acepta ``ganancia(baseline)/unidades`` (p. ej. ``1000.0(5)/mV``). El baseline
+    explícito entre paréntesis prevalece; si no existe se usa el quinto token
+    (adc_zero), como define WFDB. Si algo falla, usa ganancia 1000 y baseline 0
+    (valores uniformes observados en los 6 subconjuntos CINC2020).
     """
     tokens = lead_line.split()
     gain = DEFAULT_ADC_GAIN
     baseline = 0.0
     units = "mV"
+    explicit_baseline = False
     try:
         if len(tokens) >= 3:
-            match = re.match(r"([0-9.eE+-]+)(?:\\(([^)]*)\\))?(?:/(.*))?", tokens[2])
+            match = re.match(r"([0-9.eE+-]+)(?:\(([^)]*)\))?(?:/(.*))?", tokens[2])
             if match:
                 gain = float(match.group(1))
                 if match.group(2) not in (None, ""):
                     try:
                         baseline = float(match.group(2))
+                        explicit_baseline = True
                     except ValueError:
                         pass
                 if match.group(3):
                     units = match.group(3)
-        if len(tokens) >= 5:
-            # Quinto token = adc_zero (baseline digital). Prevalece si es numérico.
+        if len(tokens) >= 5 and not explicit_baseline:
             try:
                 baseline = float(tokens[4])
             except ValueError:

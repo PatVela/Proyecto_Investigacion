@@ -16,8 +16,8 @@ Uso::
     python examples/cinc2020/challenge_score.py \\
       --checkpoint saved/cinc2020/.../best.pt \\
       --test-h5 data/cinc2020_12/test.h5 \\
-      --thresholds results/.../thresholds_validation.csv \\
-      --output-dir results/.../challenge_metric
+      --thresholds runs/eval/<eval>/thresholds_validation.csv \\
+      --output-dir runs/eval/challenge_metric
 
 Nota: con checkpoints legacy v1 (que no cubren las 27 clases puntuadas), los
 códigos no cubiertos reciben probabilidad 0 y la métrica sale penalizada:
@@ -183,7 +183,7 @@ def main() -> None:
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--test-h5", required=True)
     parser.add_argument("--thresholds", default=None, help="thresholds_validation.csv (defecto: 0.5 global)")
-    parser.add_argument("--output-dir", default="results/challenge_metric")
+    parser.add_argument("--output-dir", default="runs/eval/challenge_metric")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--num-workers", type=int, default=0,
                         help="Workers del DataLoader (0 = recomendado con preload en RAM)")
