@@ -1,0 +1,39 @@
+{
+  "created_utc": "2026-10-12T19:31:45+00:00",
+  "torch_version": "2.14.0+cu130",
+  "label_schema": "cinc2020_12_grouped_snomed_v2",
+  "ensemble_alpha": 0.5,
+  "models": {
+    "a": {
+      "file": "resnet34_v1.pt",
+      "bytes": 19354101,
+      "sha256": "91bec18eefb8f00234fe2ff742ea772b02739fd142edea768161d14502f05cbb",
+      "epoch": 25,
+      "val_loss": 0.4656075755461035,
+      "label_schema": "cinc2020_12_grouped_snomed_v2"
+    },
+    "b": {
+      "file": "resnet34_v2.pt",
+      "bytes": 19354101,
+      "sha256": "dbb6c208ce9cf047dcb292bfb0792e7d6d60c8053d61d7a182444f07a21d94ee",
+      "epoch": 92,
+      "val_loss": 0.5358700642349027,
+      "label_schema": "cinc2020_12_grouped_snomed_v2"
+    }
+  },
+  "results_dir": "results/ensemble-f1",
+  "results_files": [
+    "metrics_global.csv",
+    "metrics_per_class.csv",
+    "evaluation_summary.json",
+    "thresholds_validation.csv",
+    "roc_curves_test.csv",
+    "roc_curves_validation.csv",
+    "pr_curves_test.csv",
+    "pr_curves_validation.csv"
+  ],
+  "report_files": [
+    "model_comparison.csv",
+    "robustness.csv"
+  ]
+}

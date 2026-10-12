@@ -12,9 +12,21 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
+import tempfile
+import threading
 import uuid
+from collections import OrderedDict
 from pathlib import Path
 from typing import Iterable
+
+# matplotlib necesita un directorio de configuración; en contenedores mínimos puede no
+# existir un "home" y la importación fallaría (RuntimeError) antes de arrancar la app.
+if not os.environ.get("MPLCONFIGDIR"):
+    try:
+        Path.home()
+    except RuntimeError:
+        os.environ["MPLCONFIGDIR"] = str(Path(tempfile.gettempdir()) / "ecg-mplconfig")
 
 import matplotlib
 matplotlib.use("Agg")
@@ -60,6 +72,48 @@ def translate_classes_to_checkpoint(names: Iterable[str], class_names: list[str]
 # ---------------------------------------------------------------------------
 # Rutas / modelo
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Modelos en memoria, concurrencia y matplotlib
+# ---------------------------------------------------------------------------
+# Cada petición recargaba los checkpoints desde disco. Ahora se cargan una vez y se
+# reutilizan (se invalidan si el archivo cambia); se descartan los pesos duplicados
+# del checkpoint y el estado del optimizador, que no se usan al inferir.
+_MODEL_CACHE: "OrderedDict[tuple, tuple]" = OrderedDict()
+_MODEL_CACHE_LOCK = threading.Lock()
+MODEL_CACHE_SIZE = max(1, int(os.environ.get("ECG_MODEL_CACHE_SIZE", "4")))
+_HEAVY_CHECKPOINT_KEYS = ("model_state_dict", "optimizer_state_dict", "scheduler_state_dict", "pos_weight")
+
+# Máximo de inferencias simultáneas (acota CPU y memoria; el resto espera su turno).
+_INFERENCE_SLOTS = threading.BoundedSemaphore(max(1, int(os.environ.get("ECG_MAX_CONCURRENT_INFERENCE", "2"))))
+# pyplot mantiene estado global y no es seguro entre hilos (waitress usa varios).
+_PLOT_LOCK = threading.Lock()
+
+
+def get_cached_model(path: str | Path, device):
+    """``(model, checkpoint_ligero, class_names)`` con caché por ruta, versión del archivo y dispositivo."""
+    path = Path(path)
+    stat = path.stat()
+    key = (str(path.resolve()), stat.st_mtime_ns, stat.st_size, str(device))
+    with _MODEL_CACHE_LOCK:
+        hit = _MODEL_CACHE.get(key)
+        if hit is not None:
+            _MODEL_CACHE.move_to_end(key)
+            return hit
+        model, checkpoint, class_names = load_model(path, device=device)
+        light = {k: v for k, v in checkpoint.items() if k not in _HEAVY_CHECKPOINT_KEYS}
+        _MODEL_CACHE[key] = (model, light, class_names)
+        for stale in [k for k in _MODEL_CACHE if k[0] == key[0] and k != key]:     # versión anterior del mismo archivo
+            del _MODEL_CACHE[stale]
+        while len(_MODEL_CACHE) > MODEL_CACHE_SIZE:
+            _MODEL_CACHE.popitem(last=False)
+        return _MODEL_CACHE[key]
+
+
+def clear_model_cache() -> None:
+    with _MODEL_CACHE_LOCK:
+        _MODEL_CACHE.clear()
+
+
 def clean_path_text(value: str | os.PathLike | None) -> str:
     """Limpia rutas pegadas desde markdown, por ejemplo [best.pt](http://...)."""
     if value is None:
@@ -80,10 +134,16 @@ def resolve_existing_path(path: str | os.PathLike | None, base: Path = REPO_ROOT
 
 
 def resolve_model_path(model_path: str | None = None, saved_dir: str | None = None) -> Path:
-    """Resuelve checkpoint explícito o busca automáticamente en saved_dir."""
+    """Resuelve el checkpoint indicado o, si no se indica ninguno, busca el mejor en saved_dir.
+
+    Una ruta explícita que no existe es un error: no se sustituye en silencio por otro
+    modelo (en un ensemble eso promediaría el modelo equivocado sin avisar).
+    """
     explicit = resolve_existing_path(model_path)
-    if explicit is not None and explicit.exists():
-        return explicit
+    if explicit is not None:
+        if explicit.exists():
+            return explicit
+        raise FileNotFoundError(f"El checkpoint indicado no existe: {explicit}")
 
     saved_text = clean_path_text(saved_dir) or os.environ.get("ECG_SAVED", "saved")
     saved = Path(saved_text)
@@ -95,8 +155,6 @@ def resolve_model_path(model_path: str | None = None, saved_dir: str | None = No
         return best.resolve()
 
     message = "No se encontró un checkpoint .pt válido."
-    if model_path:
-        message += f" Checkpoint solicitado: {explicit}."
     message += f" Directorio de búsqueda: {saved}."
     raise FileNotFoundError(message)
 
@@ -383,8 +441,6 @@ def _grid_positions(lo: float, hi: float, step: float, major: float | None = Non
 
 def plot_ecg_array(signal: np.ndarray, output_dir: str | Path, stem: str) -> Path:
     """Grafica las 12 derivaciones con estilo de papel milimetrado ECG."""
-    from matplotlib.ticker import MultipleLocator
-
     signal = np.asarray(signal, dtype=np.float32)
     if signal.shape != (load.WINDOW_LENGTH, load.NUM_LEADS):
         raise ValueError(f"Shape inválida para gráfico ECG: {signal.shape}")
@@ -392,6 +448,13 @@ def plot_ecg_array(signal: np.ndarray, output_dir: str | Path, stem: str) -> Pat
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     t = np.arange(signal.shape[0]) / load.TARGET_FS
+
+    with _PLOT_LOCK:
+        return _plot_ecg_figure(signal, t, stem, output_dir)
+
+
+def _plot_ecg_figure(signal: np.ndarray, t: np.ndarray, stem: str, output_dir: Path) -> Path:
+    from matplotlib.ticker import MultipleLocator
 
     fig, axes = plt.subplots(6, 2, figsize=(16, 11.5), sharex=True)
     fig.patch.set_facecolor("#fffafa")
@@ -552,6 +615,11 @@ def apply_normal_fallback(
 
 def _infer_windows(model, windows: np.ndarray, device) -> tuple[np.ndarray, np.ndarray, str]:
     """Inferencia por ventanas; devuelve (probabilidades, por_ventana, agregación)."""
+    with _INFERENCE_SLOTS:
+        return _infer_windows_unlocked(model, windows, device)
+
+
+def _infer_windows_unlocked(model, windows: np.ndarray, device) -> tuple[np.ndarray, np.ndarray, str]:
     if windows.shape[0] == 1:
         probabilities = predict_array(model, windows[0], device=device)
         return probabilities, probabilities[None, :], "single"
@@ -584,7 +652,7 @@ def run_prediction_from_saved_paths(
 
     import torch
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model, checkpoint, class_names = load_model(resolved_model, device=device)
+    model, checkpoint, class_names = get_cached_model(resolved_model, device)
     pre = preprocessing_for_checkpoint(checkpoint)
     ckpt_schema = checkpoint.get("label_schema")
     prepared = prepare_saved_input(saved_paths, result_dir, norm_mode=pre["norm_mode"], bandpass=pre["bandpass"])
@@ -604,7 +672,7 @@ def run_prediction_from_saved_paths(
     if is_ensemble:
         from examples.cinc2020.ensemble_evaluate import ensemble_probabilities
         resolved_model_b = resolve_model_path(model_path=model_path_b, saved_dir=saved_dir)
-        _model_b, _checkpoint_b, class_names_b = load_model(resolved_model_b, device=device)
+        _model_b, _checkpoint_b, class_names_b = get_cached_model(resolved_model_b, device)
         if list(class_names_b) != list(class_names):
             raise ValueError("Los checkpoints del ensemble usan distinto orden de clases.")
         probabilities_b, per_window_b, _ = _infer_windows(_model_b, windows, device)
@@ -759,23 +827,28 @@ def run_prediction_from_uploads(
     job_id = uuid.uuid4().hex[:12]
     upload_dir = Path(upload_root) / job_id
     result_dir = Path(results_root) / job_id
-    saved_paths = save_uploaded_files(file_storages, upload_dir)
-    result = run_prediction_from_saved_paths(
-        saved_paths=saved_paths,
-        model_path=model_path,
-        saved_dir=saved_dir,
-        result_dir=result_dir,
-        threshold=threshold,
-        reference_labels=reference_labels,
-        thresholds=thresholds,
-        threshold_source=threshold_source,
-        temperatures=temperatures,
-        temperature_source=temperature_source,
-        normal_fallback_min_prob=normal_fallback_min_prob,
-        model_path_b=model_path_b,
-        temperatures_b=temperatures_b,
-        temperature_source_b=temperature_source_b,
-        alpha=alpha,
-    )
+    try:
+        saved_paths = save_uploaded_files(file_storages, upload_dir)
+        result = run_prediction_from_saved_paths(
+            saved_paths=saved_paths,
+            model_path=model_path,
+            saved_dir=saved_dir,
+            result_dir=result_dir,
+            threshold=threshold,
+            reference_labels=reference_labels,
+            thresholds=thresholds,
+            threshold_source=threshold_source,
+            temperatures=temperatures,
+            temperature_source=temperature_source,
+            normal_fallback_min_prob=normal_fallback_min_prob,
+            model_path_b=model_path_b,
+            temperatures_b=temperatures_b,
+            temperature_source_b=temperature_source_b,
+            alpha=alpha,
+        )
+    finally:
+        # El ECG subido no se conserva: solo quedan los informes generados (que caducan).
+        if os.environ.get("ECG_KEEP_UPLOADS") != "1":
+            shutil.rmtree(upload_dir, ignore_errors=True)
     result["job_id"] = job_id
     return result

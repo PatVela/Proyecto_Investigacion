@@ -76,7 +76,15 @@
         <input type="file" id="file" name="files" accept=".csv,.hea,.mat,text/csv" multiple>
       </div>
 
+      <div id="exampleBox" class="example-box" hidden>
+        <label for="exampleSelect"><span data-i18n="examples.title">¿No tienes un ECG? Prueba con un ejemplo</span>
+          <select id="exampleSelect" name="example"></select></label>
+        <p class="hint muted" data-i18n="examples.attribution">Registros del PhysioNet/CinC Challenge 2020 (CC BY 4.0). Perez Alday et al., 2022, doi:10.13026/dvyd-kd57.</p>
+      </div>
+
       <div id="fileCard" class="file-card" hidden></div>
+
+      <p class="hint privacy-note" id="privacyNote" data-i18n="upload.privacy">Demostración académica, no es un dispositivo médico. No suba datos de pacientes reales: los archivos subidos se borran al terminar el análisis y los informes generados se eliminan del servidor en 1 hora. Máximo 5 MB por solicitud.</p>
 
       <p class="hint muted">
         <span data-i18n="upload.formats">Formatos:</span> <strong>CSV 12 derivaciones</strong> o <strong>.hea + .mat</strong>.
