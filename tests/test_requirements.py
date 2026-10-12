@@ -61,8 +61,8 @@ def test_every_third_party_import_is_declared():
 
 
 def test_scripts_launching_waitress_find_it_declared():
-    uses = [p for p in (REPO_ROOT / "webapp").glob("*.sh") if "-m waitress" in p.read_text(encoding="utf-8")]
-    assert uses, "se esperaba que run_*.sh usen waitress"
+    launcher = REPO_ROOT / "deploy" / "start_local.ps1"
+    assert "waitress" in launcher.read_text(encoding="utf-8"), "se esperaba que el lanzador use waitress"
     assert "waitress" in _declared()
 
 

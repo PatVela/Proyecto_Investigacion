@@ -86,7 +86,7 @@ Aplicación Flask tipo dashboard: se sube un ECG, se analiza con el ensemble de 
 ### Prerrequisitos
 
 * Instalación base del proyecto (ver [README principal](../README.md#instalación)).
-* Para desarrollo: al menos un checkpoint entrenado (`best.pt`) dentro de `saved/`. Para servir el bundle versionado basta `requirements.txt` (ver [Despliegue](#despliegue-sin-depender-de-localhost)).
+* Para desarrollo: al menos un checkpoint entrenado (`best.pt`) dentro de `saved/`. Para servir el bundle versionado basta `requirements.txt` (ver [Ejecución local](#ejecución-local-en-windows-11-sin-nube-ni-servidor)).
 
 ### Ejecución
 
@@ -190,20 +190,51 @@ Ejecute el pipeline de evaluación y experimentos (ver [examples/cinc2020/README
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
-## Despliegue (sin depender de localhost)
+## Ejecución local en Windows 11 (sin nube ni servidor)
 
-La app puede servirse desde cualquier equipo que tenga Python, **sin** las carpetas locales `saved/`, `runs/`
-ni `data/`: todo lo que necesita está versionado en `models/`, `deploy/` y `webapp/examples/`.
+La demo corre en la propia PC del autor; no hay servidor ni nube. Funciona **sin** las carpetas locales `saved/`,
+`runs/` ni `data/`: todo lo que necesita está versionado en `models/`, `deploy/` y `webapp/examples/`.
 
-```bash
+```powershell
 pip install -r requirements.txt
-bash deploy/start.sh                 # waitress en 0.0.0.0:5002 (PORT, HOST y WAITRESS_THREADS opcionales)
+powershell -ExecutionPolicy Bypass -File deploy\start_local.ps1
 python tools/smoke_deployment.py http://127.0.0.1:5002 --expect-ensemble   # 19 comprobaciones por HTTP
 ```
 
-`Procfile` contiene el mismo comando para hosts que lo leen. `deploy/ensemble.env` define el ensemble final
-(rutas relativas a la raíz del repositorio); `ECG_ENV_FILE` elige otro archivo y vacío no carga ninguno. Las variables
-ya definidas en el entorno tienen prioridad sobre el archivo.
+Abra http://127.0.0.1:5002. `deploy/ensemble.env` define el ensemble final (rutas relativas a la raíz del repositorio);
+`ECG_ENV_FILE` elige otro archivo y vacío no carga ninguno. Las variables ya definidas en el entorno tienen prioridad.
+En Linux o macOS el equivalente es `python -m waitress --host=127.0.0.1 --port=5002 --threads=4 webapp.wsgi:app`.
+
+### Quién puede conectarse
+
+| Modo | Comando | Quién accede |
+|---|---|---|
+| Solo esta PC (por defecto) | `deploy\start_local.ps1` | Únicamente `127.0.0.1`; verificado: la IP de la red local no responde |
+| Red local | `deploy\start_local.ps1 -Lan` | Teléfonos y otras PCs de la misma red (`http://<IP de la PC>:5002`). Windows pide permiso al Firewall: permitir solo redes privadas |
+| Internet, temporal | `deploy\start_local.ps1 -Tunnel` | Quien reciba la URL `https://….trycloudflare.com` que muestra el script; cambia en cada ejecución y deja de existir al cerrarlo. Requiere `winget install --id Cloudflare.cloudflared` (sin cuenta). Activa `ECG_TRUST_PROXY=1` y obliga a escuchar solo en `127.0.0.1` |
+
+Otras opciones: `-Port`, `-Threads` y `-UseGpu`. El modo túnel no está probado de extremo a extremo en esta PC porque
+`cloudflared` no está instalado; sí están probados el rechazo cuando falta y la incompatibilidad con `-Lan`.
+
+Por defecto se sirve **en CPU** (`ECG_DEVICE=cpu`): la inferencia tarda 44 ms en CPU y 9 ms en GPU por modelo, pero la
+petición completa tarda ≈ 2,4 s porque casi todo es el PDF y los gráficos; medido con la GPU, la petición es igual de
+lenta y gasta 280 MB más de RAM. Así la GPU queda libre para entrenar.
+
+### Uso bajo demanda
+
+El servidor se inicia cuando se necesita (`deploy\start_local.ps1`) y se detiene con **Ctrl+C** o cerrando su ventana;
+no hay arranque automático. Si lo va a dejar corriendo varias horas, evite que la PC se suspenda (el plan Equilibrado
+suspende a las 3 h con corriente y a los 3 min con batería; estas órdenes las ejecuta usted, el repositorio no cambia la
+configuración de energía):
+
+```powershell
+powercfg /change standby-timeout-ac 0
+powercfg /change hibernate-timeout-ac 0
+powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0
+powercfg /setactive SCHEME_CURRENT
+```
+
+La pantalla puede apagarse; la última orden hace que cerrar la tapa no suspenda con corriente (conserve el cargador conectado).
 
 ### Qué contiene el bundle y cómo regenerarlo
 
@@ -232,16 +263,17 @@ python tools/build_examples.py --predictions runs/eval/ensemble-f1/predictions_t
 | `ECG_REFERENCE` | — | Referencia opcional que se muestra en la interfaz |
 | `ECG_MAX_UPLOAD_MB` | 5 | Tamaño máximo por solicitud (413 en JSON) |
 | `ECG_RATE_LIMIT_MAX` / `ECG_RATE_LIMIT_WINDOW` | 20 / 60 s | Solicitudes de `/predict` por IP (429 + `Retry-After`; `0` desactiva) |
-| `ECG_TRUST_PROXY` | 0 | Nº de proxies de confianza delante: usa `X-Forwarded-For` para identificar al cliente |
+| `ECG_TRUST_PROXY` | 0 | Nº de proxies de confianza delante (un túnel cuenta como 1): usa `X-Forwarded-For` para identificar al cliente. Sin él, todos los visitantes de un túnel comparten un único límite. Solo es seguro si la app escucha en `127.0.0.1` |
+| `ECG_DEVICE` | auto | `cpu`, `cuda` o `auto` (GPU si existe). `cuda` sin GPU impide arrancar. `deploy\start_local.ps1` usa `cpu` salvo `-UseGpu` |
 | `ECG_RESULT_TTL_SECONDS` | 3600 | Vida de los informes generados (`0` = no borrar) |
 | `ECG_KEEP_UPLOADS` | — | `1` conserva los ECG subidos (por defecto se borran al terminar) |
 | `ECG_MAX_CONCURRENT_INFERENCE`, `ECG_MODEL_CACHE_SIZE` | 2, 4 | Inferencias simultáneas y modelos en memoria |
 | `ECG_DEBUG_ERRORS` | — | `1` devuelve el detalle de los fallos internos (por defecto solo queda en el registro) |
 | `ECG_DEV_HELP` | — | `1` muestra en la interfaz los comandos de evaluación cuando faltan métricas (útil en desarrollo); en una instancia pública se oculta |
 
-Rendimiento medido en CPU (sin GPU): primera petición ≈ 3,9 s, después ≈ 2,5 s; memoria máxima ≈ 1,0 GB. Cinco
-solicitudes simultáneas se atienden en cola (el trazado ECG es serial por limitaciones de matplotlib). Elija un host
-con **al menos 2 GB de RAM**.
+Rendimiento medido en esta PC (i5-11400H, 24 GB de RAM, solo CPU): primera petición ≈ 4,0 s, después ≈ 2,4 s; memoria
+≈ 0,9 GB. Cinco solicitudes simultáneas tardan ≈ 10,7 s en total porque se atienden en cola (el trazado ECG es serial por
+limitaciones de matplotlib): suficiente para una demostración. Cualquier equipo con **2 GB de RAM libres** alcanza.
 
 ### Privacidad
 
@@ -261,7 +293,6 @@ webapp/
 ├── report_pdf.py     # informe PDF profesional
 ├── project_info.py   # datos institucionales y referencia bibliográfica
 ├── wsgi.py           # entrada WSGI para despliegue (carga deploy/ensemble.env)
-├── run_https.sh / run_public.sh   # HTTPS con certificado propio / túnel público (no forman parte del despliegue probado)
 ├── templates/index.html
 └── static/           # app.js (dashboard + i18n ES/EN), style.css (temas + UNSA), plotly.min.js (carga diferida)
 ```

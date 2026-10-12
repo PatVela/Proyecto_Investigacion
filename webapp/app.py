@@ -29,7 +29,7 @@ from ecg import load, util
 from webapp import examples as example_store
 from webapp import project_info as proj
 from webapp.limits import SlidingWindowLimiter, cleanup_old_jobs, int_env
-from webapp.prediction import clean_path_text, resolve_existing_path, resolve_model_path, run_prediction_from_uploads
+from webapp.prediction import clean_path_text, resolve_existing_path, resolve_model_path, run_prediction_from_uploads, serving_device
 from webapp.report_pdf import build_pdf_report
 
 
@@ -466,7 +466,8 @@ def create_app() -> Flask:
     max_upload_mb = max(1, int_env("ECG_MAX_UPLOAD_MB", 5))      # un ECG de 10 s pesa < 1 MB
     app.config["MAX_CONTENT_LENGTH"] = max_upload_mb * 1024 * 1024
     app.config["ECG_MAX_UPLOAD_MB"] = max_upload_mb
-    trusted_proxies = int_env("ECG_TRUST_PROXY", 0)               # nº de proxies de confianza delante (HF, Cloud Run, nginx)
+    serving_device()                                              # falla al arrancar si ECG_DEVICE es inválido
+    trusted_proxies = int_env("ECG_TRUST_PROXY", 0)               # nº de proxies de confianza delante (p. ej. un túnel)
     if trusted_proxies > 0:
         from werkzeug.middleware.proxy_fix import ProxyFix
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=trusted_proxies, x_proto=1, x_host=1)

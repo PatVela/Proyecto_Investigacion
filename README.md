@@ -65,7 +65,7 @@
     <li><a href="#estructura-del-proyecto">Estructura del proyecto</a></li>
     <li><a href="#aplicación-web">Aplicación web</a></li>
     <li><a href="#experimentos">Experimentos</a></li>
-    <li><a href="#pruebas-y-despliegue">Pruebas y despliegue</a></li>
+    <li><a href="#pruebas-y-ejecución-local">Pruebas y ejecución local</a></li>
     <li><a href="#diferencias-frente-a-hannun-et-al">Diferencias frente a Hannun et al.</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#licencia">Licencia</a></li>
@@ -297,17 +297,15 @@ python webapp/app.py --saved saved --eval-dir runs/eval/ensemble-f1 --exp-dir ru
 
 Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`.
 
-### Paso 10 — ONNX y Docker (opcionales)
+### Paso 10 — ONNX (opcional)
 
 ```powershell
 python examples/cinc2020/export_onnx.py --checkpoint $mejor --output runs/models/resnet12.onnx
-docker build -t ecg-cinc2020 .
-docker run --rm -p 5002:5002 -v ./saved:/app/saved:ro ecg-cinc2020
 ```
 
-El `Dockerfile` actual arranca el servidor de desarrollo y espera `saved/` montada. Para servir sin `saved/` ni `runs/` use el bundle versionado (`bash deploy/start.sh`, ver [Aplicación web](#aplicación-web)); adaptar la imagen a ese bundle es la tarea T7 de `tasks/todo.md`.
+Para servir la demo sin `saved/` ni `runs/` use el bundle versionado (`deploy\start_local.ps1`, ver [Aplicación web](#aplicación-web)).
 
-En Linux/bash los comandos `python`, `pytest`, `bash` y `docker` son idénticos; solo cambia cómo se definen las variables (usar `$resnet`, `$mejor`, etc. dentro de los comandos funciona igual):
+En Linux/bash los comandos `python`, `pytest` y `bash` son idénticos; solo cambia cómo se definen las variables (usar `$resnet`, `$mejor`, etc. dentro de los comandos funciona igual):
 
 ```bash
 resnet=$(ls -t saved/cinc2020/cinc2020_resnet/*/best.pt | head -1)
@@ -394,14 +392,13 @@ Notas:
 │   ├── examples/           # 7 registros de test (CC BY 4.0)
 │   ├── project_info.py     # datos institucionales
 │   └── templates/ + static/
-├── models/ + deploy/       # bundle de inferencia versionado (pesos, umbrales, métricas, arranque)
+├── models/ + deploy/       # bundle de inferencia versionado (pesos, umbrales, métricas) y scripts de Windows para ejecutarlo
 ├── tests/                  # suite pytest
 ├── docs/                   # informe técnico y guías de experimentos
 ├── tasks/                  # plan y tareas del despliegue público
 ├── images/                 # logo y capturas para documentación
 ├── runs/ saved/ data/      # producto generado (git-ignored)
 ├── requirements.txt / requirements-cuda.txt / requirements-dev.txt
-├── Dockerfile / Procfile
 ├── descargar_datos_2020.sh / setup.sh   # descarga de datos / instalación rápida con verificación de CUDA
 ├── CLAUDE.md / CONTEXT.md  # contrato del repo y definición del pipeline (ICM)
 └── README.md
@@ -416,10 +413,10 @@ Dashboard Flask en español/inglés: carga CSV o par WFDB `.hea + .mat`, predicc
 
 ```sh
 python webapp/app.py --saved saved        # desarrollo: usa los checkpoints de saved/
-bash deploy/start.sh                      # producción: waitress + bundle versionado (models/, deploy/), sin saved/ ni runs/
+powershell -ExecutionPolicy Bypass -File deploy\start_local.ps1   # demo en esta PC (Windows 11): waitress + bundle, sin saved/ ni runs/
 ```
 
-El bundle (pesos de inferencia de 19 MB por modelo, umbrales, métricas y siete ECG de ejemplo) permite servir la demo desde cualquier equipo con Python; requiere ≥ 2 GB de RAM. Detalles, formatos, variables de entorno y endpoints en [webapp/README.md](webapp/README.md); estado del despliegue público en [tasks/todo.md](tasks/todo.md).
+La demo corre en la propia PC, sin servidor ni nube. El bundle (pesos de inferencia de 19 MB por modelo, umbrales, métricas y siete ECG de ejemplo) la hace independiente de las carpetas locales; sirve en CPU (≈2,4 s por análisis, ≈0,9 GB de RAM). Por defecto solo es accesible desde la misma PC; la red local y un túnel temporal son opcionales. Detalles, arranque automático, variables de entorno y endpoints en [webapp/README.md](webapp/README.md); tareas pendientes en [tasks/todo.md](tasks/todo.md).
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
@@ -441,7 +438,7 @@ Los resultados se visualizan automáticamente en la webapp. Comandos en [example
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
 <!-- TESTING -->
-## Pruebas y despliegue
+## Pruebas y ejecución local
 
 ```sh
 pytest tests/ -q
@@ -451,12 +448,7 @@ pytest tests/ -q
 python tools/smoke_deployment.py http://127.0.0.1:5002 --expect-ensemble   # con la app en marcha: 19 comprobaciones por HTTP
 ```
 
-```sh
-docker build -t ecg-cinc2020 .
-docker run --rm -p 5002:5002 -v ./saved:/app/saved:ro ecg-cinc2020
-```
-
-Monte su carpeta local `saved/` con el checkpoint entrenado (la imagen todavía no usa el bundle; ver el Paso 10).
+Los tests de los scripts de Windows (`deploy/*.ps1`) se omiten en otros sistemas operativos.
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
@@ -486,10 +478,10 @@ Monte su carpeta local `saved/` con el checkpoint entrenado (la imagen todavía 
 - [x] Análisis de errores por subconjunto de origen (sesgo por hospital)
 - [x] Exportación a ONNX verificada numéricamente contra PyTorch
 - [x] Historial de análisis por sesión en la webapp
-- [x] Suite de tests automatizados + Dockerfile CPU
+- [x] Suite de tests automatizados
 - [x] Revisión de seguridad de la webapp (carga de checkpoints, subidas, rutas) y de la interfaz (accesibilidad, contraste, carga)
-- [x] Bundle de inferencia + configuración por entorno + waitress: la webapp corre sin `saved/` ni `runs/`
-- [ ] Publicar la demo en un host y citarla en el artículo (ver [tasks/todo.md](tasks/todo.md))
+- [x] Bundle de inferencia + configuración por entorno + waitress: la webapp corre sin `saved/` ni `runs/`, en esta PC con Windows 11 (CPU, solo accesible localmente por defecto)
+- [ ] Probar la demo en uso real desde otro dispositivo de la red local (ver [tasks/todo.md](tasks/todo.md))
 - [ ] Entrenamiento distribuido multi-GPU
 - [x] Script de búsqueda de hiperparámetros con Optuna (`tune_optuna.py`)
 - [ ] Tracking de experimentos con MLflow

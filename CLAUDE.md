@@ -12,8 +12,8 @@ Réplica académica de Hannun et al. (Nat Med 2019): clasificador multilabel de 
 | `tools/` | Chequeos y descarga de datos CINC2020, bundle de despliegue, prueba de humo | `tools/CONTEXT.md` |
 | `tests/` | Suite pytest | `tests/CONTEXT.md` |
 | `docs/` | Informe técnico, experimentos, resultados, fix histórico | `docs/CONTEXT.md` |
-| `models/`, `deploy/` | **Versionados.** Bundle de inferencia (pesos `models/*.pt`, `deploy/ensemble.env`, umbrales, métricas) con el que la webapp corre sin `saved/` ni `runs/`. Se regenera con `tools/export_inference_bundle.py`; no editar a mano | `webapp/README.md` (Despliegue) |
-| `tasks/` | Plan y lista de tareas del despliegue público (`plan.md`, `todo.md`) | — |
+| `models/`, `deploy/` | **Versionados.** Bundle de inferencia (pesos `models/*.pt`, `deploy/ensemble.env`, umbrales, métricas, lanzador de Windows `deploy/start_local.ps1`) con el que la webapp corre sin `saved/` ni `runs/`. Se regenera con `tools/export_inference_bundle.py`; no editar a mano | `webapp/README.md` (Despliegue) |
+| `tasks/` | Plan y lista de tareas para ejecutar la demo en esta PC (`plan.md`, `todo.md`) | — |
 
 La definición del pipeline (etapas 01–08, entradas, salidas, chequeos humanos) está en `CONTEXT.md`.
 
@@ -35,7 +35,7 @@ Fuera de `runs/` (también ignorado): `data/` (HDF5), `dataset2017/`, `dataset20
 - Entrenar o cambiar el modelo → `CONTEXT.md` etapas 02–03, luego `ecg/CONTEXT.md`.
 - Evaluar / comparar / robustez / figuras → `CONTEXT.md` etapas 04–07.
 - Cambiar etiquetas o preprocesamiento → `ecg/CONTEXT.md` (sección "qué toca un cambio"); afecta checkpoints ya entrenados.
-- Demo web → `webapp/CONTEXT.md`. Desplegarla sin localhost → `webapp/README.md` (Despliegue) y `tasks/todo.md`. Resultados citables → `docs/resultados_finales.md`.
+- Demo web → `webapp/CONTEXT.md`. Ejecutarla en esta PC (Windows 11) → `webapp/README.md` (Ejecución local) y `tasks/todo.md`. Resultados citables → `docs/resultados_finales.md`.
 
 ## Reglas
 
