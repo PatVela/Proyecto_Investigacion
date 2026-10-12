@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import re
 import sys
 
@@ -42,7 +43,14 @@ def load_official(path: Path) -> dict[str, str]:
 
 def scan_headers(data_dir: Path) -> tuple[int, int, Counter]:
     """Devuelve (n_hea, n_con_dx, contador código→n_registros)."""
-    hea_files: list[Path] = sorted(data_dir.rglob("*.hea")) + sorted(data_dir.rglob("*.HEA"))
+    # Un solo recorrido con filtro por sufijo: en Windows/macOS rglob("*.hea") ya
+    # es insensible a mayúsculas y listar también "*.HEA" duplicaba cada archivo.
+    hea_files: list[Path] = sorted(
+        Path(root) / name
+        for root, _dirs, names in os.walk(data_dir)
+        for name in names
+        if name.lower().endswith(".hea")
+    )
     counter: Counter = Counter()
     n_with_dx = 0
     for hea in hea_files:
