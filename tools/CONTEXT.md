@@ -12,4 +12,4 @@
 | `build_examples.py` | Elige 7 registros del test (seed 0) y los copia a `webapp/examples/` con las probabilidades de referencia | `tests/test_examples.py` |
 | `smoke_deployment.py` | 19 comprobaciones por HTTP contra una URL (solo stdlib): `python tools/smoke_deployment.py URL --expect-ensemble` | `tests/test_deploy_*.py` |
 
-Complementa a `descargar_datos_2020.sh` (raíz). Chequeo humano: revisar el reporte de faltantes antes de construir los HDF5 (etapa 01); tras regenerar el bundle, correr `smoke_deployment.py` contra `deploy/start.sh`.
+Complementa a `descargar_datos_2020.sh` (raíz). Chequeo humano: revisar el reporte de faltantes antes de construir los HDF5 (etapa 01); tras regenerar el bundle, correr `smoke_deployment.py` contra `deploy\start_local.ps1`.
