@@ -319,3 +319,8 @@ code.dim { opacity: .65; font-size: .78em; }
 
 /* Clase con tooltip de códigos */
 .prob-name { cursor: help; }
+
+.privacy-note { border-left: 3px solid #b45309; background: var(--code-bg); border-radius: 6px; padding: .45rem .75rem; }
+.example-box { margin: .9rem 0; }
+.example-box label { display: block; font-weight: 600; }
+.example-box select { display: block; width: 100%; margin-top: .35rem; padding: .55rem .7rem; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: inherit; font: inherit; }

@@ -187,6 +187,64 @@ Ejecute el pipeline de evaluación y experimentos (ver [examples/cinc2020/README
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
+## Despliegue (sin depender de localhost)
+
+La app puede servirse desde cualquier equipo que tenga Python, **sin** las carpetas locales `saved/`, `runs/`
+ni `data/`: todo lo que necesita está versionado en `models/`, `deploy/` y `webapp/examples/`.
+
+```bash
+pip install -r requirements.txt
+bash deploy/start.sh                 # waitress en 0.0.0.0:5002 (PORT, HOST y WAITRESS_THREADS opcionales)
+python tools/smoke_deployment.py http://127.0.0.1:5002 --expect-ensemble   # 19 comprobaciones por HTTP
+```
+
+`Procfile` contiene el mismo comando para hosts que lo leen. `deploy/ensemble.env` define el ensemble final
+(rutas relativas a la raíz del repositorio); `ECG_ENV_FILE` elige otro archivo y vacío no carga ninguno. Las variables
+ya definidas en el entorno tienen prioridad sobre el archivo.
+
+### Qué contiene el bundle y cómo regenerarlo
+
+| Ruta | Contenido |
+|---|---|
+| `models/*.pt` | Pesos de inferencia (≈19 MB c/u, sin estado del optimizador); cargan con `weights_only=True` |
+| `deploy/manifest.json` | SHA-256, época y `val_loss` de cada modelo, alpha, versión de torch |
+| `deploy/results/<eval>/`, `deploy/reports/` | Métricas, curvas ROC/PR, umbrales, comparación y robustez (sin rutas locales) |
+| `webapp/examples/` | Siete registros de test (CC BY 4.0; ver su `README.md`) |
+
+```bash
+python tools/export_inference_bundle.py --checkpoint-a <best.pt v1> --checkpoint-b <best.pt v2>   --eval-dir runs/eval/ensemble-f1 --temperatures-a runs/eval/eval-resnet/temperatures_validation.csv   --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv --reports-dir runs/reports
+python tools/build_examples.py --predictions runs/eval/ensemble-f1/predictions_test.csv --dataset dataset2020
+```
+
+### Variables de entorno
+
+| Variable | Defecto | Efecto |
+|---|---|---|
+| `ECG_MODEL`, `ECG_MODEL_B`, `ECG_ALPHA` | del `.env` | Modelos del ensemble y peso del A. Una ruta inexistente **impide arrancar** (no se sustituye por otro modelo) |
+| `ECG_TEMPERATURES`, `ECG_TEMPERATURES_B`, `ECG_THRESHOLDS`, `ECG_EVAL_DIR`, `ECG_EXP_DIR` | del `.env` | Calibración, umbrales y resultados que muestra la interfaz |
+| `ECG_SAVED` | `saved/` (el bundle usa `models/`) | Carpeta de checkpoints; `/use_model` solo acepta archivos de aquí |
+| `ECG_UPLOADS`, `ECG_RESULTS` | `webapp/uploads`, `webapp/results` | Carpetas temporales de subidas e informes |
+| `ECG_EXAMPLES_DIR` | `webapp/examples` | Registros de ejemplo y su `examples.json` |
+| `ECG_NORMAL_FALLBACK_MIN_PROB` | 0.40 | Si ninguna clase supera su umbral, añade NSR cuando P(NSR) ≥ este valor (`0` desactiva) |
+| `ECG_REFERENCE` | — | Referencia opcional que se muestra en la interfaz |
+| `ECG_MAX_UPLOAD_MB` | 5 | Tamaño máximo por solicitud (413 en JSON) |
+| `ECG_RATE_LIMIT_MAX` / `ECG_RATE_LIMIT_WINDOW` | 20 / 60 s | Solicitudes de `/predict` por IP (429 + `Retry-After`; `0` desactiva) |
+| `ECG_TRUST_PROXY` | 0 | Nº de proxies de confianza delante: usa `X-Forwarded-For` para identificar al cliente |
+| `ECG_RESULT_TTL_SECONDS` | 3600 | Vida de los informes generados (`0` = no borrar) |
+| `ECG_KEEP_UPLOADS` | — | `1` conserva los ECG subidos (por defecto se borran al terminar) |
+| `ECG_MAX_CONCURRENT_INFERENCE`, `ECG_MODEL_CACHE_SIZE` | 2, 4 | Inferencias simultáneas y modelos en memoria |
+| `ECG_DEBUG_ERRORS` | — | `1` devuelve el detalle de los fallos internos (por defecto solo queda en el registro) |
+
+Rendimiento medido en CPU (sin GPU): primera petición ≈ 3,9 s, después ≈ 2,5 s; memoria máxima ≈ 1,0 GB. Cinco
+solicitudes simultáneas se atienden en cola (el trazado ECG es serial por limitaciones de matplotlib). Elija un host
+con **al menos 2 GB de RAM**.
+
+### Privacidad
+
+Es una demostración académica: la interfaz pide no subir datos de pacientes reales, el ECG subido se borra al terminar
+el análisis (también si falla) y los informes caducan a la hora. Los siete ejemplos incluidos permiten probar la app
+sin datos propios.
+
 ## Estructura
 
 ```text
