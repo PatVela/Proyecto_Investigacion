@@ -201,9 +201,7 @@ def _candidate_result_dirs() -> list[Path]:
         p = Path(extra)
         dirs.append(p if p.is_absolute() else REPO_ROOT / p)
     return dirs + [
-        REPO_ROOT / "results" / "cinc2020_12_resnet",
-        REPO_ROOT / "results" / "cinc2020_12",
-        REPO_ROOT / "results" / "cinc2020_12_eval",
+        REPO_ROOT / "runs" / "eval" / "cinc2020_12",
     ]
 
 
@@ -230,11 +228,6 @@ def _load_thresholds_for_app(model_path: str | None, saved_dir: str | None) -> t
 
     for folder in _candidate_result_dirs():
         candidates.append(folder / "thresholds_validation.csv")
-
-    # Último respaldo robusto: buscar en cualquier subcarpeta de results/.
-    results_root = REPO_ROOT / "results"
-    if results_root.exists():
-        candidates.extend(sorted(results_root.rglob("thresholds_validation.csv"), key=lambda p: p.stat().st_mtime, reverse=True))
 
     seen = set()
     for path in candidates:
@@ -280,10 +273,6 @@ def _load_temperatures_for_app(model_path: str | None, saved_dir: str | None, en
 
     for folder in _candidate_result_dirs():
         candidates.append(folder / "temperatures_validation.csv")
-
-    results_root = REPO_ROOT / "results"
-    if results_root.exists():
-        candidates.extend(sorted(results_root.rglob("temperatures_validation.csv"), key=lambda p: p.stat().st_mtime, reverse=True))
 
     seen = set()
     for path in candidates:
@@ -372,7 +361,7 @@ def _load_experiment_results() -> dict:
     if extra:
         p = Path(extra)
         roots.append(p if p.is_absolute() else REPO_ROOT / p)
-    roots.append(REPO_ROOT / "results" / "cinc2020_12")
+    roots.append(REPO_ROOT / "runs" / "reports")
     comparison: list = []
     comparison_root = roots[-1]
     for root in roots:
@@ -380,10 +369,7 @@ def _load_experiment_results() -> dict:
         if comparison:
             comparison_root = root
             break
-    robustness_paths = [r / "robustness.csv" for r in roots] + [
-        REPO_ROOT / "results" / "cinc2020_12_resnet" / "robustness.csv",
-
-    ]
+    robustness_paths = [r / "robustness.csv" for r in roots]
     robustness = []
     robustness_path = ""
     for path in robustness_paths:
