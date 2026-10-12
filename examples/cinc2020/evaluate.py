@@ -319,7 +319,7 @@ def main():
     parser = argparse.ArgumentParser(description="Evalúa un checkpoint CINC2020-12")
     parser.add_argument("config", help="JSON de configuración")
     parser.add_argument("checkpoint", nargs="?", default=None, help="Checkpoint .pt; si se omite busca best.pt en save_dir")
-    parser.add_argument("--output-dir", default="results/cinc2020_12")
+    parser.add_argument("--output-dir", default="runs/eval/cinc2020_12")
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--num-workers", type=int, default=None)
     parser.add_argument("--device", choices=["auto", "cuda", "cpu"], default="auto")

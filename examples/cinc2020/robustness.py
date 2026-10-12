@@ -99,7 +99,7 @@ def main():
     parser.add_argument("test_h5", default="data/cinc2020_12/test.h5")
     parser.add_argument("--thresholds", default=None, help="thresholds_validation.csv; si se omite usa 0.5")
     parser.add_argument("--temperatures", default=None, help="temperatures_validation.csv de calibrate.py; sin este flag las probs no se calibran")
-    parser.add_argument("--output", default="results/cinc2020_12/robustness.csv")
+    parser.add_argument("--output", default="runs/reports/robustness.csv")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--num-workers", type=int, default=0,
                         help="Workers del DataLoader (0 = recomendado con preload en RAM)")
