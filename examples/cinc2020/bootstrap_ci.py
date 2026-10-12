@@ -8,7 +8,7 @@ Con ``--predictions-baseline`` alinea ambos CSV por ``record_name`` y estima el
 IC de la diferencia pareada (mismos remuestreos) + P(diff > 0).
 
 Uso:
-    python examples/cinc2020/bootstrap_ci.py --predictions <eval>/predictions_test.csv --output bootstrap_ci.json
+    python examples/cinc2020/bootstrap_ci.py --predictions <eval>/predictions_test.csv --output runs/reports/bootstrap_ci.json
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="IC bootstrap de F1-macro y diferencia pareada.")
     parser.add_argument("--predictions", required=True, help="predictions_test.csv del modelo")
     parser.add_argument("--predictions-baseline", default=None, help="predictions_test.csv del baseline")
-    parser.add_argument("--output", default="bootstrap_ci.json")
+    parser.add_argument("--output", default="runs/reports/bootstrap_ci.json")
     parser.add_argument("--n-bootstrap", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
@@ -107,6 +107,7 @@ def main() -> None:
               f"P(diff>0)={float((diff > 0).mean()):.3f}")
 
     out = Path(args.output)
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Guardado en: {out}")
 
