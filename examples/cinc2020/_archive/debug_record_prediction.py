@@ -13,7 +13,7 @@ python examples/cinc2020/_archive/debug_record_prediction.py \
   --record E00001 \
   --hea dataset2020/training/georgia/g1/E00001.hea \
   --mat dataset2020/training/georgia/g1/E00001.mat \
-  --thresholds results/cinc2020_12_resnet/thresholds_validation.csv \
+  --thresholds runs/eval/eval-resnet/thresholds_validation.csv \
   --normal-fallback-min-prob 0.40
 """
 

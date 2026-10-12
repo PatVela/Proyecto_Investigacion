@@ -36,7 +36,7 @@ def main():
     parser.add_argument("--eval-b", required=True, help="Directorio de resultados de la evaluación B")
     parser.add_argument("--label-a", default=None, help="Etiqueta de A (por defecto, el nombre del directorio)")
     parser.add_argument("--label-b", default=None, help="Etiqueta de B (por defecto, el nombre del directorio)")
-    parser.add_argument("--output", default="results/cinc2020_12/model_comparison.csv")
+    parser.add_argument("--output", default="runs/reports/model_comparison.csv")
     args = parser.parse_args()
 
     rows = [
