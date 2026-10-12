@@ -25,6 +25,7 @@ from werkzeug.utils import secure_filename
 
 from ecg import load, util
 from webapp import project_info as proj
+from webapp.limits import SlidingWindowLimiter, cleanup_old_jobs, int_env
 from webapp.prediction import clean_path_text, resolve_existing_path, resolve_model_path, run_prediction_from_uploads
 from webapp.report_pdf import build_pdf_report
 
@@ -458,7 +459,15 @@ def _load_curves(split: str = "test") -> dict:
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024
+    max_upload_mb = max(1, int_env("ECG_MAX_UPLOAD_MB", 5))      # un ECG de 10 s pesa < 1 MB
+    app.config["MAX_CONTENT_LENGTH"] = max_upload_mb * 1024 * 1024
+    app.config["ECG_MAX_UPLOAD_MB"] = max_upload_mb
+    trusted_proxies = int_env("ECG_TRUST_PROXY", 0)               # nº de proxies de confianza delante (HF, Cloud Run, nginx)
+    if trusted_proxies > 0:
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=trusted_proxies, x_proto=1, x_host=1)
+    limiter = SlidingWindowLimiter(int_env("ECG_RATE_LIMIT_MAX", 20), int_env("ECG_RATE_LIMIT_WINDOW", 60))
+    result_ttl = int_env("ECG_RESULT_TTL_SECONDS", 3600)          # 0 = no borrar
 
     app.config["ECG_MODEL"] = clean_path_text(os.environ.get("ECG_MODEL", ""))
     app.config["ECG_MODEL_B"] = clean_path_text(os.environ.get("ECG_MODEL_B", ""))
@@ -472,6 +481,29 @@ def create_app() -> Flask:
     app.config["ECG_REFERENCE"] = clean_path_text(os.environ.get("ECG_REFERENCE", ""))
     app.config["ECG_THRESHOLDS"] = clean_path_text(os.environ.get("ECG_THRESHOLDS", ""))
     app.config["ECG_NORMAL_FALLBACK_MIN_PROB"] = float(os.environ.get("ECG_NORMAL_FALLBACK_MIN_PROB", "0.40"))
+
+    def _purge_old_jobs() -> None:
+        for key in ("ECG_RESULTS_DIR", "ECG_UPLOADS_DIR"):
+            cleanup_old_jobs(app.config[key], result_ttl)
+
+    _purge_old_jobs()
+
+    @app.before_request
+    def rate_limit_predictions():
+        if request.method == "POST" and request.path == "/predict":
+            allowed, retry_after = limiter.check(request.remote_addr or "unknown")
+            if not allowed:
+                resp = jsonify({"ok": False, "status": "error",
+                                "error": f"Demasiadas solicitudes. Reintente en {int(retry_after) + 1} s."})
+                resp.status_code = 429
+                resp.headers["Retry-After"] = str(int(retry_after) + 1)
+                return resp
+            _purge_old_jobs()
+
+    @app.errorhandler(413)
+    def too_large(_error):
+        return jsonify({"ok": False, "status": "error",
+                        "error": f"El archivo supera el máximo de {max_upload_mb} MB."}), 413
 
     @app.after_request
     def add_security_headers(resp):

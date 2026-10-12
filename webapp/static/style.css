@@ -319,3 +319,5 @@ code.dim { opacity: .65; font-size: .78em; }
 
 /* Clase con tooltip de códigos */
 .prob-name { cursor: help; }
+
+.privacy-note { border-left: 3px solid #b45309; background: var(--code-bg); border-radius: 6px; padding: .45rem .75rem; }
