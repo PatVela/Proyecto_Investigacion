@@ -15,7 +15,7 @@ Plan y justificación: `tasks/plan.md`. Verificación base de cada tarea: `pytes
   - `deploy/ensemble.env` (o `deploy/README.md`) con las variables del ensemble final apuntando a `models/` y `deploy/`; `webapp.wsgi` arranca con solo esas variables.
   - Criterios: `waitress-serve webapp.wsgi:app` en un clon limpio (sin `saved/` ni `runs/`) responde `/health` con `ensemble=true`, umbrales y temperaturas encontrados.
   - Verificación: `tools/smoke_deployment.py URL` (nuevo; reutiliza la prueba de extremo a extremo hecha a mano) pasa contra `http://127.0.0.1:PORT`.
-  - Archivos: `deploy/`, `webapp/wsgi.py`, `tools/smoke_deployment.py`, `tests/test_smoke_script.py`.
+  - Archivos: `deploy/`, `webapp/wsgi.py`, `tools/smoke_deployment.py`, `tests/test_deploy_config.py`.
   - Depende de: T1.
 
 - [x] **T3. Arranque de producción** (S)
@@ -46,7 +46,9 @@ Plan y justificación: `tasks/plan.md`. Verificación base de cada tarea: `pytes
 - [x] `git clone` real de la rama (166 archivos, sin `saved/`, `runs/` ni `data/`) arranca con `deploy/start.sh` sin directorio home y pasa `tools/smoke_deployment.py`: 19/19
 - [x] Interfaz probada en un navegador contra ese clon (selector de ejemplos, es/en, resultado, limpiar) sin errores de JavaScript
 - [x] RAM máxima 1,00 GB; latencia media 2,5 s en CPU (antes 2,9 s); 5 solicitudes simultáneas OK
-- [ ] **Revisión con el autor antes de elegir host** (suite completa y PR pendientes de revisión)
+- [x] **Revisión con el autor**: PRs fusionadas en `main` con la suite en verde; queda elegir host (Fase 2)
+
+**Auditoría de interfaz (fusionada, PRs #8–#10):** teclado y lectores de pantalla, contraste AA en ambos temas, primera carga de 4,6 MB a 152 KB (Plotly bajo demanda), tema/idioma sin parpadeo, secciones con URL propia, umbral global deshabilitado cuando hay umbrales por clase, comandos de desarrollo ocultos al público. Sin probar aún con lector de pantalla real ni en otros navegadores.
 
 **Hallazgos del punto de control (corregidos):** `.gitignore` ocultaba `*.hea`, `*.mat` y `results/` (los ejemplos y las métricas no estaban en git);
 matplotlib fallaba sin directorio home; un checkpoint explícito inexistente se sustituía en silencio por otro; los errores internos devolvían rutas del servidor.
@@ -54,7 +56,7 @@ matplotlib fallaba sin directorio home; un checkpoint explícito inexistente se 
 ## Fase 2: publicar
 
 - [ ] **T7. Desplegar en el host elegido** (M) — *depende de las decisiones 1–3*
-  - Opción recomendada si se permite contenedor: Hugging Face Spaces (Docker, CPU) o equivalente con ≥ 2 GB; ajustar el contenedor (usuario no root, `waitress`, torch CPU, `models/` por Git LFS si el host lo exige).
+  - Opción recomendada si se permite contenedor: Hugging Face Spaces (Docker, CPU) o equivalente con ≥ 2 GB; ajustar el contenedor (hoy el `Dockerfile` ejecuta `webapp/app.py --saved saved`: pasar a `bash deploy/start.sh`, usuario no root, torch CPU, `models/` por Git LFS si el host lo exige).
   - Criterios: URL pública responde `/health`; variables del manifiesto aplicadas; límites de T5 activos; sin secretos en el repositorio.
   - Verificación: `tools/smoke_deployment.py https://<url>`.
   - Archivos: `Dockerfile` (solo si el host lo requiere), `deploy/`, `README.md`.

@@ -4,12 +4,14 @@
 
 Se adaptó el enfoque de CNN residual profunda de Hannun et al. a PhysioNet/CinC Challenge 2020. El dataset original de Zio Patch/iRhythm no es público, por lo que se usa CINC2020 con ECG de 12 derivaciones y diagnósticos SNOMED-CT.
 
-La implementación sigue la estructura canónica solicitada:
+El repositorio se organiza así (detalle de cada carpeta en su `CONTEXT.md`):
 
 ```text
 ecg/        paquete principal
 examples/   scripts de experimento
 webapp/     Flask + inferencia + reportes
+tools/      chequeos de datos, bundle de despliegue y prueba de humo
+models/ + deploy/   bundle de inferencia versionado (pesos, umbrales, métricas)
 docs/       documentación experimental
 ```
 
@@ -83,6 +85,17 @@ Implementación: `examples/cinc2020/evaluate.py`.
 - especificidad;
 - F1;
 - matrices de confusión 2x2.
+
+## Calibración, umbrales y ensemble
+
+- **Temperature scaling por clase** (`ecg/calibration.py`, `examples/cinc2020/calibrate.py`): una temperatura por clase ajustada solo en validación; se reportan ECE y Brier.
+- **Umbrales por clase** optimizados en validación con F-beta (`--threshold-beta`: 0.5 favorece precisión, 1.0 equilibra, 2.0 favorece recall). Nunca se ajustan sobre test.
+- **Ensemble** (`examples/cinc2020/ensemble_evaluate.py`): promedio ponderado (`alpha = 0.5`) de las probabilidades calibradas de ResNet v1 y v2, con umbrales propios del promedio.
+- Cifras en [resultados_finales.md](resultados_finales.md).
+
+## Inferencia y despliegue
+
+La webapp usa el mismo preprocesamiento que el entrenamiento (`ecg/signal.py`), acepta frecuencias de muestreo de 50 a 10 000 Hz y carga los pesos con `weights_only=True`. Para publicarla sin las carpetas locales, `tools/export_inference_bundle.py` genera `models/*.pt` (solo pesos, ≈19 MB) y `deploy/`; el procedimiento y los límites de uso público están en `webapp/README.md`.
 
 ## Diferencias frente al paper original
 

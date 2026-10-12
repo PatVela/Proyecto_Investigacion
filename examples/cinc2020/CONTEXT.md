@@ -13,7 +13,7 @@
 | 06 Robustez y sesgo | `robustness.py`, `sex_breakdown.py`, `error_analysis.py` |
 | 07 Figuras | `make_figures.py` |
 | 08 Despliegue | `export_onnx.py`, `benchmark_latency.py` |
-| Búsqueda HP | `tune_optuna.py` |
+| Búsqueda HP (opcional) | `tune_optuna.py` |
 | Archivado (`_archive/`) | `diagnose_prediction.py`, `debug_record_prediction.py`, `_record_diag.py`: depuración puntual, ver `docs/fix_prediccion_cinc2020.md`. Siguen ejecutándose desde su nueva ruta; no forman parte de la secuencia. |
 
 ## Factory aquí

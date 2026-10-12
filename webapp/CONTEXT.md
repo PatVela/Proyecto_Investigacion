@@ -1,9 +1,9 @@
 # webapp/ — demo de inferencia
 
-**Trabajo:** servir un Flask (`app.py`, puerto 5002) que recibe un ECG (CSV/WFDB), predice con un checkpoint de `saved/` y genera informe PDF.
+**Trabajo:** servir un Flask (`app.py`, puerto 5002) que recibe un ECG (CSV/WFDB) o un ejemplo incluido, predice con el ensemble y genera informe PDF. Corre en local (`python webapp/app.py`) o desplegada (`deploy/start.sh`, waitress) **sin** `saved/` ni `runs/`.
 
-- **Entradas:** checkpoint en `saved/`, `thresholds`/`temperaturas` de un `eval-*/`, subidas del usuario (`uploads/`, git-ignored).
-- **Código:** `prediction.py` (puente a `ecg.predict`, fallback normal), `report_pdf.py`, `project_info.py` + `static/metrics/` (métricas mostradas), `templates/index.html`, `static/app.js`.
-- **Arranque:** `webapp/README.md`; `run_https.sh`, `run_public.sh`, `wsgi.py`, `Dockerfile` raíz.
-- **Qué toca un cambio:** preprocesamiento debe coincidir con `ecg/signal.py`; `static/metrics/metrics.json` debe reflejar `docs/resultados_finales.md`. Tests: `tests/test_webapp*.py`, `tests/test_report.py`.
-- **Chequeo humano:** misma señal por CLI y por la web debe dar las mismas probabilidades.
+- **Entradas:** en desarrollo, checkpoint en `saved/` y `thresholds`/`temperaturas` de un `eval-*/`; desplegada, el bundle versionado (`models/`, `deploy/ensemble.env`, `deploy/results/`, `deploy/reports/`) cargado por `wsgi.py`. Subidas del usuario en `uploads/` (git-ignored, se borran al terminar).
+- **Código:** `app.py` (rutas, límites, caché HTTP), `prediction.py` (puente a `ecg.predict`, caché de modelos, fallback normal, trazado), `limits.py` (límite por IP, limpieza de informes, enteros de entorno), `examples.py` + `examples/` (7 registros CC BY 4.0 y su `examples.json`), `report_pdf.py`, `project_info.py`, `wsgi.py` (carga `deploy/ensemble.env`), `templates/index.html`, `static/app.js` y `static/style.css`.
+- **Arranque:** `webapp/README.md`; `deploy/start.sh` y `Procfile` (producción), `run_https.sh` y `run_public.sh` (HTTPS/túnel, sin probar en el despliegue), `Dockerfile` raíz (aún con servidor de desarrollo y `saved/`; pendiente en `tasks/todo.md`, T7).
+- **Qué toca un cambio:** preprocesamiento debe coincidir con `ecg/signal.py`; una variable `ECG_*` nueva va en la tabla de `webapp/README.md` (`tests/test_docs_env_vars.py` lo exige); un texto nuevo de interfaz va en `es` y `en` de `static/app.js`; las subidas conservan la lista de extensiones (`.csv`, `.hea`, `.mat`) y las rutas de descarga/PDF conservan `secure_filename` más la comprobación de que quedan dentro de su carpeta.- **Tests:** `tests/test_webapp*.py`, `test_report.py`, `test_model_cache.py`, `test_public_limits.py`, `test_examples.py`, `test_error_handling.py`, `test_deploy_*.py`, `test_ui_*.py`.
+- **Chequeo humano:** misma señal por CLI y por la web debe dar las mismas probabilidades; tras cambiar la interfaz, abrirla en un navegador (Tab/Enter, tema oscuro, móvil).

@@ -90,12 +90,13 @@ AUROC 0.953, AUPRC 0.814, exact-match 0.499.
 recall 0.783, recomendado para screening y para la demo webapp, donde un FN cuesta más
 que un FP). ResNet v2 sola queda como mejor modelo individual en F1-macro con F0.5 (0.718).
 La webapp demuestra el ensemble (`--model` + `--model-b` + `--temperatures`/`--temperatures-b` +
-`--eval-dir runs/eval/ensemble` o `--eval-dir runs/eval/ensemble-f1`).
+`--eval-dir runs/eval/ensemble-f1` para el punto F1 o `runs/eval/ensemble` para el F0.5). La demo
+desplegable (`models/`, `deploy/`) empaqueta el punto **F1**.
 
 ## Artefactos
 
-- `runs/eval/eval-resnet/`, `runs/eval/eval-resnet-v2/`, `runs/eval/ensemble-noexcl/`: métricas, umbrales, predicciones, curvas (`runs/eval/eval-resnet-v2-nsrexcl/` conserva la ablación NSR).
+- `runs/eval/eval-resnet/`, `runs/eval/eval-resnet-v2/`, `runs/eval/ensemble/` (F0.5, sin `--nsr-exclusive-min-prob`): métricas, umbrales, predicciones, curvas. La ablación NSR-exclusivo se reproduce añadiendo `--nsr-exclusive-min-prob 0.9`; sus salidas no se conservan como referencia.
 - `runs/figs/figs_eval_v2/`: figuras empíricas. `runs/reports/bootstrap_v2-v1.json`: IC. `runs/reports/sex_breakdown.json`: desglose por sexo.
-- `runs/eval/ensemble-f1/`: mismo ensemble con umbrales F1 (punto de screening).
+- `runs/eval/ensemble-f1/`: mismo ensemble con umbrales F1 (punto de screening). `deploy/results/ensemble-f1/` es su copia versionada para la demo.
 - `runs/reports/model_comparison.csv`: v1 vs v2. `runs/reports/comparacion_ensemble.csv`: v2 vs ensemble.
 - `runs/reports/robustness.csv`, `runs/eval/metrica-challenge/`, `runs/reports/errores_origen.csv`.
