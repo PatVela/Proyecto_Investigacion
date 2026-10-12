@@ -19,6 +19,8 @@ from scipy.signal import butter, resample_poly, sosfiltfilt
 
 
 TARGET_FS = 500
+MIN_SAMPLING_RATE_HZ = 50.0
+MAX_SAMPLING_RATE_HZ = 10_000.0
 WINDOW_SECONDS = 10
 WINDOW_LENGTH = TARGET_FS * WINDOW_SECONDS
 STANDARD_LEAD_ORDER = [
@@ -161,8 +163,13 @@ def resample_signal(signal: np.ndarray, orig_fs: float, target_fs: int = TARGET_
         raise ValueError(f"La señal debe ser 2D; shape={signal.shape}")
     orig_fs = float(orig_fs)
     target_fs = float(target_fs)
-    if orig_fs <= 0:
-        raise ValueError(f"Frecuencia inválida: {orig_fs}")
+    # Punto único de entrada de toda ruta (CSV, .hea, HDF5): acota la memoria
+    # que puede pedir una frecuencia declarada en un archivo no confiable.
+    if not (MIN_SAMPLING_RATE_HZ <= orig_fs <= MAX_SAMPLING_RATE_HZ):
+        raise ValueError(
+            f"Frecuencia de muestreo fuera de rango: {orig_fs} Hz "
+            f"(permitido {MIN_SAMPLING_RATE_HZ:g}-{MAX_SAMPLING_RATE_HZ:g} Hz)"
+        )
     if np.isclose(orig_fs, target_fs):
         return signal
     ratio = Fraction(target_fs / orig_fs).limit_denominator(10000)
