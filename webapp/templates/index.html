@@ -5,10 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Clasificador ECG CINC2020-12 · UNSA</title>
   <meta name="description" content="Asistente académico de lectura multilabel de ECG de 12 derivaciones.">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link rel="icon" href="{{ url_for('static', filename='escudo-unsa.png') }}">
+  <meta name="theme-color" content="#eef1f5">
+  <script>
+    /* Tema e idioma antes del primer pintado (sin parpadeo): preferencia guardada o, si no hay, la del sistema/navegador. */
+    (function () {
+      try {
+        var theme = localStorage.getItem("ecg-theme");
+        if (theme !== "dark" && theme !== "light") theme = (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", theme === "dark" ? "#0d1219" : "#eef1f5");
+        var lang = localStorage.getItem("ecg-lang");
+        if (lang !== "es" && lang !== "en") lang = String(navigator.language || "es").toLowerCase().indexOf("es") === 0 ? "es" : "en";
+        document.documentElement.lang = lang;
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="{{ static_v('style.css') }}">
+  <link rel="icon" href="{{ static_v('escudo-unsa.png') }}">
 </head>
-<body>
+<body data-plotly-src="{{ static_v('plotly.min.js') }}">
 <a class="skip-link" href="#main" data-i18n="a11y.skip">Saltar al contenido</a>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
@@ -28,7 +44,7 @@
   <aside class="sidebar">
     <div class="side-brand">
       <span class="side-logo">
-        <img src="{{ url_for('static', filename='escudo-unsa.png') }}" alt="Escudo UNSA" width="39" height="48">
+        <img src="{{ static_v('escudo-unsa.png') }}" alt="Escudo UNSA" width="39" height="48">
       </span>
       <div class="side-brand-txt">
         <strong data-i18n="app.title">Clasificador de ECG</strong>
@@ -37,10 +53,10 @@
     </div>
 
     <nav class="side-nav" id="sideNav" aria-label="Secciones" data-i18n-aria-label="a11y.nav">
-      <button type="button" class="nav-link active" data-sec="upload" aria-current="page"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-upload"/></svg><span data-i18n="nav.upload">Cargar ECG</span></button>
-      <button type="button" class="nav-link" data-sec="vis"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-viz"/></svg><span data-i18n="nav.result">Resultado</span></button>
-      <button type="button" class="nav-link" data-sec="det"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-detail"/></svg><span data-i18n="nav.detail">Detalle Técnico</span></button>
-      <button type="button" class="nav-link" data-sec="exp"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-viz"/></svg><span data-i18n="nav.experiments">Experimentos</span></button>
+      <a class="nav-link active" href="#upload" data-sec="upload" aria-current="page"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-upload"/></svg><span data-i18n="nav.upload">Cargar ECG</span></a>
+      <a class="nav-link" href="#vis" data-sec="vis"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-viz"/></svg><span data-i18n="nav.result">Resultado</span></a>
+      <a class="nav-link" href="#det" data-sec="det"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-detail"/></svg><span data-i18n="nav.detail">Detalle Técnico</span></a>
+      <a class="nav-link" href="#exp" data-sec="exp"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-viz"/></svg><span data-i18n="nav.experiments">Experimentos</span></a>
     </nav>
 
     <div class="side-foot">
@@ -374,7 +390,6 @@
   </main>
 </div>
 
-<script src="{{ url_for('static', filename='plotly.min.js') }}"></script>
-<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script src="{{ static_v('app.js') }}"></script>
 </body>
 </html>
