@@ -37,6 +37,7 @@ def _tiny_checkpoint(path: Path) -> Path:
         "model_state_dict": model.state_dict(),
         "config": {"label_schema": load.LABEL_SCHEMA, "norm_mode": "physical", "bandpass": True},
         "class_names": load.CLASS_NAMES.copy(),
+        "label_schema": load.LABEL_SCHEMA,
         "epoch": 1,
         "val_loss": 0.5,
     }, str(path))

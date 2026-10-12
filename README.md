@@ -148,6 +148,7 @@ git clone -b Paper_Replica_V3 https://github.com/PatVela/Proyectos-Universidad.g
 cd Proyectos-Universidad
 pip install -r requirements-cuda.txt
 pip install -r requirements.txt
+pip install -r requirements-dev.txt   # solo para correr pytest (incluye requirements.txt)
 ```
 
 Verifique GPU **antes de seguir**:
@@ -317,7 +318,7 @@ mat1="${hea1%.hea}.mat"
 * `CUDA out of memory`: baje `batch_size` a 32 en el JSON y reentrene.
 * `Device: cpu` al arrancar: detenga, verifique `cuda: True` y relance. No entrene en CPU.
 * Duda del config usado: abra `config_used.json` dentro de la carpeta `Save dir` del run.
-* `pip install -r requirements.txt` falla en `gevent`: coméntelo con `#` (solo sirve para despliegue productivo).
+* La webapp se sirve con `waitress` (incluido en `requirements.txt`); `gevent`, `six`, `scikit-multilearn` y `pip-tools` ya no se instalan porque nada los usa.
 * Época lenta (>3 min en GPU): confirme el mensaje `Precargando a RAM`; cierre aplicaciones pesadas.
 * Webapp sin métricas: revise `--eval-dir`/`--exp-dir`; `/health` muestra qué detectó.
 

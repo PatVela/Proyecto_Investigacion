@@ -1,0 +1,4 @@
+# Dependencias para ejecutar la suite de pruebas: pip install -r requirements-dev.txt
+-r requirements.txt
+pytest==9.1.1
+pypdf==6.18.1
