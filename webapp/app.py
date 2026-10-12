@@ -509,7 +509,7 @@ def create_app() -> Flask:
     @app.errorhandler(413)
     def too_large(_error):
         return jsonify({"ok": False, "status": "error",
-                        "error": f"El archivo supera el máximo de {max_upload_mb} MB."}), 413
+                        "error": f"El archivo supera el máximo de {max_upload_mb} MB. Reduzca el tamaño o suba solo un registro de 10 s."}), 413
 
     static_versions: dict[tuple, str] = {}
 
@@ -577,6 +577,7 @@ def create_app() -> Flask:
             metrics=_load_metrics(),
             experiments=_load_experiment_results(),
             thresholds_info=thresholds_info,
+            dev_help=os.environ.get("ECG_DEV_HELP") == "1",
             curves_found=_curves_available(),
         )
 

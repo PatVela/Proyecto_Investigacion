@@ -356,3 +356,11 @@ code.dim { opacity: .65; font-size: .78em; }
   .seg-group .seg, .icon-btn { min-width: 44px; }
   .patient-grid input, .example-box select, .curve-controls select { min-height: 44px; }
 }
+
+/* Datos opcionales plegables (en móvil el botón Analizar queda mucho más arriba) */
+.optional-data { margin: 1rem 0 .4rem; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.optional-data > summary { cursor: pointer; padding: .65rem .9rem; font-weight: 600; }
+.optional-data > summary:hover { color: var(--accent-text); }
+.optional-data > :not(summary) { margin-left: .9rem; margin-right: .9rem; }
+.optional-data[open] > summary { border-bottom: 1px solid var(--border); margin-bottom: .2rem; }
+input:disabled { opacity: .6; cursor: not-allowed; background: var(--panel-2); }

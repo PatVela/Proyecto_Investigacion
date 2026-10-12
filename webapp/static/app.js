@@ -20,6 +20,19 @@ const I18N = {
     "examples.attribution": "Registros del PhysioNet/CinC Challenge 2020 (CC BY 4.0). Perez Alday et al., 2022, doi:10.13026/dvyd-kd57.",
     "chart.loading": "Cargando gráfico…",
     "chart.unavailable": "No se pudo cargar la librería de gráficos. Revisa tu conexión y vuelve a abrir esta sección.",
+    "upload.optional": "Datos opcionales del paciente y del análisis",
+    "upload.thresholdCalibrated": "Esta instancia usa umbrales calibrados por clase (optimizados con F1 en validación), así que el umbral global no se aplica.",
+    "upload.thresholdGlobal": "No hay umbrales calibrados: este umbral se aplica a todas las clases.",
+    "upload.modelNote.ensemble": "Modelo: ensemble de dos ResNet-34 (v1 + v2).",
+    "upload.modelNote.single": "Modelo: ResNet-34 cargada en el servidor.",
+    "upload.modelNote.calibrated": "Se aplican umbrales calibrados por clase.",
+    "upload.modelNote.global": "Se aplica un umbral global.",
+    "public.unavailable": "Esta instancia no incluye estos resultados.",
+    "history.confirmClear": "¿Borrar el historial de esta sesión?",
+    "diag.thresholdWord": "umbral",
+    "diag.fallbackWord": "respaldo NSR",
+    "diag.thresholdOriginal": "umbral original",
+    "diag.fallbackShort": "respaldo",
     "a11y.skip": "Saltar al contenido",
     "a11y.nav": "Secciones",
     "a11y.theme": "Cambiar entre modo claro y oscuro",
@@ -29,21 +42,20 @@ const I18N = {
     "chart.bars": "Gráfico de barras con F1 y AUROC por clase en test",
     "chart.roc": "Curva ROC de la clase",
     "chart.pr": "Curva precisión-recall de la clase",
-    "upload.privacy": "Demostración académica, no es un dispositivo médico. No suba datos de pacientes reales: los archivos subidos se borran al terminar el análisis y los informes generados se eliminan del servidor en 1 hora. Máximo 5 MB por solicitud.",
+    "upload.privacy": "Demostración académica, no es un dispositivo médico. No suba datos de pacientes reales: los archivos subidos se borran al terminar el análisis y los informes generados se eliminan del servidor en 1 hora. Máximo 5\u00a0MB por solicitud.",
     "upload.drop": "Arrastra el archivo aquí",
     "upload.dropSub": "o haz clic para seleccionarlo. Para WFDB selecciona ambos archivos del mismo registro.",
     "upload.formats": "Formatos:",
     "upload.help": "¿Qué formato usar?",
-    "upload.helpCsv": "CSV: columnas de derivaciones estándar I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6. Puede iniciar con # Sampling Rate: 500 Hz.",
-    "upload.helpWfdb": "WFDB: sube juntos registro.hea y registro.mat. La app leerá el header, preprocesará la señal y generará un CSV convertido descargable.",
+    "upload.helpCsv": "CSV: columnas de derivaciones estándar I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6. Puede iniciar con # Sampling Rate: 500\u00a0Hz.",
+    "upload.helpWfdb": "WFDB: sube juntos registro.hea y registro.mat. La app leerá el encabezado, preprocesará la señal y generará un CSV convertido descargable.",
     "upload.patient": "Paciente / ID (opcional)",
     "upload.patientPh": "Nombre o código…",
     "upload.age": "Edad (opcional)",
-    "upload.threshold": "Threshold multilabel",
+    "upload.threshold": "Umbral global (multilabel)",
     "upload.trueLabels": "Etiquetas reales opcionales para CSV",
     "upload.trueLabelsPh": "NSR, AF o 426783006…",
-    "upload.trueLabelsHint": "Si subes .hea + .mat, la comparación usa automáticamente el campo Dx del header. Para CSV puedes escribir clases o códigos SNOMED separados por coma.",
-    "upload.autoModel": "La app selecciona automáticamente el mejor checkpoint disponible en la carpeta saved/ configurada.",
+    "upload.trueLabelsHint": "Si subes .hea + .mat, la comparación usa automáticamente el campo Dx del encabezado. Para CSV puedes escribir clases o códigos SNOMED separados por coma.",
     "btn.analyze": "Analizar ECG",
     "btn.clear": "Limpiar",
     "btn.pdf": "Descargar informe (PDF)",
@@ -58,7 +70,7 @@ const I18N = {
     "detail.sub": "Ficha técnica del modelo, preprocesamiento, umbrales, comparación con etiquetas reales y métricas exportadas.",
     "detail.emptyTitle": "Aún no hay detalle de predicción",
     "detail.emptyBody": "Después de analizar un ECG se completará la ficha del registro.",
-    "detail.method": "Enfoque: la señal se ordena a 12 derivaciones estándar, se convierte a milivoltios con la ganancia del header, se filtra (pasa-banda 0.5–50 Hz), se recorta a ±5 mV, se remuestrea a 500 Hz, se ajusta a 5000 muestras y se clasifica con salidas sigmoid independientes y umbrales por clase.",
+    "detail.method": "Enfoque: la señal se ordena a 12 derivaciones estándar, se convierte a milivoltios con la ganancia del encabezado, se filtra (pasa-banda 0.5–50\u00a0Hz), se recorta a ±5\u00a0mV, se remuestrea a 500\u00a0Hz, se ajusta a 5000 muestras y se clasifica con salidas sigmoid independientes y umbrales por clase.",
     "detail.recordSheet": "Ficha del registro analizado",
     "detail.probabilities": "Probabilidades por clase",
     "detail.modelSheet": "Ficha técnica del modelo cargado automáticamente",
@@ -81,7 +93,7 @@ const I18N = {
     "tech.activation": "Activación",
     "tech.schema": "Esquema de etiquetas",
     "tech.norm": "Normalización",
-    "tech.normPhysical": "physical: mV + pasa-banda 0.5–50 Hz + recorte ±5 mV",
+    "tech.normPhysical": "physical: mV + pasa-banda 0.5–50\u00a0Hz + recorte ±5\u00a0mV",
     "tech.normLegacy": "z-score por derivación (esquema previo)",
     "tech.thresholds": "Umbrales",
     "tech.thresholdsCal": "calibrados por clase",
@@ -129,27 +141,27 @@ const I18N = {
     "diag.noPositiveTitle": "Sin predicción positiva",
     "diag.topCandidate": "Mayor probabilidad observada",
     "diag.positives": "Predicciones positivas",
-    "diag.nonePositive": "Ninguna clase superó el threshold definido",
+    "diag.nonePositive": "Ninguna clase superó el umbral definido",
     "diag.nonePositiveClassThresholds": "Ninguna clase superó su umbral calibrado",
     "diag.borderline": "Predicción cercana al umbral; interpretar como baja confianza.",
-    "diag.fallbackApplied": "NSR añadido por regla de fallback normal porque ninguna clase superó su umbral.",
+    "diag.fallbackApplied": "NSR añadido por regla de respaldo de ritmo normal porque ninguna clase superó su umbral.",
     "traffic.positive": "positiva",
-    "traffic.negative": "bajo threshold",
+    "traffic.negative": "bajo el umbral",
     "summary.title": "Resumen multilabel:",
-    "summary.none": "Sin positivos a threshold",
+    "summary.none": "Sin positivos con umbral",
     "summary.noneClassThresholds": "Sin positivos con umbrales calibrados",
     "summary.model": "Modelo usado para este resultado",
     "summary.rule": "Regla de decisión",
     "summary.ruleClassThresholds": "probabilidad ≥ umbral calibrado por clase",
-    "summary.ruleGlobalThreshold": "probabilidad ≥ threshold global",
+    "summary.ruleGlobalThreshold": "probabilidad ≥ umbral global",
     "gt.title": "Comparación con etiquetas reales",
     "gt.interpretation": "Interpretación",
     "gt.falseNegativeOnly": "El modelo no activó ninguna clase; como la etiqueta real sí existe, se considera falso negativo.",
     "gt.falsePositiveOnly": "El modelo activó clases que no están en la etiqueta real; se considera falso positivo.",
-    "gt.mixedErrors": "Hay diferencias multilabel: algunas clases faltan y/o sobran frente al header.",
+    "gt.mixedErrors": "Hay diferencias multilabel: algunas clases faltan y/o sobran frente al encabezado.",
     "gt.correct": "Las clases predichas coinciden exactamente con las etiquetas reales disponibles.",
     "gt.notAvailable": "No hay etiquetas reales disponibles. En .hea + .mat se leen automáticamente desde Dx; para CSV puedes escribir clases o SNOMED antes de analizar.",
-    "gt.sourceHeader": "Header WFDB Dx",
+    "gt.sourceHeader": "Encabezado WFDB Dx",
     "gt.sourceManual": "Ingreso manual",
     "gt.exact": "Coincidencia exacta multilabel",
     "gt.notExact": "Diferencias frente a las etiquetas reales",
@@ -192,7 +204,7 @@ const I18N = {
     "prob.marginNote": "Margen = probabilidad − umbral. El marcador ~ indica cercanía al umbral (|margen| < 0.05): baja confianza. Pase el cursor sobre la clase para ver sus códigos SNOMED.",
     "bars.noData": "No se pudieron cargar los datos del gráfico interactivo.",
     "exp.verdictLead": "Ganador en F1-macro (test)",
-    "exp.levelNote": "Niveles: ruido σ en mV, deriva amplitud en mV (seno 0.5 Hz), escalado factor ×, apagado número de derivaciones.",
+    "exp.levelNote": "Niveles: ruido σ en mV, deriva amplitud en mV (seno 0.5\u00a0Hz), escalado factor ×, apagado número de derivaciones.",
     "history.title": "Historial de sesión",
     "history.empty": "Aún no hay análisis en esta sesión.",
     "history.clear": "Limpiar historial",
@@ -219,6 +231,19 @@ const I18N = {
     "examples.attribution": "Records from the PhysioNet/CinC Challenge 2020 (CC BY 4.0). Perez Alday et al., 2022, doi:10.13026/dvyd-kd57.",
     "chart.loading": "Loading chart…",
     "chart.unavailable": "The charting library could not be loaded. Check your connection and reopen this section.",
+    "upload.optional": "Optional patient and analysis data",
+    "upload.thresholdCalibrated": "This instance uses per-class calibrated thresholds (optimized for F1 on validation), so the global threshold does not apply.",
+    "upload.thresholdGlobal": "No calibrated thresholds are available: this threshold applies to every class.",
+    "upload.modelNote.ensemble": "Model: ensemble of two ResNet-34 networks (v1 + v2).",
+    "upload.modelNote.single": "Model: ResNet-34 loaded on the server.",
+    "upload.modelNote.calibrated": "Per-class calibrated thresholds are applied.",
+    "upload.modelNote.global": "A global threshold is applied.",
+    "public.unavailable": "This instance does not include these results.",
+    "history.confirmClear": "Clear this session's history?",
+    "diag.thresholdWord": "threshold",
+    "diag.fallbackWord": "NSR fallback",
+    "diag.thresholdOriginal": "original threshold",
+    "diag.fallbackShort": "fallback",
     "a11y.skip": "Skip to content",
     "a11y.nav": "Sections",
     "a11y.theme": "Switch between light and dark mode",
@@ -228,21 +253,20 @@ const I18N = {
     "chart.bars": "Bar chart with F1 and AUROC per class on the test set",
     "chart.roc": "ROC curve for class",
     "chart.pr": "Precision-recall curve for class",
-    "upload.privacy": "Academic demonstration, not a medical device. Do not upload real patient data: uploaded files are deleted when the analysis finishes and generated reports are removed from the server after 1 hour. Maximum 5 MB per request.",
+    "upload.privacy": "Academic demonstration, not a medical device. Do not upload real patient data: uploaded files are deleted when the analysis finishes and generated reports are removed from the server after 1 hour. Maximum 5\u00a0MB per request.",
     "upload.drop": "Drag the file here",
     "upload.dropSub": "or click to select it. For WFDB, select both files from the same record.",
     "upload.formats": "Formats:",
     "upload.help": "Which format should I use?",
-    "upload.helpCsv": "CSV: standard lead columns I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6. It may start with # Sampling Rate: 500 Hz.",
+    "upload.helpCsv": "CSV: standard lead columns I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6. It may start with # Sampling Rate: 500\u00a0Hz.",
     "upload.helpWfdb": "WFDB: upload record.hea and record.mat together. The app reads the header, preprocesses the signal and generates a downloadable converted CSV.",
     "upload.patient": "Patient / ID (optional)",
     "upload.patientPh": "Name or code…",
     "upload.age": "Age (optional)",
-    "upload.threshold": "Multilabel threshold",
+    "upload.threshold": "Global threshold (multilabel)",
     "upload.trueLabels": "Optional true labels for CSV",
     "upload.trueLabelsPh": "NSR, AF or 426783006…",
     "upload.trueLabelsHint": "If you upload .hea + .mat, comparison uses the header Dx field automatically. For CSV, write class names or SNOMED codes separated by commas.",
-    "upload.autoModel": "The app automatically selects the best available checkpoint in the configured saved/ folder.",
     "btn.analyze": "Analyze ECG",
     "btn.clear": "Clear",
     "btn.pdf": "Download report (PDF)",
@@ -257,7 +281,7 @@ const I18N = {
     "detail.sub": "Model sheet, preprocessing, thresholds, true-label comparison and exported metrics.",
     "detail.emptyTitle": "No prediction detail yet",
     "detail.emptyBody": "After analyzing an ECG, the record sheet will be filled in.",
-    "detail.method": "Method: the signal is ordered into 12 standard leads, converted to millivolts with the header gain, filtered (0.5–50 Hz bandpass), clipped to ±5 mV, resampled to 500 Hz, fixed to 5000 samples and classified with independent sigmoid outputs and per-class thresholds.",
+    "detail.method": "Method: the signal is ordered into 12 standard leads, converted to millivolts with the header gain, filtered (0.5–50\u00a0Hz bandpass), clipped to ±5\u00a0mV, resampled to 500\u00a0Hz, fixed to 5000 samples and classified with independent sigmoid outputs and per-class thresholds.",
     "detail.recordSheet": "Analyzed record sheet",
     "detail.probabilities": "Per-class probabilities",
     "detail.modelSheet": "Automatically loaded model sheet",
@@ -280,7 +304,7 @@ const I18N = {
     "tech.activation": "Activation",
     "tech.schema": "Label schema",
     "tech.norm": "Normalization",
-    "tech.normPhysical": "physical: mV + 0.5–50 Hz bandpass + ±5 mV clip",
+    "tech.normPhysical": "physical: mV + 0.5–50\u00a0Hz bandpass + ±5\u00a0mV clip",
     "tech.normLegacy": "per-lead z-score (legacy schema)",
     "tech.thresholds": "Thresholds",
     "tech.thresholdsCal": "class-calibrated",
@@ -391,7 +415,7 @@ const I18N = {
     "prob.marginNote": "Margin = probability − threshold. The ~ marker means near-threshold (|margin| < 0.05): low confidence. Hover the class to see its SNOMED codes.",
     "bars.noData": "Could not load the interactive chart data.",
     "exp.verdictLead": "Winner on test F1-macro",
-    "exp.levelNote": "Levels: noise σ in mV, wander amplitude in mV (0.5 Hz sine), scaling factor ×, dropout lead count.",
+    "exp.levelNote": "Levels: noise σ in mV, wander amplitude in mV (0.5\u00a0Hz sine), scaling factor ×, dropout lead count.",
     "history.title": "Session history",
     "history.empty": "No analyses yet in this session.",
     "history.clear": "Clear history",
@@ -665,7 +689,7 @@ function refreshFileCard() {
   }
   fileCard.hidden = false;
   const total = currentFiles.reduce((acc, f) => acc + (f.size || 0), 0);
-  const size = total > 1048576 ? `${(total / 1048576).toFixed(2)} MB` : `${Math.max(1, Math.round(total / 1024))} KB`;
+  const size = total > 1048576 ? `${(total / 1048576).toFixed(2)}\u00a0MB` : `${Math.max(1, Math.round(total / 1024))}\u00a0KB`;
   const names = currentFiles.map(f => `<div class="fname">${escapeHtml(f.name)}</div>`).join("");
   const validation = validateFiles(currentFiles);
   const validationHtml = validation ? `<div class="hint error-text">${escapeHtml(validation)}</div>` : "";
@@ -733,7 +757,7 @@ async function postFiles() {
   else currentFiles.forEach(file => fd.append("files", file, file.name));
   fd.append("patient_name", patName.value || "");
   fd.append("patient_age", patAge.value || "");
-  fd.append("threshold", threshold.value || "0.5");
+  if (!threshold.disabled) fd.append("threshold", threshold.value || "0.5");
   fd.append("true_labels", trueLabels.value || "");
 
   setLoading(true);
@@ -789,7 +813,7 @@ function renderDiagnosis(result) {
   const hasPositive = positives.length > 0;
   const posText = hasPositive
     ? positives.map(r => r.postprocessed
-        ? `${r.class} (${fmtPct(r.probability)}; fallback NSR, threshold ${fmtPct(r.threshold ?? result.threshold)})`
+        ? `${r.class} (${fmtPct(r.probability)}; ${tr("diag.fallbackWord")}, ${tr("diag.thresholdWord")} ${fmtPct(r.threshold ?? result.threshold)})`
         : `${r.class} (${fmtPct(r.probability)} ≥ ${fmtPct(r.threshold ?? result.threshold)})`
       ).join(", ")
     : (result.using_class_thresholds ? tr("diag.nonePositiveClassThresholds") : tr("diag.nonePositive"));
@@ -799,11 +823,11 @@ function renderDiagnosis(result) {
   let desc = tr("diag.noProb");
   if (hasPositive && primary) {
     const thresholdText = primary.postprocessed
-      ? `fallback NSR · threshold original ${fmtPct(primary.threshold ?? result.threshold)}`
-      : `threshold ${fmtPct(primary.threshold ?? result.threshold)}`;
+      ? `${tr("diag.fallbackWord")} · ${tr("diag.thresholdOriginal")} ${fmtPct(primary.threshold ?? result.threshold)}`
+      : `${tr("diag.thresholdWord")} ${fmtPct(primary.threshold ?? result.threshold)}`;
     desc = `${escapeHtml(primary.display_name)} · ${tr("diag.top")} ${fmtPct(primary.probability)} · ${thresholdText}`;
   } else if (top) {
-    desc = `${tr("diag.topCandidate")}: ${escapeHtml(top.class)} · ${fmtPct(top.probability)} < threshold ${fmtPct(top.threshold ?? result.threshold)}`;
+    desc = `${tr("diag.topCandidate")}: ${escapeHtml(top.class)} · ${fmtPct(top.probability)} < ${tr("diag.thresholdWord")} ${fmtPct(top.threshold ?? result.threshold)}`;
   }
   const borderline = titleRow && (titleRow.near_threshold || Math.abs(Number(titleRow.margin || 0)) < 0.05);
   diagnosisBox.innerHTML = `
@@ -832,14 +856,14 @@ function renderSummary(result) {
   if (positives.length) {
     positives.forEach(row => {
       const color = PALETTE[row.index % PALETTE.length];
-      const post = row.postprocessed ? " · fallback" : "";
-      summaryBox.innerHTML += `<span class="chip" style="background:${color}" title="${escapeHtml(row.display_name)}">${escapeHtml(row.class)} · ${fmtPct(row.probability)}${post}</span>`;
+      const post = row.postprocessed ? ` · ${tr("diag.fallbackShort")}` : "";
+      summaryBox.innerHTML += `<span class="chip" translate="no" style="background:${color}" title="${escapeHtml(row.display_name)}">${escapeHtml(row.class)} · ${fmtPct(row.probability)}${post}</span>`;
     });
   } else {
     const noneText = result.using_class_thresholds
       ? tr("summary.noneClassThresholds")
       : `${tr("summary.none")} ${escapeHtml(result.threshold)}`;
-    summaryBox.innerHTML += `<span class="chip" style="background:#64748b">${noneText}</span>`;
+    summaryBox.innerHTML += `<span class="chip" translate="no" style="background:#64748b">${noneText}</span>`;
   }
   const rule = result.using_class_thresholds
     ? `${tr("summary.ruleClassThresholds")} (${escapeHtml(baseName(result.threshold_source))})`
@@ -953,13 +977,13 @@ function renderTechnical(result) {
     row("Checkpoint", shortPath(result.model_path)),
     row(LANG === "es" ? "Época checkpoint" : "Checkpoint epoch", result.checkpoint_epoch),
     row("Val loss", fmtNum(result.checkpoint_val_loss)),
-    row("Threshold", result.using_class_thresholds ? (LANG === "es" ? "calibrado por clase" : "class-calibrated") : result.threshold),
+    row(LANG === "es" ? "Umbral" : "Threshold", result.using_class_thresholds ? (LANG === "es" ? "calibrado por clase" : "class-calibrated") : result.threshold),
     row(LANG === "es" ? "Fuente de umbrales" : "Threshold source", baseName(result.threshold_source)),
     row(LANG === "es" ? "Calibración" : "Calibration", result.calibrated ? `${LANG === "es" ? "temperature scaling por clase" : "per-class temperature scaling"} (${baseName(result.temperature_source)})` : (LANG === "es" ? "sin calibrar" : "uncalibrated")),
     row(LANG === "es" ? "Clases reales" : "True classes", cmp.available ? listOrNone(cmp.true_classes) : "—"),
     row(LANG === "es" ? "Clases predichas" : "Predicted classes", cmp.predicted_classes ? listOrNone(cmp.predicted_classes) : "—"),
     rowHtml(LANG === "es" ? "Coincidencia exacta" : "Exact match", exactBadge),
-    row("Fallback NSR", result.normal_fallback && result.normal_fallback.applied ? `${LANG === "es" ? "aplicado" : "applied"} · min=${result.normal_fallback.min_nsr_probability}` : (LANG === "es" ? "no aplicado" : "not applied")),
+    row(LANG === "es" ? "Respaldo NSR" : "NSR fallback", result.normal_fallback && result.normal_fallback.applied ? `${LANG === "es" ? "aplicado" : "applied"} · min=${result.normal_fallback.min_nsr_probability}` : (LANG === "es" ? "no aplicado" : "not applied")),
     detSub(tr("detail.groupPreproc")),
     row(LANG === "es" ? "Preprocesamiento" : "Preprocessing", details.preprocessing),
     row(LANG === "es" ? "Normalización" : "Normalization", details.norm_mode || "—"),
@@ -983,7 +1007,7 @@ function renderTechnical(result) {
         const pos = Number(r.prediction) === 1;
         return `<tr>
           <td class="iv-idx">${escapeHtml(r.index)}</td>
-          <td class="prob-name" title="SNOMED: ${escapeHtml(Array.isArray(r.snomed_codes) ? r.snomed_codes.join(", ") : (r.snomed_codes || ""))}">${escapeHtml(r.class)}</td>
+          <td class="prob-name" translate="no" title="SNOMED: ${escapeHtml(Array.isArray(r.snomed_codes) ? r.snomed_codes.join(", ") : (r.snomed_codes || ""))}">${escapeHtml(r.class)}</td>
           <td>${escapeHtml(r.display_name || r.description || "")}</td>
           <td><span class="prob-bar"><span class="prob-fill" style="width:${width}%;background:${color}"></span></span>${fmtPct(r.probability)}</td>
           <td>${fmtPct(r.threshold ?? result.threshold)}</td>
@@ -1206,12 +1230,15 @@ function renderHistory() {
 (function initHistory() {
   const btn = $("btnClearHistory");
   if (btn) btn.addEventListener("click", () => {
+    if (!window.confirm(tr("history.confirmClear"))) return;
     try { localStorage.removeItem(HISTORY_KEY); } catch (e) {}
     renderHistory();
   });
   renderHistory();
 })();
 
+const optionalData = $("optionalData");
+if (optionalData && window.matchMedia("(min-width: 881px)").matches) optionalData.open = true;
 applyI18n();
 loadExamples();
 { const initial = sectionFromHash(); if (initial && initial !== "upload") goTo(initial, { focus: false, fromHistory: true }); }
