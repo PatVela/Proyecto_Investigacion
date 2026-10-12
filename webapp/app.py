@@ -511,12 +511,29 @@ def create_app() -> Flask:
         return jsonify({"ok": False, "status": "error",
                         "error": f"El archivo supera el máximo de {max_upload_mb} MB."}), 413
 
+    static_versions: dict[tuple, str] = {}
+
+    def static_v(filename: str) -> str:
+        """URL de un estático con ``?v=<huella>``: cambia solo si cambia el archivo, así puede cachearse un año."""
+        path = Path(app.static_folder) / filename
+        stat = path.stat()
+        key = (filename, stat.st_mtime_ns, stat.st_size)
+        if key not in static_versions:
+            static_versions[key] = hashlib.sha1(path.read_bytes()).hexdigest()[:10]
+        return url_for("static", filename=filename, v=static_versions[key])
+
+    app.jinja_env.globals["static_v"] = static_v
+
     @app.after_request
     def add_security_headers(resp):
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["Referrer-Policy"] = "no-referrer"
         resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-        resp.headers["Cache-Control"] = "no-store"
+        if request.path.startswith("/static/"):
+            # Estáticos versionados (?v=): caché de un año; sin versión: se revalidan con ETag (304).
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable" if "v" in request.args else "no-cache"
+        else:
+            resp.headers["Cache-Control"] = "no-store"          # páginas, API, informes y subidas nunca se guardan
         return resp
 
     @app.get("/")

@@ -87,7 +87,7 @@ def test_skip_link_is_first_and_targets_the_main_landmark(page):
 def test_navigation_is_labelled_and_marks_the_current_section(page):
     nav = page.find("nav")[0]
     assert nav[1].get("aria-label")
-    current = [e for e in page.elements if e[0] == "button" and "nav-link" in e[1].get("class", "") and e[1].get("aria-current")]
+    current = [e for e in page.elements if e[0] in {"a", "button"} and "nav-link" in e[1].get("class", "") and e[1].get("aria-current")]
     assert len(current) == 1 and current[0][1]["aria-current"] == "page"
 
 

@@ -18,6 +18,8 @@ const I18N = {
     "examples.kind.mixed": "caso con diferencias",
     "examples.selected": "Ejemplo incluido",
     "examples.attribution": "Registros del PhysioNet/CinC Challenge 2020 (CC BY 4.0). Perez Alday et al., 2022, doi:10.13026/dvyd-kd57.",
+    "chart.loading": "Cargando gráfico…",
+    "chart.unavailable": "No se pudo cargar la librería de gráficos. Revisa tu conexión y vuelve a abrir esta sección.",
     "a11y.skip": "Saltar al contenido",
     "a11y.nav": "Secciones",
     "a11y.theme": "Cambiar entre modo claro y oscuro",
@@ -215,6 +217,8 @@ const I18N = {
     "examples.kind.mixed": "case with differences",
     "examples.selected": "Built-in example",
     "examples.attribution": "Records from the PhysioNet/CinC Challenge 2020 (CC BY 4.0). Perez Alday et al., 2022, doi:10.13026/dvyd-kd57.",
+    "chart.loading": "Loading chart…",
+    "chart.unavailable": "The charting library could not be loaded. Check your connection and reopen this section.",
     "a11y.skip": "Skip to content",
     "a11y.nav": "Sections",
     "a11y.theme": "Switch between light and dark mode",
@@ -398,7 +402,7 @@ const I18N = {
   },
 };
 
-let LANG = "es";
+let LANG = document.documentElement.lang === "en" ? "en" : "es";   // el <head> ya aplicó guardado o idioma del navegador
 try {
   const savedLang = localStorage.getItem("ecg-lang");
   if (savedLang === "en" || savedLang === "es") LANG = savedLang;
@@ -455,9 +459,10 @@ const trueLabels = $("trueLabels");
 let currentFiles = [];
 let lastResult = null;
 
+// Todos con contraste >= 4.5:1 frente al texto blanco de los chips (WCAG AA).
 const PALETTE = [
-  "#2ca02c", "#1f77b4", "#9467bd", "#ff7f0e", "#d62728", "#17becf",
-  "#8c564b", "#e377c2", "#bcbd22", "#0d9488", "#64748b", "#7c3aed",
+  "#248424", "#1f77b4", "#8f60ba", "#bb5800", "#d62728", "#0f7f8a",
+  "#8c564b", "#cf2b9c", "#777816", "#3b5bdb", "#64748b", "#7c3aed",
 ];
 
 // ============================================================ utils =======
@@ -544,6 +549,8 @@ function validateFiles(files) {
 
 // ============================================================ navigation ===
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SECTIONS = ["upload", "vis", "det", "exp"];
+const sectionFromHash = () => { const s = location.hash.replace("#", ""); return SECTIONS.includes(s) ? s : null; };
 
 function goTo(sec, opts = {}) {
   document.querySelectorAll(".nav-link").forEach(b => {
@@ -558,13 +565,25 @@ function goTo(sec, opts = {}) {
   if (sec === "det" && typeof loadMetricBars === "function") loadMetricBars();
   if (sec === "exp" && typeof loadCurves === "function") loadCurves();
   window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  if (opts.fromHistory !== true && sectionFromHash() !== sec) history.pushState(null, "", "#" + sec);   // la URL refleja la sección
   if (opts.focus !== false) {                     // lectores de pantalla y teclado: el foco sigue a la sección
     const heading = $("sec-" + sec) && $("sec-" + sec).querySelector("h1");
     if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
   }
 }
 
-document.querySelectorAll(".nav-link").forEach(b => b.addEventListener("click", () => goTo(b.dataset.sec)));
+document.querySelectorAll(".nav-link").forEach(b => {
+  b.addEventListener("click", (e) => {
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;   // abrir en pestaña nueva sigue funcionando
+    e.preventDefault();
+    goTo(b.dataset.sec);
+  });
+  if (b.dataset.sec === "det" || b.dataset.sec === "exp") {                            // precarga Plotly al acercarse al menú
+    ["mouseenter", "focus", "touchstart"].forEach(ev => b.addEventListener(ev, () => { ensurePlotly(); }, { once: true, passive: true }));
+  }
+});
+window.addEventListener("popstate", () => { const s = sectionFromHash(); if (s) goTo(s, { focus: false, fromHistory: true }); });
+window.addEventListener("hashchange", () => { const s = sectionFromHash(); if (s) goTo(s, { focus: false, fromHistory: true }); });
 
 // ============================================================ theme/lang ===
 function updateThemeIcon() {
@@ -577,17 +596,29 @@ function updateThemeIcon() {
   el.setAttribute("aria-pressed", String(dark));
 }
 
-try {
-  const saved = localStorage.getItem("ecg-theme");
-  if (saved) document.documentElement.dataset.theme = saved;
-} catch (e) {}
+const THEME_COLORS = { light: "#eef1f5", dark: "#0d1219" };           // = --bg de cada tema
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", THEME_COLORS[theme] || THEME_COLORS.light);
+  updateThemeIcon();
+}
+
+function hasSavedTheme() {
+  try { const saved = localStorage.getItem("ecg-theme"); return saved === "dark" || saved === "light"; } catch (e) { return false; }
+}
+
+if (window.matchMedia) {                                              // sin elección explícita, se sigue al sistema
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+    if (!hasSavedTheme()) applyTheme(e.matches ? "dark" : "light");
+  });
+}
 
 $("themeToggle").addEventListener("click", () => {
-  const cur = document.documentElement.dataset.theme;
-  const nxt = cur === "dark" ? "light" : "dark";
-  document.documentElement.dataset.theme = nxt;
+  const nxt = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
   try { localStorage.setItem("ecg-theme", nxt); } catch (e) {}
-  updateThemeIcon();
+  applyTheme(nxt);
 });
 $("langEs").addEventListener("click", () => { LANG = "es"; try { localStorage.setItem("ecg-lang", LANG); } catch (e) {} applyI18n(); });
 $("langEn").addEventListener("click", () => { LANG = "en"; try { localStorage.setItem("ecg-lang", LANG); } catch (e) {} applyI18n(); });
@@ -1001,14 +1032,34 @@ function plotlyAvailable() {
   return typeof Plotly !== "undefined";
 }
 
+// Plotly (4,4 MB) solo se descarga al abrir Detalle técnico o Experimentos (o al acercarse a esos enlaces).
+let plotlyPromise = null;
+function ensurePlotly() {
+  if (plotlyAvailable()) return Promise.resolve(true);
+  if (!plotlyPromise) {
+    plotlyPromise = new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = document.body.dataset.plotlySrc;
+      script.async = true;
+      script.onload = () => resolve(plotlyAvailable());
+      script.onerror = () => { plotlyPromise = null; script.remove(); resolve(false); };
+      document.head.appendChild(script);
+    });
+  }
+  return plotlyPromise;
+}
+
 async function loadMetricBars() {
   const box = $("metricBars");
   if (!box || barsLoaded) return;
   barsLoaded = true;
-  if (!plotlyAvailable()) {
-    box.innerHTML = `<p class="hint muted">Plotly no disponible.</p>`;
+  if (!plotlyAvailable()) box.innerHTML = `<p class="hint muted" role="status">${escapeHtml(tr("chart.loading"))}</p>`;
+  if (!(await ensurePlotly())) {
+    barsLoaded = false;                                    // permite reintentar al volver a abrir la sección
+    box.innerHTML = `<p class="hint muted" role="alert">${escapeHtml(tr("chart.unavailable"))}</p>`;
     return;
   }
+  box.innerHTML = "";
   try {
     const resp = await fetch("/metrics");
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -1045,7 +1096,11 @@ async function loadCurves() {
     if (sel.value) drawClassCurves(sel.value);
     return;
   }
-  if (!plotlyAvailable()) return;
+  if (!(await ensurePlotly())) {
+    const stats = $("curveStats");
+    if (stats) { stats.hidden = false; stats.textContent = tr("chart.unavailable"); }
+    return;
+  }
   try {
     const resp = await fetch("/curves");
     const data = await resp.json();
@@ -1159,3 +1214,4 @@ function renderHistory() {
 
 applyI18n();
 loadExamples();
+{ const initial = sectionFromHash(); if (initial && initial !== "upload") goTo(initial, { focus: false, fromHistory: true }); }
