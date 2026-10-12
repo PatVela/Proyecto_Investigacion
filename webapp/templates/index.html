@@ -101,32 +101,40 @@
 
       <div id="fileCard" class="file-card" hidden></div>
 
-      <p class="hint privacy-note" id="privacyNote" data-i18n="upload.privacy">Demostración académica, no es un dispositivo médico. No suba datos de pacientes reales: los archivos subidos se borran al terminar el análisis y los informes generados se eliminan del servidor en 1 hora. Máximo 5 MB por solicitud.</p>
+      <p class="hint privacy-note" id="privacyNote" data-i18n="upload.privacy">Demostración académica, no es un dispositivo médico. No suba datos de pacientes reales: los archivos subidos se borran al terminar el análisis y los informes generados se eliminan del servidor en 1 hora. Máximo 5&nbsp;MB por solicitud.</p>
 
       <p class="hint muted">
         <span data-i18n="upload.formats">Formatos:</span> <strong>CSV 12 derivaciones</strong> o <strong>.hea + .mat</strong>.
         <button type="button" class="link-btn" id="fmtHelp" aria-expanded="false" aria-controls="fmtHelpBox" data-i18n="upload.help">¿Qué formato usar?</button>
       </p>
       <div id="fmtHelpBox" class="help-box" hidden>
-        <p data-i18n="upload.helpCsv">CSV: columnas de derivaciones estándar I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6. Puede iniciar con # Sampling Rate: 500 Hz.</p>
-        <p data-i18n="upload.helpWfdb">WFDB: sube juntos registro.hea y registro.mat. La app leerá el header, preprocesará la señal y generará un CSV convertido descargable.</p>
+        <p data-i18n="upload.helpCsv">CSV: columnas de derivaciones estándar I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6. Puede iniciar con # Sampling Rate: 500&nbsp;Hz.</p>
+        <p data-i18n="upload.helpWfdb">WFDB: sube juntos registro.hea y registro.mat. La app leerá el encabezado, preprocesará la señal y generará un CSV convertido descargable.</p>
       </div>
 
-      <div class="patient-grid">
-        <label><span data-i18n="upload.patient">Paciente / ID (opcional)</span>
-          <input type="text" id="patName" name="patient_name" autocomplete="off" spellcheck="false" data-i18n-placeholder="upload.patientPh" placeholder="Nombre o código…"></label>
-        <label><span data-i18n="upload.age">Edad (opcional)</span>
-          <input type="text" id="patAge" name="patient_age" inputmode="numeric" autocomplete="off" data-i18n-placeholder="upload.agePh" placeholder="Ej.: 54…"></label>
-        <label><span data-i18n="upload.threshold">Threshold multilabel</span>
-          <input type="number" id="threshold" name="threshold" min="0" max="1" step="0.01" value="0.50" inputmode="decimal" autocomplete="off"></label>
-        <label><span data-i18n="upload.trueLabels">Etiquetas reales opcionales para CSV</span>
-          <input type="text" id="trueLabels" name="true_labels" autocomplete="off" spellcheck="false" data-i18n-placeholder="upload.trueLabelsPh" placeholder="NSR, AF o 426783006…"></label>
-      </div>
-      <p class="hint muted" data-i18n="upload.trueLabelsHint">Si subes .hea + .mat, la comparación usa automáticamente el campo Dx del header. Para CSV puedes escribir clases o códigos SNOMED separados por coma.</p>
+      {% set calibrated = thresholds_info and thresholds_info.found %}
+      <details id="optionalData" class="optional-data">
+        <summary data-i18n="upload.optional">Datos opcionales del paciente y del análisis</summary>
+        <div class="patient-grid">
+          <label><span data-i18n="upload.patient">Paciente / ID (opcional)</span>
+            <input type="text" id="patName" name="patient_name" autocomplete="off" spellcheck="false" data-i18n-placeholder="upload.patientPh" placeholder="Nombre o código…"></label>
+          <label><span data-i18n="upload.age">Edad (opcional)</span>
+            <input type="text" id="patAge" name="patient_age" inputmode="numeric" autocomplete="off" data-i18n-placeholder="upload.agePh" placeholder="Ej.: 54…"></label>
+          <label><span data-i18n="upload.threshold">Umbral global (multilabel)</span>
+            <input type="number" id="threshold" name="threshold" min="0" max="1" step="0.01" value="{{ '' if calibrated else '0.50' }}" inputmode="decimal" autocomplete="off" aria-describedby="thresholdHint"{% if calibrated %} disabled placeholder="—"{% endif %}></label>
+          <label><span data-i18n="upload.trueLabels">Etiquetas reales opcionales para CSV</span>
+            <input type="text" id="trueLabels" name="true_labels" autocomplete="off" spellcheck="false" data-i18n-placeholder="upload.trueLabelsPh" placeholder="NSR, AF o 426783006…"></label>
+        </div>
+        <p class="hint muted" id="thresholdHint" data-i18n="{{ 'upload.thresholdCalibrated' if calibrated else 'upload.thresholdGlobal' }}">{{ 'Esta instancia usa umbrales calibrados por clase (optimizados con F1 en validación), así que el umbral global no se aplica.' if calibrated else 'No hay umbrales calibrados: este umbral se aplica a todas las clases.' }}</p>
+        <p class="hint muted" data-i18n="upload.trueLabelsHint">Si subes .hea + .mat, la comparación usa automáticamente el campo Dx del encabezado. Para CSV puedes escribir clases o códigos SNOMED separados por coma.</p>
+      </details>
 
       <div class="auto-model-note">
         <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-detail"/></svg>
-        <span data-i18n="upload.autoModel">La app selecciona automáticamente el mejor checkpoint disponible en la carpeta saved/ configurada.</span>
+        <span>
+          <span data-i18n="{{ 'upload.modelNote.ensemble' if model_info and model_info.model_b else 'upload.modelNote.single' }}">{{ 'Modelo: ensemble de dos ResNet-34 (v1 + v2).' if model_info and model_info.model_b else 'Modelo: ResNet-34 cargada en el servidor.' }}</span>
+          <span data-i18n="{{ 'upload.modelNote.calibrated' if calibrated else 'upload.modelNote.global' }}">{{ 'Se aplican umbrales calibrados por clase.' if calibrated else 'Se aplica un umbral global.' }}</span>
+        </span>
       </div>
 
       <div class="btn-row">
@@ -194,7 +202,7 @@
         <p data-i18n="detail.emptyBody">Después de analizar un ECG se completará la ficha del registro.</p>
       </div>
       <div id="detContent" hidden>
-        <div class="method" data-i18n="detail.method">Enfoque: la señal se ordena a 12 derivaciones estándar, se convierte a milivoltios con la ganancia del header, se filtra (pasa-banda 0.5–50 Hz), se recorta a ±5 mV, se remuestrea a 500 Hz, se ajusta a 5000 muestras y se clasifica con salidas sigmoid independientes y umbrales por clase.</div>
+        <div class="method" data-i18n="detail.method">Enfoque: la señal se ordena a 12 derivaciones estándar, se convierte a milivoltios con la ganancia del encabezado, se filtra (pasa-banda 0.5–50&nbsp;Hz), se recorta a ±5&nbsp;mV, se remuestrea a 500&nbsp;Hz, se ajusta a 5000 muestras y se clasifica con salidas sigmoid independientes y umbrales por clase.</div>
         <h2 class="sec-title"><span class="sec-tag" data-i18n="detail.recordSheet">Ficha del registro analizado</span></h2>
         <table class="model-table"><caption class="visually-hidden" data-i18n="detail.recordSheet">Ficha del registro analizado</caption><tbody id="technicalRows"></tbody></table>
         <h2 class="sec-title"><span class="sec-tag" data-i18n="detail.probabilities">Probabilidades por clase</span></h2>
@@ -210,28 +218,28 @@
           <tr><th scope="row" data-i18n="tech.arch">Arquitectura</th><td>{{ model_info.model_type if model_info else 'No cargado' }}</td></tr>
           <tr><th scope="row" data-i18n="tech.input">Entrada</th><td>{{ num_leads }} derivaciones · {{ sampling_rate }} Hz · {{ input_length }} muestras · {{ window_seconds }} s</td></tr>
           <tr><th scope="row" data-i18n="tech.classes">Clases</th><td>{{ num_classes }} salidas multilabel: {{ (model_info.classes if model_info else []) | join(', ') }}</td></tr>
-          <tr><th scope="row" data-i18n="tech.checkpoint">Checkpoint</th><td><code title="{{ resolved_model }}">{{ resolved_model_short }}</code></td></tr>
-          {% if model_info and model_info.model_b %}<tr><th scope="row" data-i18n="tech.modelB">Modelo B (ensemble)</th><td><code title="{{ model_info.model_b }}">{{ model_info.model_b_short }}</code></td></tr>{% endif %}
-          <tr><th scope="row" data-i18n="tech.trained">Entrenado</th><td>{{ model_train_date or '—' }}{% if model_hash %} · id <code>{{ model_hash }}</code>{% endif %}</td></tr>
+          <tr><th scope="row" data-i18n="tech.checkpoint">Checkpoint</th><td><code translate="no" title="{{ resolved_model }}">{{ resolved_model_short }}</code></td></tr>
+          {% if model_info and model_info.model_b %}<tr><th scope="row" data-i18n="tech.modelB">Modelo B (ensemble)</th><td><code translate="no" title="{{ model_info.model_b }}">{{ model_info.model_b_short }}</code></td></tr>{% endif %}
+          <tr><th scope="row" data-i18n="tech.trained">Entrenado</th><td>{{ model_train_date or '—' }}{% if model_hash %} · id <code translate="no">{{ model_hash }}</code>{% endif %}</td></tr>
           <tr><th scope="row" data-i18n="tech.epoch">Época / val_loss</th><td>{% if model_info and model_info.meta %}{{ model_info.meta.epoch or '—' }} · {% if model_info.meta.val_loss is not none %}{{ '%.3f' % (model_info.meta.val_loss | float) }}{% else %}—{% endif %}{% else %}—{% endif %}</td></tr>
           <tr><th scope="row" data-i18n="tech.params">Parámetros</th><td>{% if model_info and model_info.num_parameters %}{{ '{:,}'.format(model_info.num_parameters.total).replace(',', ' ') }} ({{ '%.1f' % (model_info.num_parameters.total / 1000000) }} M){% else %}—{% endif %}</td></tr>
-          <tr><th scope="row" data-i18n="tech.loss">Pérdida</th><td><code>BCEWithLogitsLoss</code></td></tr>
+          <tr><th scope="row" data-i18n="tech.loss">Pérdida</th><td><code translate="no">BCEWithLogitsLoss</code></td></tr>
           <tr><th scope="row" data-i18n="tech.activation">Activación</th><td>Sigmoid</td></tr>
           {% set schema = cfg.get('label_schema') or '' %}
-          <tr><th scope="row" data-i18n="tech.schema">Esquema de etiquetas</th><td><code>{{ schema or '—' }}</code></td></tr>
-          <tr><th scope="row" data-i18n="tech.norm">Normalización</th><td>{% if not schema %}—{% elif 'v2' in schema %}<span data-i18n="tech.normPhysical">physical: mV + pasa-banda 0.5–50 Hz + recorte ±5 mV</span>{% else %}<span data-i18n="tech.normLegacy">z-score por derivación (esquema previo)</span>{% endif %}</td></tr>
+          <tr><th scope="row" data-i18n="tech.schema">Esquema de etiquetas</th><td><code translate="no">{{ schema or '—' }}</code></td></tr>
+          <tr><th scope="row" data-i18n="tech.norm">Normalización</th><td>{% if not schema %}—{% elif 'v2' in schema %}<span data-i18n="tech.normPhysical">physical: mV + pasa-banda 0.5–50&nbsp;Hz + recorte ±5&nbsp;mV</span>{% else %}<span data-i18n="tech.normLegacy">z-score por derivación (esquema previo)</span>{% endif %}</td></tr>
           <tr><th scope="row" data-i18n="tech.thresholds">Umbrales</th><td>{% if thresholds_info and thresholds_info.found %}<span data-i18n="tech.thresholdsCal">calibrados por clase</span> ({{ thresholds_info.num_classes }}){% else %}<span data-i18n="tech.thresholdsGlobal">global 0.5 (respaldo)</span>{% endif %}{% if metrics and metrics.summary and metrics.summary.threshold_beta is not none %} · <span data-i18n="tech.objective">objetivo</span> {{ 'F1' if metrics.summary.threshold_beta == 1.0 else ('F0.5' if metrics.summary.threshold_beta == 0.5 else 'Fβ=' ~ metrics.summary.threshold_beta) }}{% endif %}</td></tr>
         </tbody>
       </table>
       <details class="adv-det">
         <summary data-i18n="tech.advanced">Hiperparámetros de entrenamiento (avanzado)</summary>
         <table class="model-table"><tbody>
-          <tr><th>conv_subsample_lengths</th><td><code>{{ cfg.get('conv_subsample_lengths', '[1, 2] × 8') }}</code></td></tr>
-          <tr><th>conv_filter_length</th><td><code>{{ cfg.get('conv_filter_length', 7) }}</code></td></tr>
-          <tr><th>conv_num_filters_start</th><td><code>{{ cfg.get('conv_num_filters_start', 32) }}</code></td></tr>
-          <tr><th>conv_dropout</th><td><code>{{ cfg.get('conv_dropout', 0.2) }}</code></td></tr>
-          <tr><th>batch_size</th><td><code>{{ cfg.get('batch_size', '—') }}</code></td></tr>
-          <tr><th>learning_rate</th><td><code>{{ cfg.get('learning_rate', '—') }}</code></td></tr>
+          <tr><th>conv_subsample_lengths</th><td><code translate="no">{{ cfg.get('conv_subsample_lengths', '[1, 2] × 8') }}</code></td></tr>
+          <tr><th>conv_filter_length</th><td><code translate="no">{{ cfg.get('conv_filter_length', 7) }}</code></td></tr>
+          <tr><th>conv_num_filters_start</th><td><code translate="no">{{ cfg.get('conv_num_filters_start', 32) }}</code></td></tr>
+          <tr><th>conv_dropout</th><td><code translate="no">{{ cfg.get('conv_dropout', 0.2) }}</code></td></tr>
+          <tr><th>batch_size</th><td><code translate="no">{{ cfg.get('batch_size', '—') }}</code></td></tr>
+          <tr><th>learning_rate</th><td><code translate="no">{{ cfg.get('learning_rate', '—') }}</code></td></tr>
         </tbody></table>
       </details>
 
@@ -243,7 +251,7 @@
           <thead><tr><th scope="col">#</th><th scope="col" data-i18n="table.class">Clase</th><th scope="col" data-i18n="table.description">Descripción</th><th scope="col" data-i18n="table.codes">Códigos</th></tr></thead>
           <tbody>
           {% for group in class_groups %}
-            <tr><td class="iv-idx">{{ loop.index0 }}</td><td><strong>{{ group.name }}</strong></td><td>{{ group.display_name }}</td><td><code>{{ group.codes | join(', ') }}</code></td></tr>
+            <tr><td class="iv-idx">{{ loop.index0 }}</td><td><strong>{{ group.name }}</strong></td><td>{{ group.display_name }}</td><td><code translate="no">{{ group.codes | join(', ') }}</code></td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -269,23 +277,27 @@
             <thead><tr><th scope="col" data-i18n="table.class">Clase</th><th scope="col" data-i18n="metric.support">Soporte +</th><th scope="col" data-i18n="metric.sensitivity">Sensibilidad</th><th scope="col" data-i18n="metric.specificity">Especificidad</th><th scope="col">F1</th><th scope="col">AUROC</th><th scope="col">AUPRC</th></tr></thead>
             <tbody>
               {% for row in metrics.per_class_test %}
-              <tr><td><code>{{ row['class'] }}</code></td><td>{{ row.support_positive }}</td><td>{{ '%.3f' % row.sensitivity_recall }}</td><td>{{ '%.3f' % row.specificity if row.specificity is not none else '—' }}</td><td><strong>{{ '%.3f' % row.f1 }}</strong></td><td>{{ '%.3f' % row.auroc if row.auroc is not none else '—' }}</td><td>{{ '%.3f' % row.auprc if row.auprc is not none else '—' }}</td></tr>
+              <tr><td><code translate="no">{{ row['class'] }}</code></td><td>{{ row.support_positive }}</td><td>{{ '%.3f' % row.sensitivity_recall }}</td><td>{{ '%.3f' % row.specificity if row.specificity is not none else '—' }}</td><td><strong>{{ '%.3f' % row.f1 }}</strong></td><td>{{ '%.3f' % row.auroc if row.auroc is not none else '—' }}</td><td>{{ '%.3f' % row.auprc if row.auprc is not none else '—' }}</td></tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
         {% if metrics.best_class and metrics.worst_class %}
-        <p class="hint muted"><b data-i18n="detail.bestClass">Mejor clase (F1 test)</b>: <code>{{ metrics.best_class.name }} · {{ '%.3f' % metrics.best_class.value }}</code> &middot; <b data-i18n="detail.worstClass">Peor clase (F1 test)</b>: <code>{{ metrics.worst_class.name }} · {{ '%.3f' % metrics.worst_class.value }}</code></p>
+        <p class="hint muted"><b data-i18n="detail.bestClass">Mejor clase (F1 test)</b>: <code translate="no">{{ metrics.best_class.name }} · {{ '%.3f' % metrics.best_class.value }}</code> &middot; <b data-i18n="detail.worstClass">Peor clase (F1 test)</b>: <code translate="no">{{ metrics.worst_class.name }} · {{ '%.3f' % metrics.worst_class.value }}</code></p>
         {% endif %}
         <h2 class="sec-title"><span class="sec-tag" data-i18n="detail.barsTitle">Métricas por clase (interactivo)</span></h2>
         <div id="metricBars" class="plot-box"></div>
       {% else %}
         <div class="help-box">
           <strong data-i18n="detail.metricsPending">Métricas pendientes.</strong>
-          <p data-i18n="detail.metricsCmd">Después de entrenar, ejecute evaluación para llenar esta sección:</p>
-          <p><code>python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet --temperatures runs/eval/eval-resnet/temperatures_validation.csv --threshold-beta 0.5</code></p>
+          {% if dev_help %}
+<p data-i18n="detail.metricsCmd">Después de entrenar, ejecute evaluación para llenar esta sección:</p>
+          <p><code translate="no">python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet --temperatures runs/eval/eval-resnet/temperatures_validation.csv --threshold-beta 0.5</code></p>
           <p data-i18n="detail.varsNote">Con las variables $resnet, $resnet2, $mejor y $evalMejor definidas en el README principal.</p>
           <p data-i18n="detail.metricsHint">Ese comando también calibra los umbrales por clase que la app detecta automáticamente.</p>
+        {% else %}
+        <p data-i18n="public.unavailable">Esta instancia no incluye estos resultados.</p>
+        {% endif %}
         </div>
       {% endif %}
     </section>
@@ -313,14 +325,18 @@
         </table>
       </div>
       {% if experiments.comparison_verdict %}
-      <p class="hint verdict"><b data-i18n="exp.verdictLead">Ganador en F1-macro (test)</b>: ★ <code>{{ experiments.comparison_verdict.winner }}</code> ({{ '%+.3f' % experiments.comparison_verdict.delta }} vs <code>{{ experiments.comparison_verdict.runner_up }}</code>)</p>
+      <p class="hint verdict"><b data-i18n="exp.verdictLead">Ganador en F1-macro (test)</b>: ★ <code translate="no">{{ experiments.comparison_verdict.winner }}</code> ({{ '%+.3f' % experiments.comparison_verdict.delta }} vs <code translate="no">{{ experiments.comparison_verdict.runner_up }}</code>)</p>
       {% endif %}
       {% else %}
       <div class="help-box">
         <strong data-i18n="exp.pending">Resultado pendiente.</strong>
-        <p data-i18n="exp.compareCmd">Genere primero métricas para ambos modelos y luego compare:</p>
-        <p><code>python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet --eval-b runs/eval/eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output runs/reports/model_comparison.csv</code></p>
+        {% if dev_help %}
+<p data-i18n="exp.compareCmd">Genere primero métricas para ambos modelos y luego compare:</p>
+        <p><code translate="no">python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet --eval-b runs/eval/eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output runs/reports/model_comparison.csv</code></p>
         <p data-i18n="detail.varsNote">Con las variables $resnet, $resnet2, $mejor y $evalMejor definidas en el README principal.</p>
+        {% else %}
+        <p data-i18n="public.unavailable">Esta instancia no incluye estos resultados.</p>
+        {% endif %}
       </div>
       {% endif %}
 
@@ -333,21 +349,25 @@
           <thead><tr><th scope="col" data-i18n="exp.perturbation">Perturbación</th><th scope="col" data-i18n="exp.level">Nivel</th><th scope="col">n</th><th scope="col">F1 macro</th><th scope="col">F1 micro</th><th scope="col" data-i18n="metric.precisionMacro">Precisión macro</th><th scope="col" data-i18n="metric.sensitivityMacro">Sensibilidad macro</th><th scope="col" data-i18n="exp.deltaCol">ΔF1 vs limpio</th></tr></thead>
           <tbody>
           {% for row in experiments.robustness %}
-            <tr><td><strong>{{ row.perturbation_label_es or row.perturbation }}</strong> <code class="dim">{{ row.perturbation }}</code></td><td>{{ row.level }}</td><td>{{ row.samples }}</td><td><strong>{{ '%.3f' % row.f1_macro }}</strong></td><td>{{ '%.3f' % row.f1_micro }}</td><td>{{ '%.3f' % row.precision_macro }}</td><td>{{ '%.3f' % row.sensitivity_macro }}</td><td>{% if row.delta_f1_macro is not none %}<span class="badge {{ 'ok' if row.delta_f1_macro >= -0.001 else 'no' }}">{{ '%+.3f' % row.delta_f1_macro }}</span>{% else %}—{% endif %}</td></tr>
+            <tr><td><strong>{{ row.perturbation_label_es or row.perturbation }}</strong> <code translate="no" class="dim">{{ row.perturbation }}</code></td><td>{{ row.level }}</td><td>{{ row.samples }}</td><td><strong>{{ '%.3f' % row.f1_macro }}</strong></td><td>{{ '%.3f' % row.f1_micro }}</td><td>{{ '%.3f' % row.precision_macro }}</td><td>{{ '%.3f' % row.sensitivity_macro }}</td><td>{% if row.delta_f1_macro is not none %}<span class="badge {{ 'ok' if row.delta_f1_macro >= -0.001 else 'no' }}">{{ '%+.3f' % row.delta_f1_macro }}</span>{% else %}—{% endif %}</td></tr>
           {% endfor %}
           </tbody>
         </table>
       </div>
       {% if experiments.biggest_drop %}
-      <p class="hint muted"><b data-i18n="exp.biggestDrop">Mayor caída vs señal limpia</b>: <code>{{ experiments.biggest_drop.label_es or experiments.biggest_drop.name }} · {{ experiments.biggest_drop.level }} · {{ '%+.3f' % experiments.biggest_drop.delta }}</code></p>
+      <p class="hint muted"><b data-i18n="exp.biggestDrop">Mayor caída vs señal limpia</b>: <code translate="no">{{ experiments.biggest_drop.label_es or experiments.biggest_drop.name }} · {{ experiments.biggest_drop.level }} · {{ '%+.3f' % experiments.biggest_drop.delta }}</code></p>
       {% endif %}
-      <p class="hint muted" data-i18n="exp.levelNote">Niveles: ruido σ en mV, deriva amplitud en mV (seno 0.5 Hz), escalado factor ×, apagado número de derivaciones.</p>
+      <p class="hint muted" data-i18n="exp.levelNote">Niveles: ruido σ en mV, deriva amplitud en mV (seno 0.5&nbsp;Hz), escalado factor ×, apagado número de derivaciones.</p>
       {% else %}
       <div class="help-box">
         <strong data-i18n="exp.pending">Resultado pendiente.</strong>
-        <p data-i18n="exp.robustCmd">Ejecute el experimento reproducible de robustez:</p>
-        <p><code>python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --output runs/reports/robustness.csv</code></p>
+        {% if dev_help %}
+<p data-i18n="exp.robustCmd">Ejecute el experimento reproducible de robustez:</p>
+        <p><code translate="no">python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --output runs/reports/robustness.csv</code></p>
         <p data-i18n="detail.varsNote">Con las variables $resnet, $resnet2, $mejor y $evalMejor definidas en el README principal.</p>
+        {% else %}
+        <p data-i18n="public.unavailable">Esta instancia no incluye estos resultados.</p>
+        {% endif %}
       </div>
       {% endif %}
 
@@ -366,7 +386,11 @@
       {% else %}
       <div class="help-box">
         <strong data-i18n="exp.pending">Resultado pendiente.</strong>
-        <p data-i18n="curves.pending">Las curvas se generan automáticamente al ejecutar la evaluación (ver Detalle Técnico › Métricas).</p>
+        {% if dev_help %}
+<p data-i18n="curves.pending">Las curvas se generan automáticamente al ejecutar la evaluación (ver Detalle Técnico › Métricas).</p>
+        {% else %}
+        <p data-i18n="public.unavailable">Esta instancia no incluye estos resultados.</p>
+        {% endif %}
       </div>
       {% endif %}
     </section>
@@ -379,7 +403,7 @@
       <div class="footer-sep">
         {% if project.autor %}<span data-i18n="footer.author">Autor:</span> <b>{{ project.autor }}</b> ·{% endif %}
         {% if project.asesor %}<span data-i18n="footer.advisor">Asesor:</span> <b>{{ project.asesor }}</b> ·{% endif %}
-        <span data-i18n="footer.model">Modelo</span> <code id="modelNameFooter">{{ model_hash or '—' }}</code>
+        <span data-i18n="footer.model">Modelo</span> <code translate="no" id="modelNameFooter">{{ model_hash or '—' }}</code>
       </div>
       <div class="footer-sep footer-refs">
         <span>Ref.:</span> Hannun AY et al. Nat Med 2019.
