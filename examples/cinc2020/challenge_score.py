@@ -27,6 +27,7 @@ es el comportamiento correcto para evidenciar la brecha.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -39,6 +40,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from ecg import load, predict, util  # noqa: E402
 
 OFFICIAL_DIR = Path(__file__).resolve().parent / "official"
+_OFFICIAL = None
 
 
 def load_official_tables():
@@ -108,19 +110,20 @@ def true_scored_matrix(dx_list: list[str], scored_codes: list[str]) -> np.ndarra
     return y
 
 
+def _official_module():
+    """Carga (una vez) el evaluador oficial vendored en ``official/``."""
+    global _OFFICIAL
+    if _OFFICIAL is None:
+        spec = importlib.util.spec_from_file_location(
+            "official_evaluate_12ECG_score", OFFICIAL_DIR / "evaluate_12ECG_score.py")
+        _OFFICIAL = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_OFFICIAL)
+    return _OFFICIAL
+
+
 def modified_confusion_matrix(labels: np.ndarray, outputs: np.ndarray) -> np.ndarray:
-    """Réplica exacta de compute_modified_confusion_matrix oficial."""
-    num_recordings, num_classes = labels.shape
-    a = np.zeros((num_classes, num_classes))
-    for i in range(num_recordings):
-        union = np.logical_or(labels[i, :].astype(bool), outputs[i, :].astype(bool)).sum()
-        normalization = float(max(union, 1))
-        for j in range(num_classes):
-            if labels[i, j]:
-                for k in range(num_classes):
-                    if outputs[i, k]:
-                        a[j, k] += 1.0 / normalization
-    return a
+    """Matriz de confusión modificada multilabel: función oficial, sin reimplementar."""
+    return _official_module().compute_modified_confusion_matrix(labels, outputs)
 
 
 def challenge_metric(weights: np.ndarray, labels: np.ndarray, outputs: np.ndarray, classes: list[str]) -> dict:

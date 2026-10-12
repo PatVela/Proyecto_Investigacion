@@ -15,6 +15,38 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
+def decode_h5_string(value) -> str:
+    """Convierte un valor de HDF5 (bytes o str) a ``str``."""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
+def decode_h5_strings(values) -> list[str]:
+    return [decode_h5_string(v) for v in values]
+
+
+def get_device(requested: str | None = "auto"):
+    """``torch.device``: ``cpu`` si se pide o no hay CUDA; ``cuda`` con ``auto``/``cuda``/``None``."""
+    import torch
+
+    if requested == "cpu":
+        return torch.device("cpu")
+    if requested in {None, "auto", "cuda"} and torch.cuda.is_available():
+        return torch.device("cuda")
+    return torch.device("cpu")
+
+
+def dataloader_kwargs(batch_size: int, num_workers: int = 0, pin_memory: bool = False,
+                      prefetch_factor: int = 4, shuffle: bool = False) -> dict:
+    """kwargs de DataLoader seguros con ``num_workers=0`` (evita error de persistent/prefetch)."""
+    kwargs: dict = dict(batch_size=int(batch_size), shuffle=bool(shuffle),
+                        num_workers=int(num_workers), pin_memory=bool(pin_memory))
+    if int(num_workers) > 0:
+        kwargs.update(persistent_workers=True, prefetch_factor=int(prefetch_factor))
+    return kwargs
+
+
 def set_seed(seed: int | None) -> None:
     """Fija semillas de Python, NumPy y PyTorch si está disponible."""
     if seed is None:
@@ -100,10 +132,8 @@ def save_checkpoint(
     """Guarda checkpoint PyTorch completo."""
     import torch
 
-    try:
-        from ecg.load import LABEL_SCHEMA as _schema
-    except Exception:
-        _schema = "cinc2020_12_grouped_snomed_v2"
+    from ecg.schema import LABEL_SCHEMA as _schema
+
     payload = {
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict() if optimizer is not None else None,
