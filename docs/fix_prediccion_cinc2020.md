@@ -1,5 +1,7 @@
 # Fix: predicción incorrecta en CINC2020 — diagnóstico y correcciones
 
+> **Documento histórico** (estado al 2026-09-10). Después de este análisis cambiaron, entre otras cosas, la selección de checkpoint (una ruta explícita inexistente ahora impide arrancar en vez de sustituirse) y la carga de pesos (`weights_only=True`). Las instrucciones vigentes están en `README.md` y `webapp/README.md`.
+
 Fecha: 2026-09-10. Casos reportados: `E00001` (Dx `426783006`=NSR) y `E00014`
 (Dx `428750005,426177001,111975006` = NSSTTA + SB + LQT), ambos de Georgia.
 
