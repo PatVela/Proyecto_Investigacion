@@ -234,6 +234,7 @@ python tools/build_examples.py --predictions runs/eval/ensemble-f1/predictions_t
 | `ECG_KEEP_UPLOADS` | — | `1` conserva los ECG subidos (por defecto se borran al terminar) |
 | `ECG_MAX_CONCURRENT_INFERENCE`, `ECG_MODEL_CACHE_SIZE` | 2, 4 | Inferencias simultáneas y modelos en memoria |
 | `ECG_DEBUG_ERRORS` | — | `1` devuelve el detalle de los fallos internos (por defecto solo queda en el registro) |
+| `ECG_DEV_HELP` | — | `1` muestra en la interfaz los comandos de evaluación cuando faltan métricas (útil en desarrollo); en una instancia pública se oculta |
 
 Rendimiento medido en CPU (sin GPU): primera petición ≈ 3,9 s, después ≈ 2,5 s; memoria máxima ≈ 1,0 GB. Cinco
 solicitudes simultáneas se atienden en cola (el trazado ECG es serial por limitaciones de matplotlib). Elija un host
