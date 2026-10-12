@@ -41,3 +41,9 @@ __pycache__/
 .pytest_cache/
 .coverage
 nohup.out
+
+# Archivos que SÍ se versionan para desplegar la webapp (ver tasks/plan.md)
+!deploy/results/
+!deploy/results/**
+!webapp/examples/**/*.hea
+!webapp/examples/**/*.mat
