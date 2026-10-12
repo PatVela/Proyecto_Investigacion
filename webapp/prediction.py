@@ -89,6 +89,24 @@ _INFERENCE_SLOTS = threading.BoundedSemaphore(max(1, int(os.environ.get("ECG_MAX
 _PLOT_LOCK = threading.Lock()
 
 
+SERVING_DEVICES = ("auto", "cpu", "cuda")
+
+
+def serving_device():
+    """``torch.device`` de inferencia según ``ECG_DEVICE`` (``auto`` = GPU si existe, ``cpu`` o ``cuda``).
+
+    Un ``cuda`` explícito sin GPU es un error: no se sustituye en silencio por la CPU.
+    """
+    import torch
+
+    requested = os.environ.get("ECG_DEVICE", "auto").strip().lower() or "auto"
+    if requested not in SERVING_DEVICES:
+        raise ValueError(f"ECG_DEVICE debe ser uno de {', '.join(SERVING_DEVICES)}; recibido {requested!r}")
+    if requested == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError("ECG_DEVICE=cuda pero CUDA no está disponible en este equipo")
+    return util.get_device(requested)
+
+
 def get_cached_model(path: str | Path, device):
     """``(model, checkpoint_ligero, class_names)`` con caché por ruta, versión del archivo y dispositivo."""
     path = Path(path)
@@ -650,8 +668,7 @@ def run_prediction_from_saved_paths(
 
     resolved_model = resolve_model_path(model_path=model_path, saved_dir=saved_dir)
 
-    import torch
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = serving_device()
     model, checkpoint, class_names = get_cached_model(resolved_model, device)
     pre = preprocessing_for_checkpoint(checkpoint)
     ckpt_schema = checkpoint.get("label_schema")
