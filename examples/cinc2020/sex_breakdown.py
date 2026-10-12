@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import h5py
@@ -19,17 +20,13 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import f1_score
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT))
+
+from ecg.util import decode_h5_strings  # noqa: E402
+
 CANONICAL = {"M": "Male", "MALE": "Male", "MASCULINO": "Male",
              "F": "Female", "FEMALE": "Female", "FEMENINO": "Female"}
-
-
-def _decode(values) -> list[str]:
-    out = []
-    for v in values:
-        if isinstance(v, bytes):
-            v = v.decode("utf-8", errors="replace")
-        out.append(str(v))
-    return out
 
 
 def normalize_sex(raw: str) -> str:
@@ -51,8 +48,8 @@ def main() -> None:
     if not classes:
         raise SystemExit(f"{args.predictions} no tiene columnas true_<clase>.")
     with h5py.File(args.test_h5, "r") as h5:
-        names = _decode(h5["record_names"][:])
-        sexes = _decode(h5["sexes"][:])
+        names = decode_h5_strings(h5["record_names"][:])
+        sexes = decode_h5_strings(h5["sexes"][:])
     meta = pd.DataFrame({"record_name": names, "sex_raw": sexes})
     merged = pred.merge(meta, on="record_name", how="inner")
     print(f"Registros: CSV={len(pred)} H5={len(meta)} cruzados={len(merged)}")

@@ -41,8 +41,14 @@ Comprobaciones:
 """
 
 import os
+import sys
+from pathlib import Path
+
 import h5py
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from ecg.util import decode_h5_string  # noqa: E402
 
 
 # =====================================================================
@@ -116,18 +122,7 @@ MAX_REASONABLE_AGE = 120
 # UTILIDADES
 # =====================================================================
 
-def decode_string(value):
-    """
-    Convierte strings de HDF5 a Python str.
-    """
-
-    if isinstance(value, bytes):
-        return value.decode(
-            "utf-8",
-            errors="replace"
-        )
-
-    return str(value)
+decode_string = decode_h5_string  # definido una sola vez en ecg.util
 
 
 def print_header(title):
