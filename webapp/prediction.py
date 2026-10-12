@@ -13,11 +13,20 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import tempfile
 import threading
 import uuid
 from collections import OrderedDict
 from pathlib import Path
 from typing import Iterable
+
+# matplotlib necesita un directorio de configuración; en contenedores mínimos puede no
+# existir un "home" y la importación fallaría (RuntimeError) antes de arrancar la app.
+if not os.environ.get("MPLCONFIGDIR"):
+    try:
+        Path.home()
+    except RuntimeError:
+        os.environ["MPLCONFIGDIR"] = str(Path(tempfile.gettempdir()) / "ecg-mplconfig")
 
 import matplotlib
 matplotlib.use("Agg")
