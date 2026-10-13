@@ -14,18 +14,18 @@
       "NSR"
     ],
     "reference_probabilities": {
-      "NSR": 0.9877,
-      "AxisDev": 0.28516,
-      "MI": 0.13281,
-      "TAb": 0.44255,
-      "AF": 0.01373,
-      "LVH": 0.10581,
-      "VEctopy": 0.04223,
-      "AVBlock": 0.05708,
-      "STach": 0.02278,
-      "BBB": 0.16074,
-      "SB": 0.06132,
-      "AEctopy_Junctional": 0.07006
+      "NSR": 0.98903,
+      "AxisDev": 0.07096,
+      "MI": 0.04057,
+      "TAb": 0.24496,
+      "AF": 0.00287,
+      "LVH": 0.01245,
+      "VEctopy": 0.00508,
+      "AVBlock": 0.00502,
+      "STach": 0.00167,
+      "BBB": 0.04895,
+      "SB": 0.00282,
+      "AEctopy_Junctional": 0.00806
     }
   },
   {
@@ -43,18 +43,18 @@
       "AF"
     ],
     "reference_probabilities": {
-      "NSR": 0.17468,
-      "AxisDev": 0.25358,
-      "MI": 0.27533,
-      "TAb": 0.54758,
-      "AF": 0.94902,
-      "LVH": 0.1215,
-      "VEctopy": 0.60924,
-      "AVBlock": 0.28448,
-      "STach": 0.41419,
-      "BBB": 0.59562,
-      "SB": 0.11663,
-      "AEctopy_Junctional": 0.6294
+      "NSR": 0.12495,
+      "AxisDev": 0.04605,
+      "MI": 0.10124,
+      "TAb": 0.34819,
+      "AF": 0.69104,
+      "LVH": 0.01534,
+      "VEctopy": 0.21785,
+      "AVBlock": 0.0462,
+      "STach": 0.08887,
+      "BBB": 0.29581,
+      "SB": 0.00527,
+      "AEctopy_Junctional": 0.19337
     }
   },
   {
@@ -72,18 +72,18 @@
       "STach"
     ],
     "reference_probabilities": {
-      "NSR": 0.07911,
-      "AxisDev": 0.05774,
-      "MI": 0.07443,
-      "TAb": 0.4673,
-      "AF": 0.01124,
-      "LVH": 0.38624,
-      "VEctopy": 0.11089,
-      "AVBlock": 0.0632,
-      "STach": 0.99572,
-      "BBB": 0.11218,
-      "SB": 0.05113,
-      "AEctopy_Junctional": 0.13113
+      "NSR": 0.0459,
+      "AxisDev": 0.00721,
+      "MI": 0.0197,
+      "TAb": 0.30476,
+      "AF": 0.0028,
+      "LVH": 0.06841,
+      "VEctopy": 0.01248,
+      "AVBlock": 0.00519,
+      "STach": 0.96893,
+      "BBB": 0.03165,
+      "SB": 0.00252,
+      "AEctopy_Junctional": 0.01367
     }
   },
   {
@@ -101,18 +101,18 @@
       "SB"
     ],
     "reference_probabilities": {
-      "NSR": 0.44504,
-      "AxisDev": 0.06367,
-      "MI": 0.05495,
-      "TAb": 0.20317,
-      "AF": 0.03196,
-      "LVH": 0.13532,
-      "VEctopy": 0.11005,
-      "AVBlock": 0.04554,
-      "STach": 0.0231,
-      "BBB": 0.05225,
-      "SB": 0.97901,
-      "AEctopy_Junctional": 0.09023
+      "NSR": 0.38784,
+      "AxisDev": 0.00743,
+      "MI": 0.01371,
+      "TAb": 0.07758,
+      "AF": 0.00536,
+      "LVH": 0.01688,
+      "VEctopy": 0.01243,
+      "AVBlock": 0.00416,
+      "STach": 0.00167,
+      "BBB": 0.01293,
+      "SB": 0.83443,
+      "AEctopy_Junctional": 0.00998
     }
   },
   {
@@ -130,18 +130,18 @@
       "BBB"
     ],
     "reference_probabilities": {
-      "NSR": 0.05525,
-      "AxisDev": 0.13834,
-      "MI": 0.10884,
-      "TAb": 0.17039,
-      "AF": 0.03918,
-      "LVH": 0.12844,
-      "VEctopy": 0.07013,
-      "AVBlock": 0.08734,
-      "STach": 0.01998,
-      "BBB": 0.98709,
-      "SB": 0.04859,
-      "AEctopy_Junctional": 0.32411
+      "NSR": 0.03353,
+      "AxisDev": 0.02236,
+      "MI": 0.03072,
+      "TAb": 0.06152,
+      "AF": 0.00766,
+      "LVH": 0.0157,
+      "VEctopy": 0.00812,
+      "AVBlock": 0.0078,
+      "STach": 0.00159,
+      "BBB": 0.965,
+      "SB": 0.00244,
+      "AEctopy_Junctional": 0.04503
     }
   },
   {
@@ -159,18 +159,18 @@
       "MI"
     ],
     "reference_probabilities": {
-      "NSR": 0.01558,
-      "AxisDev": 0.03385,
-      "MI": 0.97664,
-      "TAb": 0.10501,
-      "AF": 0.01184,
-      "LVH": 0.09935,
-      "VEctopy": 0.37058,
-      "AVBlock": 0.04846,
-      "STach": 0.01659,
-      "BBB": 0.03008,
-      "SB": 0.05406,
-      "AEctopy_Junctional": 0.1667
+      "NSR": 0.00801,
+      "AxisDev": 0.0038,
+      "MI": 0.96079,
+      "TAb": 0.03318,
+      "AF": 0.00321,
+      "LVH": 0.0114,
+      "VEctopy": 0.06921,
+      "AVBlock": 0.00457,
+      "STach": 0.00147,
+      "BBB": 0.00763,
+      "SB": 0.00262,
+      "AEctopy_Junctional": 0.01899
     }
   },
   {
@@ -199,18 +199,18 @@
       "BBB"
     ],
     "reference_probabilities": {
-      "NSR": 0.11344,
-      "AxisDev": 0.72515,
-      "MI": 0.89795,
-      "TAb": 0.59838,
-      "AF": 0.9932,
-      "LVH": 0.86934,
-      "VEctopy": 1.0,
-      "AVBlock": 0.18893,
-      "STach": 0.44284,
-      "BBB": 0.74531,
-      "SB": 0.0216,
-      "AEctopy_Junctional": 0.32671
+      "NSR": 0.08601,
+      "AxisDev": 0.32555,
+      "MI": 0.79731,
+      "TAb": 0.3983,
+      "AF": 0.9,
+      "LVH": 0.50223,
+      "VEctopy": 0.99903,
+      "AVBlock": 0.01874,
+      "STach": 0.01098,
+      "BBB": 0.45391,
+      "SB": 0.00152,
+      "AEctopy_Junctional": 0.03076
     }
   }
 ]

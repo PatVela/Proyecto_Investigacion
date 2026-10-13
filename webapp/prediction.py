@@ -37,7 +37,7 @@ import pandas as pd
 from werkzeug.utils import secure_filename
 
 from ecg import load, util
-from ecg.calibration import apply_temperature
+from ecg.calibration import apply_platt, apply_temperature
 from ecg.predict import load_model, predict_array, predict_windows, prepare_csv_windows, preprocessing_for_checkpoint
 
 
@@ -588,6 +588,25 @@ def temperatures_for_class_names(
     return arr
 
 
+def platt_for_class_names(
+    class_names: list[str],
+    platt: dict | None = None,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """Vectores ``(a, b)`` (C,) de una calibración afín ``{clase: {"a": ..., "b": ...}}``; None si no hay.
+
+    Una clase ausente queda en la identidad (a=1, b=0), igual que la temperatura ausente queda en 1.
+    """
+    if platt is None:
+        return None
+    a = np.ones(len(class_names), dtype=np.float64)
+    b = np.zeros(len(class_names), dtype=np.float64)
+    for i, name in enumerate(class_names):
+        entry = platt.get(name)
+        if entry is not None:
+            a[i], b[i] = float(entry["a"]), float(entry["b"])
+    return a, b
+
+
 def _prediction_rows(probabilities: np.ndarray, class_names: list[str], thresholds: np.ndarray) -> list[dict]:
     rows = []
     for i, prob in enumerate(probabilities):
@@ -684,8 +703,19 @@ def run_prediction_from_saved_paths(
     temperatures_b: dict | list | np.ndarray | None = None,
     temperature_source_b: str | None = None,
     alpha: float = 0.5,
+    platt: dict | None = None,
+    platt_source: str | None = None,
+    platt_b: dict | None = None,
+    platt_source_b: str | None = None,
+    platt_ensemble: dict | None = None,
+    platt_source_ensemble: str | None = None,
 ) -> dict:
-    """Predice a partir de archivos ya guardados en disco."""
+    """Predice a partir de archivos ya guardados en disco.
+
+    Calibración: por modelo, temperatura (``temperatures``) o calibración afín (``platt``; si llegan las dos para el
+    mismo modelo gana la afín) y, en un ensemble, una calibración afín del promedio (``platt_ensemble``). Todas son
+    monótonas, así que calibrar la probabilidad agregada con el máximo de ventanas equivale a agregar las calibradas.
+    """
     result_dir = Path(result_dir)
     result_dir.mkdir(parents=True, exist_ok=True)
 
@@ -700,14 +730,21 @@ def run_prediction_from_saved_paths(
     windows = np.asarray(prepared.get("processed_windows", prepared["processed_signal"][None, ...]), dtype=np.float32)
     probabilities, per_window, aggregate_used = _infer_windows(model, windows, device)
     temp_values = temperatures_for_class_names(class_names, temperatures=temperatures)
-    calibrated_a = temp_values is not None
-    if calibrated_a:
+    platt_values = platt_for_class_names(class_names, platt)
+    if platt_values is not None:
+        temp_values = None                      # la calibración afín sustituye a la temperatura del mismo modelo
+        probabilities = apply_platt(np.asarray(probabilities)[None, :], *platt_values)[0]
+        per_window = apply_platt(np.asarray(per_window), *platt_values)
+    elif temp_values is not None:
         probabilities = apply_temperature(np.asarray(probabilities)[None, :], temp_values)[0]
         per_window = apply_temperature(np.asarray(per_window), temp_values)
+    calibrated_a = temp_values is not None or platt_values is not None
 
     is_ensemble = model_path_b is not None and str(model_path_b).strip() != ""
     resolved_model_b = None
     temp_values_b = None
+    platt_values_b = None
+    platt_values_e = None
     calibrated_b = False
     if is_ensemble:
         from examples.cinc2020.ensemble_evaluate import ensemble_probabilities
@@ -717,13 +754,40 @@ def run_prediction_from_saved_paths(
             raise ValueError("Los checkpoints del ensemble usan distinto orden de clases.")
         probabilities_b, per_window_b, _ = _infer_windows(_model_b, windows, device)
         temp_values_b = temperatures_for_class_names(class_names, temperatures=temperatures_b)
-        calibrated_b = temp_values_b is not None
-        if calibrated_b:
+        platt_values_b = platt_for_class_names(class_names, platt_b)
+        if platt_values_b is not None:
+            temp_values_b = None
+            probabilities_b = apply_platt(np.asarray(probabilities_b)[None, :], *platt_values_b)[0]
+            per_window_b = apply_platt(np.asarray(per_window_b), *platt_values_b)
+        elif temp_values_b is not None:
             probabilities_b = apply_temperature(np.asarray(probabilities_b)[None, :], temp_values_b)[0]
             per_window_b = apply_temperature(np.asarray(per_window_b), temp_values_b)
-        probabilities = ensemble_probabilities(probabilities, probabilities_b, alpha).astype(np.float32)
-        per_window = ensemble_probabilities(np.asarray(per_window), np.asarray(per_window_b), alpha).astype(np.float32)
-    calibrated = calibrated_a or calibrated_b
+        calibrated_b = temp_values_b is not None or platt_values_b is not None
+        probabilities = ensemble_probabilities(probabilities, probabilities_b, alpha)
+        per_window = ensemble_probabilities(np.asarray(per_window), np.asarray(per_window_b), alpha)
+        platt_values_e = platt_for_class_names(class_names, platt_ensemble)
+        if platt_values_e is not None:
+            probabilities = apply_platt(probabilities[None, :], *platt_values_e)[0]
+            per_window = apply_platt(per_window, *platt_values_e)
+        else:
+            probabilities = probabilities.astype(np.float32)
+            per_window = per_window.astype(np.float32)
+    calibrated = calibrated_a or calibrated_b or platt_values_e is not None
+    if platt_values_e is not None:
+        calibration_method = "platt+ensemble"
+    elif platt_values is not None or platt_values_b is not None:
+        calibration_method = "platt" if (temp_values is None and temp_values_b is None) else "mixed"
+    elif calibrated:
+        calibration_method = "temperature"
+    else:
+        calibration_method = None
+    calibration_text = {
+        None: "sin calibrar (probabilidades directas del modelo)",
+        "temperature": "temperature scaling por clase",
+        "platt": "calibración afín por clase (a·logit + b) en cada modelo",
+        "platt+ensemble": "calibración afín por clase en cada modelo y sobre el promedio del ensemble",
+        "mixed": "calibración por clase (temperatura y/o afín según el modelo)",
+    }[calibration_method]
     threshold_values = threshold_values_for_class_names(class_names, threshold=threshold, thresholds=thresholds)
     rows = _prediction_rows(probabilities, class_names, threshold_values)
     raw_sorted_rows = sorted(rows, key=lambda item: item["probability"], reverse=True)
@@ -779,10 +843,18 @@ def run_prediction_from_saved_paths(
         "thresholds": threshold_values.tolist(),
         "threshold_source": threshold_source or "fallback_global_0.5",
         "using_class_thresholds": bool(using_class_thresholds),
-        "temperatures": temp_values.tolist() if calibrated_a else None,
-        "temperature_source": temperature_source if calibrated_a else None,
-        "temperatures_b": temp_values_b.tolist() if calibrated_b else None,
-        "temperature_source_b": temperature_source_b if calibrated_b else None,
+        "temperatures": temp_values.tolist() if temp_values is not None else None,
+        "temperature_source": temperature_source if temp_values is not None else None,
+        "temperatures_b": temp_values_b.tolist() if temp_values_b is not None else None,
+        "temperature_source_b": temperature_source_b if temp_values_b is not None else None,
+        "platt": {"a": platt_values[0].tolist(), "b": platt_values[1].tolist()} if platt_values is not None else None,
+        "platt_source": platt_source if platt_values is not None else None,
+        "platt_b": {"a": platt_values_b[0].tolist(), "b": platt_values_b[1].tolist()} if platt_values_b is not None else None,
+        "platt_source_b": platt_source_b if platt_values_b is not None else None,
+        "platt_ensemble": ({"a": platt_values_e[0].tolist(), "b": platt_values_e[1].tolist()}
+                           if platt_values_e is not None else None),
+        "platt_source_ensemble": platt_source_ensemble if platt_values_e is not None else None,
+        "calibration_method": calibration_method,
         "calibrated": bool(calibrated),
         "num_classes": load.NUM_CLASSES,
         "num_leads": load.NUM_LEADS,
@@ -830,10 +902,7 @@ def run_prediction_from_saved_paths(
                 if using_class_thresholds else f"probabilidad >= {threshold}"
             ),
             "threshold_source": threshold_source or "fallback_global_0.5",
-            "calibration": (
-                "temperature scaling por clase"
-                if calibrated else "sin calibrar (probabilidades directas del modelo)"
-            ),
+            "calibration": calibration_text,
             "ensemble": (
                 f"promedio ponderado α={float(alpha):.2f} de 2 checkpoints"
                 if is_ensemble else "no (checkpoint único)"
@@ -862,6 +931,12 @@ def run_prediction_from_uploads(
     temperatures_b: dict | list | np.ndarray | None = None,
     temperature_source_b: str | None = None,
     alpha: float = 0.5,
+    platt: dict | None = None,
+    platt_source: str | None = None,
+    platt_b: dict | None = None,
+    platt_source_b: str | None = None,
+    platt_ensemble: dict | None = None,
+    platt_source_ensemble: str | None = None,
 ) -> dict:
     """Guarda archivos subidos, convierte si aplica y ejecuta inferencia."""
     job_id = uuid.uuid4().hex[:12]
@@ -885,6 +960,12 @@ def run_prediction_from_uploads(
             temperatures_b=temperatures_b,
             temperature_source_b=temperature_source_b,
             alpha=alpha,
+            platt=platt,
+            platt_source=platt_source,
+            platt_b=platt_b,
+            platt_source_b=platt_source_b,
+            platt_ensemble=platt_ensemble,
+            platt_source_ensemble=platt_source_ensemble,
         )
     finally:
         # El ECG subido no se conserva: solo quedan los informes generados (que caducan).

@@ -104,3 +104,86 @@ def save_temperatures_csv(path: str | Path, class_names: list[str], temperatures
     """Guarda vector (C,) como CSV ``class,temperature``."""
     temps = np.asarray(list(temperatures), dtype=np.float64).reshape(-1)
     pd.DataFrame({"class": list(class_names), "temperature": temps}).to_csv(path, index=False)
+
+
+# --- Calibración afín por clase (Platt): p_cal = sigmoid(a · logit + b) ----------------------------------------------
+#
+# La temperatura es el caso b = 0, a = 1/T. Entrenar con ``pos_weight = neg/pos`` (y label smoothing) sube la
+# probabilidad base de todos los registros, y eso es un desplazamiento (b), que una temperatura no corrige: con ella el
+# ECE de v2 queda en 0.114 y con a, b en 0.014 (ver tasks/analisis_mejoras.md). a > 0 siempre, así que la calibración
+# no cambia el orden de las puntuaciones: AUROC y AUPRC no se tocan y solo se mueve la escala en la que se fijan los
+# umbrales.
+
+LOGIT_EPS = 1e-6
+PLATT_SLOPE_BOUNDS = (0.05, 10.0)
+PLATT_BIAS_BOUNDS = (-20.0, 20.0)
+
+
+def to_logits(y_prob: np.ndarray, eps: float = LOGIT_EPS) -> np.ndarray:
+    """logit(p) recortado a [eps, 1-eps] en float64 (una probabilidad exacta de 0 o 1 no da ±inf)."""
+    return _logit(y_prob, eps=eps)
+
+
+def fit_platt_per_class(y_true: np.ndarray, logits: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Ajusta ``(a, b)`` por clase minimizando la NLL sobre validación. Devuelve dos vectores (C,).
+
+    Ajustar sobre logits crudos del modelo (no sobre probabilidades ya escaladas): una temperatura menor que 1
+    empuja muchas probabilidades a 1.0 exacto en float32 y el recorte del logit decide entonces la pendiente. Una
+    clase sin positivos o sin negativos devuelve la identidad ``(1, 0)``.
+    """
+    from scipy.optimize import minimize
+
+    y_true = np.asarray(y_true, dtype=np.float64)
+    z_all = np.asarray(logits, dtype=np.float64)
+    n_classes = y_true.shape[1]
+    a = np.ones(n_classes, dtype=np.float64)
+    b = np.zeros(n_classes, dtype=np.float64)
+    for i in range(n_classes):
+        y, z = y_true[:, i], z_all[:, i]
+        if y.min() == y.max():
+            continue
+
+        def nll(params, y=y, z=z):
+            u = params[0] * z + params[1]
+            grad_u = 1.0 / (1.0 + np.exp(-u)) - y
+            return float(np.mean(np.logaddexp(0.0, u) - y * u)), np.array([np.mean(grad_u * z), np.mean(grad_u)])
+
+        res = minimize(nll, x0=[1.0, 0.0], jac=True, method="L-BFGS-B",
+                       bounds=[PLATT_SLOPE_BOUNDS, PLATT_BIAS_BOUNDS])
+        if res.success or np.all(np.isfinite(res.x)):
+            a[i], b[i] = float(res.x[0]), float(res.x[1])
+    return a, b
+
+
+def apply_platt_logits(logits: np.ndarray, a, b) -> np.ndarray:
+    """``sigmoid(a·z + b)`` por clase en float64 (sin recortar a float32: no crea empates en 1.0)."""
+    z = np.asarray(logits, dtype=np.float64)
+    a = np.asarray(a, dtype=np.float64).reshape(1, -1)
+    b = np.asarray(b, dtype=np.float64).reshape(1, -1)
+    if a.shape[1] != z.shape[1] or b.shape[1] != z.shape[1]:
+        raise ValueError(f"Se esperaban {z.shape[1]} parámetros a y b; llegaron {a.shape[1]} y {b.shape[1]}.")
+    return _sigmoid(a * z + b)
+
+
+def apply_platt(y_prob: np.ndarray, a, b, eps: float = LOGIT_EPS) -> np.ndarray:
+    """Igual que :func:`apply_platt_logits` partiendo de probabilidades (webapp, ensembles)."""
+    return apply_platt_logits(to_logits(y_prob, eps=eps), a, b)
+
+
+def load_platt_csv(path: str | Path, class_names: list[str]) -> tuple[np.ndarray, np.ndarray]:
+    """Lee CSV ``class,a,b`` y devuelve dos vectores (C,) ordenados por ``class_names``."""
+    df = pd.read_csv(path)
+    if not {"class", "a", "b"} <= set(df.columns):
+        raise ValueError(f"{path} debe tener columnas class,a,b.")
+    values = {str(r["class"]): (float(r["a"]), float(r["b"])) for _, r in df.iterrows()}
+    missing = [c for c in class_names if c not in values]
+    if missing:
+        raise ValueError(f"Parámetros faltantes para: {missing}.")
+    return (np.asarray([values[c][0] for c in class_names], dtype=np.float64),
+            np.asarray([values[c][1] for c in class_names], dtype=np.float64))
+
+
+def save_platt_csv(path: str | Path, class_names: list[str], a, b) -> None:
+    """Guarda ``(a, b)`` como CSV ``class,a,b``."""
+    pd.DataFrame({"class": list(class_names), "a": np.asarray(a, dtype=np.float64).reshape(-1),
+                  "b": np.asarray(b, dtype=np.float64).reshape(-1)}).to_csv(path, index=False)

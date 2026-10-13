@@ -52,9 +52,9 @@ def test_dev_server_serves_an_ensemble_prediction(tmp_path):
                 "ECG_RATE_LIMIT_MAX": "0", "CUDA_VISIBLE_DEVICES": "-1"})
     command = [sys.executable, "webapp/app.py", "--host", "127.0.0.1", "--port", str(port),
                "--model", "models/resnet34_v1.pt", "--model-b", "models/resnet34_v2.pt", "--alpha", "0.5",
-               "--temperatures", "deploy/temperatures_a.csv", "--temperatures-b", "deploy/temperatures_b.csv",
-               "--thresholds", "deploy/results/ensemble-f1/thresholds_validation.csv",
-               "--eval-dir", "deploy/results/ensemble-f1", "--exp-dir", "deploy/reports"]
+               "--platt", "deploy/platt_a.csv", "--platt-b", "deploy/platt_b.csv", "--platt-ensemble", "deploy/platt_ensemble.csv",
+               "--thresholds", "deploy/results/ensemble-f1-platt/thresholds_validation.csv",
+               "--eval-dir", "deploy/results/ensemble-f1-platt", "--exp-dir", "deploy/reports"]
     proc = subprocess.Popen(command, cwd=REPO_ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         deadline = time.time() + 120

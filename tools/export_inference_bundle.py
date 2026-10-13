@@ -5,7 +5,8 @@ Genera, a partir de dos checkpoints y de la evaluación del ensemble:
     models/<nombre>.pt           pesos de inferencia (≈19 MB c/u, sin estado del optimizador)
     deploy/manifest.json         huellas SHA-256, época, val_loss, alpha, versiones
     deploy/ensemble.env          variables de entorno que consume la webapp
-    deploy/temperatures_{a,b}.csv
+    deploy/temperatures_{a,b}.csv        calibración por temperatura (bundles anteriores o --temperatures-*)
+    deploy/platt_{a,b}.csv, platt_ensemble.csv   calibración afín por modelo y del promedio (--platt-*)
     deploy/results/<eval>/       métricas, curvas ROC/PR y umbrales (sin predicciones por registro)
     deploy/reports/              comparación de modelos y robustez
 
@@ -17,10 +18,13 @@ Uso (desde la raíz del repositorio)::
     python tools/export_inference_bundle.py \\
       --checkpoint-a saved/cinc2020/cinc2020_resnet/<run>/best.pt \\
       --checkpoint-b saved/cinc2020/cinc2020_resnet_v2/<run>/best.pt \\
-      --eval-dir runs/eval/ensemble-f1 \\
-      --temperatures-a runs/eval/eval-resnet/temperatures_validation.csv \\
-      --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv \\
+      --eval-dir runs/eval/ensemble-f1-platt \\
+      --platt-a runs/eval/eval-resnet/platt_validation.csv \\
+      --platt-b runs/eval/eval-resnet-v2/platt_validation.csv \\
+      --platt-ensemble runs/eval/ensemble-f1-platt/platt_ensemble_validation.csv \\
       --reports-dir runs/reports
+
+Cada modelo necesita una calibración: ``--temperatures-*`` o ``--platt-*`` (si llegan las dos, la webapp usa la afín).
 """
 
 from __future__ import annotations
@@ -36,14 +40,16 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from ecg import network, util  # noqa: E402
+from ecg import load, network, util  # noqa: E402
+from ecg.calibration import load_platt_csv, load_temperatures_csv  # noqa: E402
 
 REQUIRED_RESULT_FILES = ("metrics_global.csv", "metrics_per_class.csv", "evaluation_summary.json",
                          "thresholds_validation.csv")
 OPTIONAL_RESULT_FILES = ("roc_curves_test.csv", "roc_curves_validation.csv",
                          "pr_curves_test.csv", "pr_curves_validation.csv")
 REPORT_FILES = ("model_comparison.csv", "robustness.csv")
-PATH_KEYS = ("checkpoint", "checkpoint_a", "checkpoint_b", "temperatures", "temperatures_a", "temperatures_b")
+PATH_KEYS = ("checkpoint", "checkpoint_a", "checkpoint_b", "temperatures", "temperatures_a", "temperatures_b",
+             "platt", "platt_a", "platt_b", "platt_ensemble")
 
 
 def _sha256(path: Path) -> str:
@@ -126,24 +132,52 @@ def export_reports(reports_dir: str | Path | None, dst_dir: str | Path) -> list[
     return copied
 
 
-def env_file_text(model_a: str, model_b: str, alpha: float, eval_name: str, deploy_rel: str, models_rel: str) -> str:
+def env_file_text(model_a: str, model_b: str, alpha: float, eval_name: str, deploy_rel: str, models_rel: str,
+                  calibration_files: dict | None = None) -> str:
+    """``calibration_files``: {variable de entorno: nombre de archivo dentro de deploy/}, en el orden de escritura."""
+    if calibration_files is None:
+        calibration_files = {"ECG_TEMPERATURES": "temperatures_a.csv", "ECG_TEMPERATURES_B": "temperatures_b.csv"}
+    calibration = "".join(f"{var}={deploy_rel}/{name}\n" for var, name in calibration_files.items())
     return (
         "# Generado por tools/export_inference_bundle.py. Rutas relativas a la raíz del repositorio.\n"
         f"ECG_SAVED={models_rel}\n"
         f"ECG_MODEL={models_rel}/{model_a}\n"
         f"ECG_MODEL_B={models_rel}/{model_b}\n"
         f"ECG_ALPHA={alpha}\n"
-        f"ECG_TEMPERATURES={deploy_rel}/temperatures_a.csv\n"
-        f"ECG_TEMPERATURES_B={deploy_rel}/temperatures_b.csv\n"
+        f"{calibration}"
         f"ECG_THRESHOLDS={deploy_rel}/results/{eval_name}/thresholds_validation.csv\n"
         f"ECG_EVAL_DIR={deploy_rel}/results/{eval_name}\n"
         f"ECG_EXP_DIR={deploy_rel}/reports\n"
     )
 
 
-def build_bundle(checkpoint_a, checkpoint_b, eval_dir, temperatures_a, temperatures_b, reports_dir=None,
+def _stage_calibration(temperatures_a, temperatures_b, platt_a, platt_b, platt_ensemble) -> dict:
+    """Valida los CSV de calibración y devuelve {archivo en deploy/: ruta origen} más las variables de entorno."""
+    for label, temperature, platt in (("A", temperatures_a, platt_a), ("B", temperatures_b, platt_b)):
+        if not temperature and not platt:
+            raise ValueError(f"El modelo {label} no tiene calibración: indique --temperatures-{label.lower()} o --platt-{label.lower()}.")
+    names = list(load.CLASS_NAMES)
+    for path in (temperatures_a, temperatures_b):
+        if path:
+            load_temperatures_csv(path, names)
+    for path in (platt_a, platt_b, platt_ensemble):
+        if path:
+            load_platt_csv(path, names)
+    files, env = {}, {}
+    for src, name, var in ((temperatures_a, "temperatures_a.csv", "ECG_TEMPERATURES"),
+                           (temperatures_b, "temperatures_b.csv", "ECG_TEMPERATURES_B"),
+                           (platt_a, "platt_a.csv", "ECG_PLATT"), (platt_b, "platt_b.csv", "ECG_PLATT_B"),
+                           (platt_ensemble, "platt_ensemble.csv", "ECG_PLATT_ENSEMBLE")):
+        if src:
+            files[name] = src
+            env[var] = name
+    return {"files": files, "env": env}
+
+
+def build_bundle(checkpoint_a, checkpoint_b, eval_dir, temperatures_a=None, temperatures_b=None, reports_dir=None,
                  out_root: str | Path = REPO_ROOT, name_a: str = "resnet34_v1", name_b: str = "resnet34_v2",
-                 alpha: float | None = None) -> dict:
+                 alpha: float | None = None, platt_a=None, platt_b=None, platt_ensemble=None) -> dict:
+    calibration = _stage_calibration(temperatures_a, temperatures_b, platt_a, platt_b, platt_ensemble)
     out_root = Path(out_root)
     models_dir, deploy_dir = out_root / "models", out_root / "deploy"
     eval_dir = Path(eval_dir)
@@ -157,10 +191,17 @@ def build_bundle(checkpoint_a, checkpoint_b, eval_dir, temperatures_a, temperatu
     results = export_results(eval_dir, deploy_dir / "results" / eval_dir.name)
     reports = export_reports(reports_dir, deploy_dir / "reports")
     deploy_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(temperatures_a, deploy_dir / "temperatures_a.csv")
-    shutil.copyfile(temperatures_b, deploy_dir / "temperatures_b.csv")
+    for name, src in calibration["files"].items():
+        shutil.copyfile(src, deploy_dir / name)
     (deploy_dir / "ensemble.env").write_text(
-        env_file_text(meta_a["file"], meta_b["file"], alpha, eval_dir.name, "deploy", "models"), encoding="utf-8")
+        env_file_text(meta_a["file"], meta_b["file"], alpha, eval_dir.name, "deploy", "models", calibration["env"]),
+        encoding="utf-8")
+    if platt_ensemble:
+        method = "platt+ensemble"
+    elif platt_a or platt_b:
+        method = "platt" if not (temperatures_a or temperatures_b) else "mixed"
+    else:
+        method = "temperature"
 
     import torch
 
@@ -169,6 +210,7 @@ def build_bundle(checkpoint_a, checkpoint_b, eval_dir, temperatures_a, temperatu
         "torch_version": torch.__version__,
         "label_schema": meta_a["label_schema"],
         "ensemble_alpha": alpha,
+        "calibration": {"method": method, "files": sorted(calibration["files"])},
         "models": {"a": meta_a, "b": meta_b},
         "results_dir": f"results/{eval_dir.name}",
         "results_files": results,
@@ -182,9 +224,12 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Empaqueta modelos y resultados para desplegar la webapp.")
     p.add_argument("--checkpoint-a", required=True)
     p.add_argument("--checkpoint-b", required=True)
-    p.add_argument("--eval-dir", required=True, help="Carpeta de evaluación del ensemble (p. ej. runs/eval/ensemble-f1)")
-    p.add_argument("--temperatures-a", required=True)
-    p.add_argument("--temperatures-b", required=True)
+    p.add_argument("--eval-dir", required=True, help="Carpeta de evaluación del ensemble (p. ej. runs/eval/ensemble-f1-platt)")
+    p.add_argument("--temperatures-a", default=None, help="temperatures_validation.csv del modelo A (calibración por temperatura)")
+    p.add_argument("--temperatures-b", default=None, help="temperatures_validation.csv del modelo B")
+    p.add_argument("--platt-a", default=None, help="platt_validation.csv del modelo A (calibración afín; gana a la temperatura)")
+    p.add_argument("--platt-b", default=None, help="platt_validation.csv del modelo B")
+    p.add_argument("--platt-ensemble", default=None, help="platt_ensemble_validation.csv que calibra el promedio del ensemble")
     p.add_argument("--reports-dir", default=None, help="Carpeta con model_comparison.csv y robustness.csv")
     p.add_argument("--out-root", default=str(REPO_ROOT))
     p.add_argument("--name-a", default="resnet34_v1")
@@ -192,11 +237,12 @@ def main() -> None:
     p.add_argument("--alpha", type=float, default=None, help="Por defecto, el de evaluation_summary.json")
     args = p.parse_args()
     manifest = build_bundle(args.checkpoint_a, args.checkpoint_b, args.eval_dir, args.temperatures_a,
-                            args.temperatures_b, args.reports_dir, args.out_root, args.name_a, args.name_b, args.alpha)
+                            args.temperatures_b, args.reports_dir, args.out_root, args.name_a, args.name_b, args.alpha,
+                            platt_a=args.platt_a, platt_b=args.platt_b, platt_ensemble=args.platt_ensemble)
     for key in ("a", "b"):
         m = manifest["models"][key]
         print(f"models/{m['file']}: {m['bytes'] / 1e6:.1f} MB  sha256={m['sha256'][:16]}…  época={m['epoch']}")
-    print(f"alpha={manifest['ensemble_alpha']} | resultados: {len(manifest['results_files'])} archivos | "
+    print(f"calibración: {manifest['calibration']['method']} | alpha={manifest['ensemble_alpha']} | resultados: {len(manifest['results_files'])} archivos | "
           f"reportes: {len(manifest['report_files'])} | env: deploy/ensemble.env")
 
 
