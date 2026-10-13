@@ -88,7 +88,7 @@ Implementación: `examples/cinc2020/evaluate.py`.
 
 ## Calibración, umbrales y ensemble
 
-- **Temperature scaling por clase** (`ecg/calibration.py`, `examples/cinc2020/calibrate.py`): una temperatura por clase ajustada solo en validación; se reportan ECE y Brier.
+- **Calibración por clase** (`ecg/calibration.py`, `examples/cinc2020/calibrate.py`), ajustada solo en validación; se reportan ECE y Brier. Dos variantes: *temperature scaling* (una temperatura por clase) y calibración afín `sigmoid(a·logit + b)` (`--method platt`). La temperatura no corrige el desplazamiento de la probabilidad base que introducen `pos_weight = neg/pos` y el label smoothing; la afín sí (ECE de v2 en test 0.114 → 0.014). En el ensemble, cada modelo se calibra y el promedio se recalibra.
 - **Umbrales por clase** optimizados en validación con F-beta (`--threshold-beta`: 0.5 favorece precisión, 1.0 equilibra, 2.0 favorece recall). Nunca se ajustan sobre test.
 - **Ensemble** (`examples/cinc2020/ensemble_evaluate.py`): promedio ponderado (`alpha = 0.5`) de las probabilidades calibradas de ResNet v1 y v2, con umbrales propios del promedio.
 - Cifras en [resultados_finales.md](resultados_finales.md).
