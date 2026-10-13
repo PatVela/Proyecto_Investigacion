@@ -14,7 +14,7 @@ PC: Windows 11, Intel Core i5-11400H, 24 GB de RAM, NVIDIA RTX 3050 Laptop (4 GB
 | Modelo solo para inferencia | 19,4 MB c/u (2 modelos ≈ 39 MB) | caben en git |
 | Memoria del proceso (ensemble) | 0,89 GB en CPU; 1,17 GB con GPU | sobra con 24 GB |
 | Latencia por análisis | CPU 2,36 s (primera 4,0 s); GPU 2,45 s | la GPU no ayuda |
-| Inferencia pura por modelo y ventana | CPU 44 ms; GPU 9 ms | el tiempo está en el PDF y los gráficos (≈ 1 s el PDF) |
+| Inferencia pura por modelo y ventana | CPU 43 ms (v1) y 93 ms (v2); GPU 5,5 ms (v2) | el tiempo está en el PDF y los gráficos (≈ 1 s el PDF) |
 | 5 solicitudes simultáneas | 10,7 s en total (en cola) | suficiente para una demostración |
 | Probabilidades CPU vs GPU | coinciden a 4 decimales | servir en CPU no cambia resultados |
 | Plan de energía "Equilibrado" | suspende a las 3 h con corriente, 3 min con batería | solo importa si se deja corriendo (T8) |
@@ -35,6 +35,7 @@ PC: Windows 11, Intel Core i5-11400H, 24 GB de RAM, NVIDIA RTX 3050 Laptop (4 GB
 - **Configuración por variables de entorno** (`deploy/ensemble.env` + `ECG_*`, documentadas en `webapp/README.md`).
 - **Servidor waitress** lanzado por `deploy/start_local.ps1`: solo `127.0.0.1`, CPU (`ECG_DEVICE=cpu`), 4 hilos.
 - **Arranque a demanda**: el servidor se inicia cuando se necesita y se detiene con Ctrl+C; sin arranque automático.
+- **Límites antes de Flask:** waitress rechaza cuerpos mayores que `ECG_MAX_UPLOAD_MB` + 1 MB (413); el texto de formularios tiene tope de longitud; `/use_model` está apagado por defecto.
 - **Modelos en caché** y concurrencia acotada; **sin persistencia** de ECG subidos (se borran al terminar; informes caducan a la hora).
 - **Privacidad:** la demo es académica; la interfaz pide no subir datos de pacientes reales; hay siete ejemplos incluidos.
 - **Túnel (opcional):** waitress borra `X-Forwarded-For` salvo que se le configure `--trusted-proxy` (medido: sin eso todos los visitantes comparten un límite de 20 solicitudes por minuto); el lanzador lo configura y solo permite el túnel con la app en `127.0.0.1`.
@@ -48,6 +49,7 @@ PC: Windows 11, Intel Core i5-11400H, 24 GB de RAM, NVIDIA RTX 3050 Laptop (4 GB
 | Mucha gente a la vez | Bajo | cola de inferencia + límite por IP; ≈ 2 s por análisis |
 | El túnel es lento (medido ≈ 10–25 KB/s). Con PNG 306 KB, PDF 406 KB y Plotly 1,3 MB gzip las descargas ya terminan (9 de 9; antes 1 de 3 y Plotly nunca), pero tardan 10–75 s | Medio | uso opcional y corto, mejor desde datos móviles; para mostrarla en la misma sala usar `127.0.0.1` o `-Lan` |
 | Datos sensibles subidos por un usuario | Alto | no se persisten, aviso visible, ejemplos incluidos |
+| Un visitante cambia el modelo global (`/use_model`) o manda texto que congela el servidor (regex cuadrática) | Alto | `/use_model` apagado salvo `ECG_ENABLE_USE_MODEL=1`; regex lineal con tope de longitud (`tests/test_hardening.py`) |
 | Cambio de versión de torch | Medio | `requirements.txt` fija `torch==2.8.0`; el entorno actual usa 2.14.0 y el bundle pasa el humo con ella |
 
 ## Orden y dependencias
