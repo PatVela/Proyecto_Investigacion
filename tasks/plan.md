@@ -46,7 +46,7 @@ PC: Windows 11, Intel Core i5-11400H, 24 GB de RAM, NVIDIA RTX 3050 Laptop (4 GB
 | Windows Update reinicia la PC | Bajo | se vuelve a iniciar el servidor a demanda; fijar las horas activas si se deja corriendo mucho tiempo |
 | Exponer la app por error | Alto | escucha solo en `127.0.0.1`; `-Lan` y `-Tunnel` son opciones explícitas e incompatibles entre sí |
 | Mucha gente a la vez | Bajo | cola de inferencia + límite por IP; ≈ 2 s por análisis |
-| El túnel es lento y poco fiable con archivos grandes (medido ≈ 10–20 KB/s; PNG/PDF de ≈ 800 KB completan 1 de cada 3 veces, Plotly no baja en 120 s) | Medio | uso opcional y corto, mejor desde datos móviles; para mostrarla en la misma sala usar `127.0.0.1` o `-Lan`; reducir Plotly/PNG/PDF si se necesita (O1) |
+| El túnel es lento (medido ≈ 10–25 KB/s). Con PNG 306 KB, PDF 406 KB y Plotly 1,3 MB gzip las descargas ya terminan (9 de 9; antes 1 de 3 y Plotly nunca), pero tardan 10–75 s | Medio | uso opcional y corto, mejor desde datos móviles; para mostrarla en la misma sala usar `127.0.0.1` o `-Lan` |
 | Datos sensibles subidos por un usuario | Alto | no se persisten, aviso visible, ejemplos incluidos |
 | Cambio de versión de torch | Medio | `requirements.txt` fija `torch==2.8.0`; el entorno actual usa 2.14.0 y el bundle pasa el humo con ella |
 

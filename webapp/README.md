@@ -220,11 +220,23 @@ ejemplo (con las mismas probabilidades que la evaluación) y la lista de ejemplo
 Un visitante que agota su límite (20 solicitudes por minuto) recibe 429, mientras otros visitantes y quien entra directo por
 `127.0.0.1` no se ven afectados; anteponer IPs falsas en `X-Forwarded-For` no sirve para esquivarlo.
 
-**Limitación medida: el túnel es lento con archivos grandes.** Desde esta conexión la hoja de estilos (24 KB) tarda 1–4 s,
-pero el PNG del ECG (≈ 760 KB) y el PDF (≈ 950 KB) tardaron entre 20 y 90 s o se atascaron en 2 de cada 3 intentos
-(≈ 10–20 KB/s), y Plotly (4,3 MB sin comprimir) no terminó de bajar en 120 s; en local las mismas descargas tardan
-milisegundos. Úselo solo para una demostración corta y mejor desde un teléfono con datos móviles; en la misma sala,
-`127.0.0.1` o `-Lan` no tienen este problema. No se identificó la causa (puede ser la subida de la conexión): probar con otra red.
+**Tamaño de las descargas.** Para que el túnel (y cualquier conexión lenta) sea usable, las descargas pesadas se redujeron sin
+cambiar ningún resultado (tamaños en KB y MB decimales, medidos con el ejemplo A3763):
+
+| Descarga | Antes | Ahora | Cómo |
+|---|---|---|---|
+| PNG del trazado ECG | 762 KB | 306 KB | PNG de paleta de 256 colores sin canal alfa; misma resolución (2545 × 1824). Error máximo 14/255 en < 0,01 % de los píxeles (PSNR ≈ 59 dB); el trazo negro se conserva |
+| Informe PDF | 952 KB | 406 KB | el PNG anterior va incrustado tal cual (espacio `Indexed` + predictor PNG, `webapp/pdf_image.py`): la imagen del PDF es idéntica píxel a píxel |
+| `plotly.min.js` | 4,6 MB | 1,3 MB | gzip (`webapp/compression.py`), solo si el navegador lo acepta; contenido idéntico al descomprimir |
+| HTML, `app.js`, CSS | 33 / 64 / 24 KB | 9 / 18 / 6 KB | el mismo gzip (también el JSON; solo respuestas de texto de ≥ 1 KB; imágenes y PDF no se tocan) |
+
+Las probabilidades, umbrales y el contenido del informe no cambian. El gzip también se aplica en `127.0.0.1` y `-Lan`, sin costo apreciable (los estáticos se comprimen una sola vez y se guardan en memoria).
+
+**Limitación medida: el túnel sigue siendo lento.** Desde esta conexión, con los archivos ya reducidos, las 9 descargas de prueba
+terminaron (antes el PNG y el PDF completaban 1 de cada 3 veces y Plotly no terminaba en 120 s), pero tardaron 10–29 s el PNG,
+23–61 s el PDF y 64–75 s Plotly (≈ 10–25 KB/s); en local las mismas descargas tardan milisegundos. Úselo solo para una
+demostración corta y mejor desde un teléfono con datos móviles; en la misma sala, `127.0.0.1` o `-Lan` no tienen este problema.
+No se identificó la causa (puede ser la subida de la conexión): probar con otra red.
 
 Por defecto se sirve **en CPU** (`ECG_DEVICE=cpu`): la inferencia tarda 44 ms en CPU y 9 ms en GPU por modelo, pero la
 petición completa tarda ≈ 2,4 s porque casi todo es el PDF y los gráficos; medido con la GPU, la petición es igual de
@@ -301,6 +313,8 @@ webapp/
 ├── examples.py       # carga y validación de los registros de ejemplo
 ├── examples/         # 7 registros .hea/.mat + examples.json (ver su README)
 ├── report_pdf.py     # informe PDF profesional
+├── pdf_image.py      # incrusta el PNG de paleta en el PDF sin reconvertirlo a RGB
+├── compression.py    # gzip de las respuestas de texto (Plotly, HTML, JS, CSS, JSON)
 ├── project_info.py   # datos institucionales y referencia bibliográfica
 ├── wsgi.py           # entrada WSGI para despliegue (carga deploy/ensemble.env)
 ├── templates/index.html

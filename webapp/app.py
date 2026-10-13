@@ -27,6 +27,7 @@ from werkzeug.utils import secure_filename
 
 from ecg import load, util
 from webapp import examples as example_store
+from webapp.compression import compress_response
 from webapp import project_info as proj
 from webapp.limits import SlidingWindowLimiter, cleanup_old_jobs, int_env
 from webapp.prediction import clean_path_text, resolve_existing_path, resolve_model_path, run_prediction_from_uploads, serving_device
@@ -525,6 +526,8 @@ def create_app() -> Flask:
 
     app.jinja_env.globals["static_v"] = static_v
 
+    static_gzip_cache: dict = {}          # (ruta, ETag) -> cuerpo gzip de los estáticos, comprimidos una sola vez
+
     @app.after_request
     def add_security_headers(resp):
         resp.headers["X-Content-Type-Options"] = "nosniff"
@@ -535,7 +538,10 @@ def create_app() -> Flask:
             resp.headers["Cache-Control"] = "public, max-age=31536000, immutable" if "v" in request.args else "no-cache"
         else:
             resp.headers["Cache-Control"] = "no-store"          # páginas, API, informes y subidas nunca se guardan
-        return resp
+        is_static = request.path.startswith("/static/")
+        etag = resp.get_etag()[0] if is_static else None
+        return compress_response(resp, request.headers.get("Accept-Encoding", ""),
+                                 static_gzip_cache if is_static else None, (request.path, etag) if etag else None)
 
     @app.get("/")
     def index():
