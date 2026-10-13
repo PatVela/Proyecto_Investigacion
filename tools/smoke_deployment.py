@@ -84,7 +84,8 @@ def run_smoke(base_url: str, expect_ensemble: bool | None = None, timeout: float
     status, body, _ = get("/health")
     health = _json(body)
     check("/health: status ok", status == 200 and health.get("status") == "ok")
-    check("/health: umbrales y temperaturas encontrados", bool(health.get("thresholds_found") and health.get("temperatures_found")))
+    check("/health: umbrales y calibración (temperatura o afín) encontrados",
+          bool(health.get("thresholds_found") and (health.get("temperatures_found") or health.get("platt_found"))))
     if expect_ensemble is not None:
         check(f"/health: ensemble == {expect_ensemble}", bool(health.get("ensemble")) == expect_ensemble)
     ensemble = bool(health.get("ensemble"))

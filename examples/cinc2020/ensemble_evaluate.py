@@ -5,6 +5,11 @@ umbrales. Acepta las mismas opciones de post-proceso que evaluate.py
 (temperaturas por modelo, F-beta, fallback/exclusividad NSR) y escribe el
 mismo layout de salida, así que la webapp y compare_models.py lo consumen
 sin cambios.
+
+Calibración: cada modelo con su temperatura (``--temperatures-a/-b``) o con su calibración afín (``--platt-a/-b``,
+de ``calibrate.py --method platt``). Con ``--recalibrate-ensemble`` se ajusta además una calibración afín sobre el
+promedio, solo con validación, y se guarda como ``platt_ensemble_validation.csv`` en el directorio de salida: promediar
+probabilidades calibradas no deja una probabilidad calibrada.
 """
 
 from __future__ import annotations
@@ -20,7 +25,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from ecg import load, predict, util
-from ecg.calibration import apply_temperature, load_temperatures_csv
+from ecg.calibration import (
+    apply_platt_logits,
+    apply_temperature,
+    fit_platt_per_class,
+    load_platt_csv,
+    load_temperatures_csv,
+    save_platt_csv,
+    to_logits,
+)
 from examples.cinc2020 import evaluate as eval_single
 
 
@@ -64,7 +77,14 @@ def run_ensemble_evaluation(
     temperatures_a=None,
     temperatures_b=None,
     threshold_beta: float = 1.0,
+    platt_a=None,
+    platt_b=None,
+    recalibrate_ensemble: bool = False,
 ) -> dict:
+    if temperatures_a and platt_a:
+        raise ValueError("Modelo A: use temperatures o platt, no ambos.")
+    if temperatures_b and platt_b:
+        raise ValueError("Modelo B: use temperatures o platt, no ambos.")
     output_dir = util.resolve_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -76,14 +96,28 @@ def run_ensemble_evaluation(
     )
     temp_a = load_temperatures_csv(temperatures_a, val_a["class_names"]) if temperatures_a else None
     temp_b = load_temperatures_csv(temperatures_b, val_b["class_names"]) if temperatures_b else None
-    if temp_a is not None:
-        print(f"Aplicando temperature scaling (A) desde {temperatures_a}.")
-        val_a["probabilities"] = apply_temperature(val_a["probabilities"], temp_a)
-    if temp_b is not None:
-        print(f"Aplicando temperature scaling (B) desde {temperatures_b}.")
-        val_b["probabilities"] = apply_temperature(val_b["probabilities"], temp_b)
+    platt_ab_a = load_platt_csv(platt_a, val_a["class_names"]) if platt_a else None
+    platt_ab_b = load_platt_csv(platt_b, val_b["class_names"]) if platt_b else None
+
+    def calibrate(out, temp, platt_ab, label, source):
+        if temp is not None:
+            print(f"Aplicando temperature scaling ({label}) desde {source}.")
+            return apply_temperature(out["probabilities"], temp)
+        if platt_ab is not None:
+            print(f"Aplicando calibración afín ({label}) desde {source}.")
+            return apply_platt_logits(eval_single.prediction_logits(out), *platt_ab)
+        return out["probabilities"]
+
+    val_a["probabilities"] = calibrate(val_a, temp_a, platt_ab_a, "A", temperatures_a or platt_a)
+    val_b["probabilities"] = calibrate(val_b, temp_b, platt_ab_b, "B", temperatures_b or platt_b)
     val_prob = ensemble_probabilities(val_a["probabilities"], val_b["probabilities"], alpha)
     class_names = val_a["class_names"]
+    ensemble_platt = None
+    if recalibrate_ensemble:
+        ensemble_platt = fit_platt_per_class(val_a["labels"], to_logits(val_prob))
+        save_platt_csv(output_dir / "platt_ensemble_validation.csv", class_names, *ensemble_platt)
+        print("Recalibrando el promedio con una calibración afín ajustada en validación.")
+        val_prob = apply_platt_logits(to_logits(val_prob), *ensemble_platt)
 
     print(f"Optimizando umbrales del ensemble (alpha={alpha}) con F-beta (beta={threshold_beta}).")
     thresholds, threshold_df = eval_single.optimize_thresholds(val_a["labels"], val_prob, class_names, beta=threshold_beta)
@@ -98,11 +132,11 @@ def run_ensemble_evaluation(
     test_a, test_b = _predict_pair(
         checkpoint_a, checkpoint_b, config["test"], batch_size, num_workers, device, no_amp, preload
     )
-    if temp_a is not None:
-        test_a["probabilities"] = apply_temperature(test_a["probabilities"], temp_a)
-    if temp_b is not None:
-        test_b["probabilities"] = apply_temperature(test_b["probabilities"], temp_b)
+    test_a["probabilities"] = calibrate(test_a, temp_a, platt_ab_a, "A", temperatures_a or platt_a)
+    test_b["probabilities"] = calibrate(test_b, temp_b, platt_ab_b, "B", temperatures_b or platt_b)
     test_prob = ensemble_probabilities(test_a["probabilities"], test_b["probabilities"], alpha)
+    if ensemble_platt is not None:
+        test_prob = apply_platt_logits(to_logits(test_prob), *ensemble_platt)
     test_class_df, test_global, test_pred = eval_single.evaluate_predictions(
         test_a["labels"], test_prob, thresholds, class_names, "test",
         normal_fallback_min_prob=normal_fallback_min_prob,
@@ -124,6 +158,10 @@ def run_ensemble_evaluation(
         "ensemble_alpha": float(alpha),
         "temperatures_a": str(temperatures_a) if temperatures_a else None,
         "temperatures_b": str(temperatures_b) if temperatures_b else None,
+        "platt_a": str(platt_a) if platt_a else None,
+        "platt_b": str(platt_b) if platt_b else None,
+        "recalibrate_ensemble": bool(recalibrate_ensemble),
+        "platt_ensemble": str(output_dir / "platt_ensemble_validation.csv") if recalibrate_ensemble else None,
         "label_schema": load.LABEL_SCHEMA,
         "problem_type": "multilabel sigmoid + BCEWithLogitsLoss (ensemble promedio ponderado)",
         "class_names": class_names,
@@ -159,6 +197,10 @@ def main():
     parser.add_argument("--nsr-exclusive-min-prob", type=float, default=None, help="Si P(NSR) >= valor, predecir SOLO NSR. AVISO: en ablación redujo F1-macro sin mejorar precisión; no recomendado.")
     parser.add_argument("--temperatures-a", default=None, help="CSV class,temperature de calibrate.py para el modelo A")
     parser.add_argument("--temperatures-b", default=None, help="CSV class,temperature de calibrate.py para el modelo B")
+    parser.add_argument("--platt-a", default=None, help="CSV class,a,b (calibrate.py --method platt) del modelo A; alternativa a --temperatures-a")
+    parser.add_argument("--platt-b", default=None, help="CSV class,a,b del modelo B; alternativa a --temperatures-b")
+    parser.add_argument("--recalibrate-ensemble", action="store_true",
+                        help="Ajusta una calibración afín sobre el promedio (solo validación) y la aplica antes de los umbrales")
     parser.add_argument("--threshold-beta", type=float, default=1.0, help="Beta del F-beta para optimizar umbrales: 1.0=F1, 0.5=menos FPs, 2.0=menos FNs")
     args = parser.parse_args()
 
@@ -179,6 +221,9 @@ def main():
         temperatures_a=args.temperatures_a,
         temperatures_b=args.temperatures_b,
         threshold_beta=args.threshold_beta,
+        platt_a=args.platt_a,
+        platt_b=args.platt_b,
+        recalibrate_ensemble=args.recalibrate_ensemble,
     )
 
 

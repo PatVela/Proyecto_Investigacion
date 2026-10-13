@@ -252,20 +252,26 @@ def predict_hdf5(
         batch_size, num_workers, pin_memory=(torch_device.type == "cuda"),
         prefetch_factor=prefetch_factor))
 
-    all_prob, all_true = [], []
+    all_prob, all_logit, all_true = [], [], []
     use_amp = amp and torch_device.type == "cuda"
     for x, y in tqdm(loader, desc=f"Prediciendo {Path(h5_path).name}", leave=False):
         x = x.to(torch_device, non_blocking=True)
         if use_amp:
             with torch.autocast(device_type="cuda", dtype=torch.float16):
-                probs = torch.sigmoid(model(x))
+                logits = model(x)
+                probs = torch.sigmoid(logits)
         else:
-            probs = torch.sigmoid(model(x))
+            logits = model(x)
+            probs = torch.sigmoid(logits)
         all_prob.append(probs.float().cpu().numpy())
+        all_logit.append(logits.float().cpu().numpy())
         all_true.append(y.cpu().numpy())
 
     return {
         "probabilities": np.concatenate(all_prob, axis=0),
+        # Logits crudos: con AMP el sigmoide sale en fp16 (todo p > 0.9995 queda en 1.0 exacto); la calibración afín
+        # se ajusta sobre estos logits y no sobre esas probabilidades cuantizadas.
+        "logits": np.concatenate(all_logit, axis=0),
         "labels": np.concatenate(all_true, axis=0),
         "record_names": dataset.record_names,
         "class_names": class_names,

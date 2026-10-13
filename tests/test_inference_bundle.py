@@ -137,3 +137,60 @@ def test_missing_required_result_files_fail_loudly(tmp_path):
 @pytest.mark.parametrize("raw,expected", [(r"C:\Users\x\a\best.pt", "best.pt"), ("/home/x/a/best.pt", "best.pt"), ("best.pt", "best.pt")])
 def test_base_name_handles_windows_and_posix(raw, expected):
     assert bundle._base_name(raw) == expected
+
+
+# --- calibración afín (Platt) en el bundle ---------------------------------------------------------------------------
+
+def _platt(path, a=1.1):
+    pd.DataFrame({"class": NAMES, "a": [a] * 12, "b": [-0.5] * 12}).to_csv(path, index=False)
+    return path
+
+
+@pytest.fixture()
+def built_platt(tmp_path):
+    a, b = _checkpoint(tmp_path / "a.pt", 1), _checkpoint(tmp_path / "b.pt", 2)
+    eval_dir = _eval_dir(tmp_path / "ensemble-f1-platt")
+    summary = json.loads((eval_dir / "evaluation_summary.json").read_text(encoding="utf-8"))
+    summary.update({"platt_a": r"C:\Users\juerg\x\platt_validation.csv", "platt_b": "/home/me/y/platt_validation.csv",
+                    "platt_ensemble": r"C:\Users\juerg\x\platt_ensemble_validation.csv", "recalibrate_ensemble": True})
+    (eval_dir / "evaluation_summary.json").write_text(json.dumps(summary), encoding="utf-8")
+    out = tmp_path / "out"
+    manifest = bundle.build_bundle(a, b, eval_dir, platt_a=_platt(tmp_path / "pa.csv", 1.1),
+                                   platt_b=_platt(tmp_path / "pb.csv", 1.2), platt_ensemble=_platt(tmp_path / "pe.csv", 1.3),
+                                   out_root=out)
+    return tmp_path, out, manifest
+
+
+def test_platt_bundle_ships_the_three_calibration_files_and_no_temperatures(built_platt):
+    _, out, manifest = built_platt
+    for name, a in (("platt_a.csv", 1.1), ("platt_b.csv", 1.2), ("platt_ensemble.csv", 1.3)):
+        assert pd.read_csv(out / "deploy" / name)["a"].iloc[0] == pytest.approx(a)
+    assert not (out / "deploy" / "temperatures_a.csv").exists()
+    assert manifest["calibration"]["method"] == "platt+ensemble"
+
+
+def test_platt_env_points_at_relative_bundle_paths(built_platt):
+    _, out, _ = built_platt
+    env = dict(line.split("=", 1) for line in (out / "deploy/ensemble.env").read_text(encoding="utf-8").splitlines()
+               if line and not line.startswith("#"))
+    assert env["ECG_PLATT"] == "deploy/platt_a.csv" and env["ECG_PLATT_B"] == "deploy/platt_b.csv"
+    assert env["ECG_PLATT_ENSEMBLE"] == "deploy/platt_ensemble.csv"
+    assert "ECG_TEMPERATURES" not in env and "ECG_TEMPERATURES_B" not in env
+
+
+def test_platt_paths_are_sanitized_in_the_published_summary(built_platt):
+    _, out, _ = built_platt
+    summary = json.loads((out / "deploy/results/ensemble-f1-platt/evaluation_summary.json").read_text(encoding="utf-8"))
+    assert summary["platt_a"] == "platt_validation.csv" and summary["platt_ensemble"] == "platt_ensemble_validation.csv"
+    text = "".join(p.read_text(encoding="utf-8") for p in (out / "deploy").rglob("*") if p.suffix in {".json", ".env"})
+    assert "juerg" not in text and "C:\\" not in text and "/home/" not in text
+
+
+def test_every_model_needs_a_calibration_and_platt_files_are_validated(tmp_path):
+    a, b = _checkpoint(tmp_path / "a.pt", 1), _checkpoint(tmp_path / "b.pt", 2)
+    ev = _eval_dir(tmp_path / "ev")
+    with pytest.raises(ValueError, match="calibración"):
+        bundle.build_bundle(a, b, ev, platt_a=_platt(tmp_path / "pa.csv"), out_root=tmp_path / "o1")
+    pd.DataFrame({"class": NAMES, "temperature": [1.0] * 12}).to_csv(tmp_path / "bad.csv", index=False)
+    with pytest.raises(ValueError, match="class,a,b"):
+        bundle.build_bundle(a, b, ev, platt_a=tmp_path / "bad.csv", platt_b=_platt(tmp_path / "pb.csv"), out_root=tmp_path / "o2")

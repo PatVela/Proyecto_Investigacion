@@ -91,8 +91,8 @@ def test_app_starts_from_a_clean_copy_using_only_the_bundle(tmp_path):
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(REPO_ROOT / name, target)
     assert not (clone / "saved").exists() and not (clone / "runs").exists() and not (clone / "data").exists()
-    for needed in ("models/resnet34_v1.pt", "models/resnet34_v2.pt", "deploy/results/ensemble-f1/thresholds_validation.csv",
-                   "deploy/results/ensemble-f1/roc_curves_test.csv", "webapp/examples/examples.json"):
+    for needed in ("models/resnet34_v1.pt", "models/resnet34_v2.pt", "deploy/results/ensemble-f1-platt/thresholds_validation.csv",
+                   "deploy/results/ensemble-f1-platt/roc_curves_test.csv", "webapp/examples/examples.json"):
         assert (clone / needed).is_file(), f"{needed} no se versionaría (revisar .gitignore)"
     assert len(list((clone / "webapp" / "examples").rglob("*.hea"))) >= 6            # los registros de ejemplo viajan en git
 
@@ -108,7 +108,7 @@ def test_app_starts_from_a_clean_copy_using_only_the_bundle(tmp_path):
     data = json.loads(out.stdout.strip().splitlines()[-1])
     health = data["health"]
     assert health["ensemble"] is True and health["ensemble_alpha"] == 0.5
-    assert health["thresholds_found"] and health["temperatures_found"] and health["temperatures_b_found"]
+    assert health["thresholds_found"] and health["platt_found"] and health["platt_b_found"] and health["platt_ensemble_found"]
     assert str(clone) in health["resolved_model"]                       # usa el bundle, no otra carpeta
     assert data["metrics"] is True and data["exp"] is True and data["models"] == 2
     assert not (clone / "saved").exists() or not any((clone / "saved").iterdir())

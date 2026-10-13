@@ -1,8 +1,16 @@
 {
-  "created_utc": "2026-10-12T19:31:45+00:00",
+  "created_utc": "2026-10-13T07:37:41+00:00",
   "torch_version": "2.14.0+cu130",
   "label_schema": "cinc2020_12_grouped_snomed_v2",
   "ensemble_alpha": 0.5,
+  "calibration": {
+    "method": "platt+ensemble",
+    "files": [
+      "platt_a.csv",
+      "platt_b.csv",
+      "platt_ensemble.csv"
+    ]
+  },
   "models": {
     "a": {
       "file": "resnet34_v1.pt",
@@ -21,7 +29,7 @@
       "label_schema": "cinc2020_12_grouped_snomed_v2"
     }
   },
-  "results_dir": "results/ensemble-f1",
+  "results_dir": "results/ensemble-f1-platt",
   "results_files": [
     "metrics_global.csv",
     "metrics_per_class.csv",
