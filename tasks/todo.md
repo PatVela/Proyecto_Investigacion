@@ -22,6 +22,7 @@ Plan y justificación: `tasks/plan.md`. Verificación base de cada tarea: `pytes
   - `deploy/start_local.ps1`: waitress solo en `127.0.0.1`, CPU por defecto, `-Port`, `-Threads`, `-Lan`, `-Tunnel`, `-UseGpu`; comprueba Python, dependencias y puerto libre. `ECG_DEVICE=auto|cpu|cuda` (un valor inválido o `cuda` sin GPU impide arrancar).
   - Se eliminaron `Dockerfile`, `.dockerignore`, `Procfile`, `deploy/start.sh`, `webapp/run_https.sh` y `webapp/run_public.sh` (nube/contenedor; los dos últimos no funcionaban).
   - Verificado: `tests/test_serving_device.py` y `tests/test_deploy_entrypoint.py` (incluye arranque real del lanzador + humo 19/19 + `"device":"cpu"`); la IP de la red local no responde por defecto y sí con `-Lan`; `-Lan -Tunnel` y `-Tunnel` sin `cloudflared` se rechazan antes de arrancar nada.
+  - **Prueba real con túnel (2026-10-12, `cloudflared` 2026.10.0):** página, análisis de un ejemplo, consola vacía y 7 peticiones en 200. Se encontró y corrigió un fallo: `ECG_TRUST_PROXY=1` no bastaba porque waitress 3.0.2 elimina `X-Forwarded-For` (todos los visitantes compartían el límite); ahora `-Tunnel` pasa `--trusted-proxy=127.0.0.1 --trusted-proxy-count=1 --trusted-proxy-headers=x-forwarded-for` (`webapp.wsgi:app` debe ser el último argumento). Limitación: descargas grandes lentas o atascadas por el túnel (ver `webapp/README.md`).
 
 - [x] **T8. Guía de uso bajo demanda y energía** (S)
   - `webapp/README.md` (Uso bajo demanda): iniciar con `deploy\start_local.ps1`, detener con Ctrl+C, y los `powercfg` opcionales si se deja corriendo varias horas. No hay arranque automático (decisión del autor).
@@ -33,7 +34,7 @@ Plan y justificación: `tasks/plan.md`. Verificación base de cada tarea: `pytes
 
 - [ ] **T9. Prueba de uso real** (S, requiere al autor)
   - Iniciar `deploy\start_local.ps1`, correr `python tools/smoke_deployment.py http://127.0.0.1:5002 --expect-ensemble` → 19/19, abrir la interfaz en un navegador (teclado, tema oscuro, móvil) y analizar un ejemplo.
-  - Solo si se quiere mostrarla fuera de la PC: `-Lan` desde un teléfono de la misma red, o `winget install --id Cloudflare.cloudflared` y `-Tunnel` desde un teléfono con datos móviles, comprobando que dos visitantes distintos no comparten el límite.
+  - Solo si se quiere mostrarla fuera de la PC: `-Lan` desde un teléfono de la misma red, o `-Tunnel` desde un teléfono con datos móviles (ya probado desde esta PC: ver T7 y las limitaciones de velocidad en `webapp/README.md`).
 
 ## Opcional (solo si hace falta)
 - [ ] **O1. Comprimir `plotly.min.js`** (4,3 MB sin comprimir) si se usa `-Tunnel` con muchos visitantes.

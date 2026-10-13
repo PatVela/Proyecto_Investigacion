@@ -37,7 +37,7 @@ PC: Windows 11, Intel Core i5-11400H, 24 GB de RAM, NVIDIA RTX 3050 Laptop (4 GB
 - **Arranque a demanda**: el servidor se inicia cuando se necesita y se detiene con Ctrl+C; sin arranque automático.
 - **Modelos en caché** y concurrencia acotada; **sin persistencia** de ECG subidos (se borran al terminar; informes caducan a la hora).
 - **Privacidad:** la demo es académica; la interfaz pide no subir datos de pacientes reales; hay siete ejemplos incluidos.
-- **Túnel (opcional):** exige `ECG_TRUST_PROXY=1` (si no, todos los visitantes comparten un límite de 20 solicitudes por minuto) y solo es seguro con la app en `127.0.0.1`; el lanzador lo impone.
+- **Túnel (opcional):** waitress borra `X-Forwarded-For` salvo que se le configure `--trusted-proxy` (medido: sin eso todos los visitantes comparten un límite de 20 solicitudes por minuto); el lanzador lo configura y solo permite el túnel con la app en `127.0.0.1`.
 
 ## Riesgos y mitigaciones
 | Riesgo | Impacto | Mitigación |
@@ -46,7 +46,7 @@ PC: Windows 11, Intel Core i5-11400H, 24 GB de RAM, NVIDIA RTX 3050 Laptop (4 GB
 | Windows Update reinicia la PC | Bajo | se vuelve a iniciar el servidor a demanda; fijar las horas activas si se deja corriendo mucho tiempo |
 | Exponer la app por error | Alto | escucha solo en `127.0.0.1`; `-Lan` y `-Tunnel` son opciones explícitas e incompatibles entre sí |
 | Mucha gente a la vez | Bajo | cola de inferencia + límite por IP; ≈ 2 s por análisis |
-| `cloudflared` no probado de extremo a extremo | Bajo | es opcional; solo están probados el rechazo cuando falta y la incompatibilidad con `-Lan` |
+| El túnel es lento y poco fiable con archivos grandes (medido ≈ 10–20 KB/s; PNG/PDF de ≈ 800 KB completan 1 de cada 3 veces, Plotly no baja en 120 s) | Medio | uso opcional y corto, mejor desde datos móviles; para mostrarla en la misma sala usar `127.0.0.1` o `-Lan`; reducir Plotly/PNG/PDF si se necesita (O1) |
 | Datos sensibles subidos por un usuario | Alto | no se persisten, aviso visible, ejemplos incluidos |
 | Cambio de versión de torch | Medio | `requirements.txt` fija `torch==2.8.0`; el entorno actual usa 2.14.0 y el bundle pasa el humo con ella |
 
