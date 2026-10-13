@@ -26,7 +26,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from ecg import load, util
-from webapp import examples as example_store
+from webapp import example_records as example_store
 from webapp.compression import compress_response
 from webapp import project_info as proj
 from webapp.limits import SlidingWindowLimiter, cleanup_old_jobs, int_env
