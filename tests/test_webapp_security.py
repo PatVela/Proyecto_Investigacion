@@ -53,6 +53,7 @@ def sandbox(tmp_path, monkeypatch):
     monkeypatch.setenv("ECG_UPLOADS", str(dirs["uploads"]))
     monkeypatch.setenv("ECG_RESULTS", str(dirs["results"]))
     monkeypatch.setenv("ECG_MODEL", "")
+    monkeypatch.setenv("ECG_ENABLE_USE_MODEL", "1")        # /use_model está apagado por defecto (ver tests/test_hardening.py)
     app = create_app()
     app.config["TESTING"] = True
     return app.test_client(), dirs, tmp_path

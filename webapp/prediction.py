@@ -133,13 +133,26 @@ def clear_model_cache() -> None:
         _MODEL_CACHE.clear()
 
 
+# Enlace markdown pegado junto a una ruta, p. ej. [best.pt](http://...). Con cuantificadores acotados y sin "[" dentro del
+# texto del enlace, el costo es lineal: la versión anterior (``\[([^\]]+)\]\([^\)]+\)``) era cuadrática y una sola
+# petición con "[" * 16000 mantenía el GIL más de un segundo (minutos con 500 KB).
+_MARKDOWN_LINK = re.compile(r"\[([^\[\]]{1,512})\]\(([^)]{1,2048})\)")
+MAX_MARKDOWN_SCAN_CHARS = 8192
+
+
 def clean_path_text(value: str | os.PathLike | None) -> str:
     """Limpia rutas pegadas desde markdown, por ejemplo [best.pt](http://...)."""
     if value is None:
         return ""
     text = str(value).strip().strip('"').strip("'")
-    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
+    if len(text) <= MAX_MARKDOWN_SCAN_CHARS:             # un enlace pegado nunca es tan largo: lo demás no se escanea
+        text = _MARKDOWN_LINK.sub(r"\1", text)
     return text.strip()
+
+
+def clean_field_text(value: str | os.PathLike | None, max_chars: int) -> str:
+    """:func:`clean_path_text` con tope de longitud, para campos de formulario que llegan del cliente."""
+    return clean_path_text(value)[:max_chars]
 
 
 def resolve_existing_path(path: str | os.PathLike | None, base: Path = REPO_ROOT) -> Path | None:

@@ -20,20 +20,19 @@ Analiza:
 - Señales constantes
 - Estadísticas por base de datos
 
-Uso desde la raíz del proyecto:
+Uso desde la raíz del repositorio:
 
-    python audit_signal_scaling.py
+    python tools/audit_signal_scaling.py
 
 Opcional:
 
-    python audit_signal_scaling.py --sample-per-db 20
-    python audit_signal_scaling.py --sample-per-db 100
+    python tools/audit_signal_scaling.py --sample-per-db 20
+    python tools/audit_signal_scaling.py --sample-per-db 100
 """
 
 from __future__ import annotations
 
 import argparse
-import os
 import statistics
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -47,7 +46,7 @@ import wfdb
 # CONFIGURACIÓN
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parents[1]      # raíz del repositorio (este script vive en tools/)
 DATASET_DIR = PROJECT_ROOT / "dataset2020"
 
 STANDARD_LEADS = [
@@ -811,7 +810,7 @@ def print_gain_summary(results_by_db):
 
             print(
                 f"  gain={gain:<12g}"
-                f" → {count} canales"
+                f" -> {count} canales"
             )
 
 
