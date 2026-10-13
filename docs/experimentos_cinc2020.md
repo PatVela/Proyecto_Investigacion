@@ -42,6 +42,7 @@ python examples/cinc2020/evaluate.py examples/cinc2020/config_resnet_v2.json $re
 
 Ambos modelos deben usar:
 
+- **el mismo punto de operación** (`threshold_beta` y la misma calibración): con F0.5 en uno y F1 en otro la diferencia mezcla modelo y umbral (v2 − v1 es +3.5 pts con F0.5 y +1.2 con F1 en ambos); `compare_models.py` se detiene si no coinciden;
 - mismo dataset HDF5;
 - mismo split train/validation/test;
 - mismo preprocesamiento;
@@ -51,6 +52,10 @@ Ambos modelos deben usar:
 
 ```powershell
 python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet --eval-b runs/eval/eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output runs/reports/model_comparison.csv   # mismo --threshold-beta en ambas (0.5)
+python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet-f1 --temperatures runs/eval/eval-resnet/temperatures_validation.csv --threshold-beta 1.0
+python examples/cinc2020/evaluate.py examples/cinc2020/config_resnet_v2.json $resnet2 --output-dir runs/eval/eval-resnet-v2-f1 --temperatures runs/eval/eval-resnet-v2/temperatures_validation.csv --threshold-beta 1.0
+python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet-f1 --eval-b runs/eval/eval-resnet-v2-f1 --label-a "ResNet v1 (F1)" --label-b "ResNet v2 (F1)" --output runs/reports/model_comparison_f1.csv
+python examples/cinc2020/bootstrap_ci.py --predictions runs/eval/eval-resnet-v2-f1/predictions_test.csv --predictions-baseline runs/eval/eval-resnet-f1/predictions_test.csv --output runs/reports/bootstrap_v2-v1_f1.json --n-bootstrap 1000
 ```
 
 ## Experimento C — Ensemble v1+v2 (modelo final)
@@ -63,6 +68,17 @@ python examples/cinc2020/compare_models.py --eval-a "$evalMejor" --eval-b runs/e
 Promedio simple con calibración por modelo y umbrales F0.5 tuneados sobre el promedio (con `--platt-a/--platt-b --recalibrate-ensemble` la calibración es afín y el promedio se recalibra; ver `docs/resultados_finales.md`). El punto de operación F1 (recomendado para screening y para la demo) se obtiene con `--threshold-beta 1.0 --output-dir runs/eval/ensemble-f1`; no se usa `--nsr-exclusive-min-prob`.
 Ver resultados en [resultados_finales.md](resultados_finales.md).
 
+## Experimento D — Calibración afín del ensemble (modelo final de la demo)
+
+```powershell
+python examples/cinc2020/calibrate.py --method platt --checkpoint $resnet --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet
+python examples/cinc2020/calibrate.py --method platt --checkpoint $resnet2 --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet-v2
+python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble-f1-platt --alpha 0.5 --threshold-beta 1.0 --platt-a runs/eval/eval-resnet/platt_validation.csv --platt-b runs/eval/eval-resnet-v2/platt_validation.csv --recalibrate-ensemble
+python examples/cinc2020/compare_models.py --eval-a runs/eval/ensemble-f1 --eval-b runs/eval/ensemble-f1-platt --label-a "Ensemble F1 (temperatura)" --label-b "Ensemble F1 (afín)" --output runs/reports/comparacion_calibracion_f1.csv
+```
+
+Calibración `sigmoid(a·logit + b)` por clase, ajustada solo en validación sobre los logits crudos, y recalibración del promedio. Hipótesis y resultado: la temperatura no corrige el desplazamiento que introducen `pos_weight = neg/pos` y el label smoothing, la afín sí (ECE del ensemble en test 0.103 → 0.009) y no cambia la clasificación (F1 +0.0005, IC95 [−0.0035, +0.0044]). Cifras en [resultados_finales.md](resultados_finales.md).
+
 ## Métricas a reportar
 
 - AUROC por clase;
@@ -73,6 +89,9 @@ Ver resultados en [resultados_finales.md](resultados_finales.md).
 - F1 por clase;
 - F1 macro/micro;
 - matrices de confusión 2x2 por clase;
+- ECE y Brier (con la calibración usada);
+- métrica Challenge de 24 clases (`challenge_score.py`);
+- F1 por origen, con y sin enmascarar las celdas sin anotar (`error_analysis.py --train-h5`);
 - número de parámetros;
 - tiempo total de entrenamiento.
 

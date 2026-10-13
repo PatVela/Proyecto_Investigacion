@@ -5,8 +5,8 @@ PhysioNet/Computing in Cardiology Challenge 2020. Permiten probar la demo sin da
 seis con predicción acertada del ensemble y uno con diferencias entre predicción y etiqueta
 (para mostrar también los límites del modelo).
 
-Se generan con `python tools/build_examples.py --predictions runs/eval/ensemble-f1/predictions_test.csv --dataset dataset2020`
-(selección reproducible, `--seed 0`). `examples.json` guarda además las probabilidades de referencia de
+Se generan con `python tools/build_examples.py --predictions runs/eval/ensemble-f1-platt/predictions_test.csv --dataset dataset2020`
+(selección reproducible, `--seed 0`). Si solo cambia la calibración o los umbrales, `--refresh-references` (sin `--dataset`) actualiza las probabilidades de referencia de los mismos siete registros. `examples.json` guarda además las probabilidades de referencia de
 la evaluación, con las que `tests/test_examples.py` comprueba la app.
 
 ## Licencia y cita
