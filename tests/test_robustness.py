@@ -47,3 +47,27 @@ def test_evaluate_under_perturbation_con_temperaturas(tmp_path):
     temps = __import__("numpy").full(12, 2.0)
     cal = evaluate_under_perturbation(model, ds, thr, torch.device("cpu"), "clean", 0.0, 4, 0, None, 42, temperatures=temps)
     assert cal["samples"] == 8 and "f1_macro" in cal
+
+
+def test_evaluate_under_perturbation_con_calibracion_afin():
+    """--platt: sigmoid(a·z + b) sobre los logits, y no puede combinarse con la temperatura."""
+    from torch.utils.data import TensorDataset
+    from robustness import evaluate_under_perturbation
+    from sklearn.metrics import f1_score
+
+    torch.manual_seed(0)
+    model = torch.nn.Sequential(torch.nn.Flatten(), torch.nn.LazyLinear(12))
+    xs = torch.randn(32, 12, 500)
+    _ = model(xs)
+    ys = torch.randint(0, 2, (32, 12)).float()
+    ds = TensorDataset(xs, ys)
+    thr = np.full(12, 0.5, dtype="float32")
+    a, b = np.full(12, 0.01), np.full(12, 3.0)                 # empuja todas las probabilidades por encima de 0.5
+    out = evaluate_under_perturbation(model, ds, thr, torch.device("cpu"), "clean", 0.0, 8, 0, None, 42, platt=(a, b))
+    with torch.no_grad():
+        z = model(xs).numpy().astype(np.float64)
+    expected = (1 / (1 + np.exp(-(z * a + b))) >= 0.5).astype(np.uint8)
+    assert out["f1_macro"] == pytest.approx(f1_score(ys.numpy().astype(np.uint8), expected, average="macro", zero_division=0))
+    with pytest.raises(ValueError, match="temperatures.*platt|platt.*temperatures"):
+        evaluate_under_perturbation(model, ds, thr, torch.device("cpu"), "clean", 0.0, 8, 0, None, 42,
+                                    temperatures=np.full(12, 2.0), platt=(a, b))

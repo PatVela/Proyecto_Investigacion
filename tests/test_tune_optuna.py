@@ -67,7 +67,7 @@ def test_train_epoch_callback_defaults_to_none():
 
 
 def test_main_rejects_non_f1_monitor(tmp_path):
-    optuna = pytest.importorskip("optuna")
+    pytest.importorskip("optuna")
     cfg = tmp_path / "base.json"
     cfg.write_text(json.dumps({"max_epochs": 2}))
     with pytest.raises(SystemExit, match="val_f1_macro"):

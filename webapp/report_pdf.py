@@ -131,14 +131,12 @@ def _build_reportlab_pdf(prediction: dict, output_path: Path) -> str:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
-    from reportlab.pdfgen.canvas import Canvas as _Canvas
     from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     from webapp.pdf_image import indexed_png_image
 
     # Paleta institucional UNSA: granate + oro (verdes/rojos semánticos intactos)
     NAVY = colors.HexColor("#84030c")
-    NAVY_DARK = colors.HexColor("#5e0208")
     GOLD = colors.HexColor("#cea962")
     RED = colors.HexColor("#b91c1c")
     GREEN = colors.HexColor("#15803d")
@@ -423,7 +421,6 @@ def _data_table(rows, content_w, navy, grid, widths):
 
 def _verdict_box(prediction, positives, s_verdict, s_small,
                  green, green_bg, red, red_bg, amber_bg, gray_bg, grid, slate, content_w):
-    from reportlab.lib.units import mm
     from reportlab.platypus import Paragraph, Table, TableStyle
 
     fb = prediction.get("normal_fallback") or {}
@@ -471,7 +468,6 @@ def _verdict_box(prediction, positives, s_verdict, s_small,
 
 def _probability_chart(predictions, content_w, bar_bg, bar_neg, bar_pos, bar_nsr, slate):
     from reportlab.graphics.shapes import Drawing, Line, Rect, String
-    from reportlab.lib.units import mm
 
     rows = list(predictions)[:12]
     row_h = 14

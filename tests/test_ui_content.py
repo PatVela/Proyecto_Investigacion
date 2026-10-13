@@ -9,8 +9,6 @@ import pytest
 
 pytest.importorskip("flask")
 
-from tools.smoke_deployment import synthetic_csv
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STATIC = REPO_ROOT / "webapp" / "static"
 JS = (STATIC / "app.js").read_text(encoding="utf-8")
@@ -70,8 +68,6 @@ def test_threshold_is_only_sent_when_the_field_is_active_and_calibrated_value_is
 
 @pytest.mark.skipif(not BUNDLE_PRESENT, reason="falta el bundle")
 def test_a_client_threshold_really_has_no_effect_with_class_thresholds(make_client):
-    import json
-
     os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
     client = make_client(bundle=True, ECG_RATE_LIMIT_MAX=0)
     results = []
