@@ -389,6 +389,7 @@ Notas:
 ├── webapp/                 # dashboard Flask + informe PDF
 │   ├── app.py / prediction.py / report_pdf.py / wsgi.py
 │   ├── limits.py / examples.py   # límites públicos y registros de ejemplo
+│   ├── pdf_image.py / compression.py   # PNG de paleta en el PDF sin reconvertir; gzip de las respuestas de texto
 │   ├── examples/           # 7 registros de test (CC BY 4.0)
 │   ├── project_info.py     # datos institucionales
 │   └── templates/ + static/
@@ -480,6 +481,7 @@ Los tests de los scripts de Windows (`deploy/*.ps1`) se omiten en otros sistemas
 - [x] Historial de análisis por sesión en la webapp
 - [x] Suite de tests automatizados
 - [x] Revisión de seguridad de la webapp (carga de checkpoints, subidas, rutas) y de la interfaz (accesibilidad, contraste, carga)
+- [x] Descargas más livianas sin cambiar resultados: PNG del trazado 762 → 306 KB, PDF 952 → 406 KB, Plotly 4,6 → 1,3 MB (gzip)
 - [x] Bundle de inferencia + configuración por entorno + waitress: la webapp corre sin `saved/` ni `runs/`, en esta PC con Windows 11 (CPU, solo accesible localmente por defecto)
 - [ ] Probar la demo en uso real desde otro dispositivo de la red local (ver [tasks/todo.md](tasks/todo.md))
 - [ ] Entrenamiento distribuido multi-GPU
