@@ -110,6 +110,7 @@ Para tener una copia local funcionando, siga estos pasos.
 * ~15 GB de disco libre si va a descargar CINC2020 completo.
 * 16 GB de RAM recomendados (el pipeline precarga los HDF5 a memoria).
 * GPU NVIDIA opcional (el código corre en CPU; con CUDA instale PyTorch según `requirements-cuda.txt`).
+* Versiones con las que se probó todo el repositorio: Python 3.13 y PyTorch 2.14.0 (CUDA 13). `requirements.txt` fija `torch==2.8.0`; otras versiones no se han verificado.
 
 ### Instalación
 
@@ -159,7 +160,7 @@ python -c "import torch; print(torch.__version__, '| cuda:', torch.cuda.is_avail
 
 Debe decir `cuda: True`. Si dice False: actualice el driver NVIDIA o instale la compilación de PyTorch correspondiente a su CUDA desde pytorch.org. Para CPU, omita `requirements-cuda.txt` e instale la rueda CPU de PyTorch.
 
-Smoke test (~2 min):
+Smoke test (el entrenamiento sintético tarda ≈ 1 min; la suite completa, ≈ 7 min):
 
 ```powershell
 python examples/cinc2020/make_synthetic.py
@@ -167,7 +168,7 @@ python -m ecg.train examples/cinc2020/config_synthetic.json -e smoke_test --epoc
 pytest tests/ -q
 ```
 
-Debe terminar sin fallos (los tests que necesitan datos locales se omiten solos). No use el dataset sintético para reportar métricas científicas.
+Debe terminar sin fallos (los tests que necesitan datos locales se omiten solos). No use el dataset sintético para reportar métricas científicas. Con la salida redirigida (`| Tee-Object`, un archivo de log) los scripts imprimen solo caracteres que soporta la consola de Windows (cp1252); si añade `print` con símbolos como `✓` o `→`, `tests/test_console_encoding.py` lo detecta.
 
 ### Paso 1 — Descargar datos (~15 GB)
 
@@ -190,6 +191,14 @@ python examples/cinc2020/build_datasets.py --data-dir dataset2020 --output-dir d
 ```
 
 Ajuste `--workers` al número de núcleos de su CPU. Cada HDF5 contiene `signals → (N, 5000, 12)` y `labels → (N, 12)` (12 derivaciones → 500 Hz → mV + pasa-banda 0.5–50 Hz → recorte ±5 mV → 5000 muestras); en `train`, los registros largos aportan hasta 4 ventanas de 10 s; validación y test usan una ventana centrada.
+
+Verifique los tres HDF5 (el script no recibe argumentos —ni siquiera `--help`: ejecuta la validación—, lee los archivos y tarda unos segundos):
+
+```powershell
+python tools/check_dataset2020.py
+```
+
+Debe terminar con `TODOS LOS HDF5 PASARON LAS COMPROBACIONES ESTRUCTURALES.`
 
 ### Paso 3 — Entrenar v1 + v2
 
@@ -286,7 +295,7 @@ python examples/cinc2020/make_figures.py --eval-dir "$evalMejor" --outdir runs/f
 python examples/cinc2020/bootstrap_ci.py --predictions "$evalMejor/predictions_test.csv" --predictions-baseline runs/eval/eval-resnet/predictions_test.csv --output runs/reports/bootstrap_v2-v1.json --n-bootstrap 1000
 ```
 
-Son puntos de operación del mismo ensemble: `runs/eval/ensemble` (umbrales F0.5, mayor precisión), `runs/eval/ensemble-f1` (umbrales F1, calibración por temperatura) y `runs/eval/ensemble-f1-platt` (umbrales F1, calibración afín por modelo y del promedio; recomendado para screening y el que se empaqueta para la demo). `challenge_score.py --predictions` puntúa las decisiones guardadas de cualquiera de ellos (24 clases, equivalentes fusionadas como el evaluador oficial); `error_analysis.py --train-h5` añade el diagnóstico de celdas origen×clase sin anotar (solo diagnóstico: el F1 sin enmascarar es el titular). Sin `--nsr-exclusive-min-prob`: esa regla resultó perjudicial.
+Son puntos de operación del mismo ensemble: `runs/eval/ensemble` (umbrales F0.5, mayor precisión), `runs/eval/ensemble-f1` (umbrales F1, calibración por temperatura) y `runs/eval/ensemble-f1-platt` (umbrales F1, calibración afín por modelo y del promedio; recomendado para screening y el que se empaqueta para la demo). `challenge_score.py --predictions` puntúa las decisiones guardadas de cualquiera de ellos (24 clases, equivalentes fusionadas como el evaluador oficial); `error_analysis.py --train-h5` añade el diagnóstico de celdas origen×clase sin anotar (solo diagnóstico: el F1 sin enmascarar es el titular). `robustness.py` acepta `--platt` en lugar de `--temperatures`. Sin `--nsr-exclusive-min-prob`: esa regla resultó perjudicial.
 
 ### Paso 8 — Diagnóstico de registros ejemplo
 
@@ -305,7 +314,7 @@ python examples/cinc2020/_archive/diagnose_prediction.py --checkpoint $mejor --c
 python webapp/app.py --saved saved --eval-dir runs/eval/ensemble-f1-platt --exp-dir runs/reports --model $resnet --model-b $resnet2 --platt runs/eval/eval-resnet/platt_validation.csv --platt-b runs/eval/eval-resnet-v2/platt_validation.csv --platt-ensemble runs/eval/ensemble-f1-platt/platt_ensemble_validation.csv --port 5002
 ```
 
-Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`.
+Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`. El servidor de desarrollo escucha solo en `127.0.0.1`; para abrirlo a la red local añada `--host 0.0.0.0` (o use `deploy\start_local.ps1 -Lan`).
 
 ### Paso 10 — ONNX (opcional)
 
@@ -395,7 +404,7 @@ Notas:
 │   ├── sex_breakdown.py / benchmark_latency.py  # auditorías: sexo y latencia
 │   ├── config*.json        # configs ResNet, ResNet v2, regular y sintético
 │   └── official/           # scripts y tablas oficiales (vendored, no modificar)
-├── tools/                  # descarga/verificación CINC2020, auditorías, bundle de despliegue y prueba de humo
+├── tools/                  # descarga/verificación CINC2020, auditorías, bundle de despliegue, prueba de humo y verificador de comandos de los .md
 ├── webapp/                 # dashboard Flask + informe PDF
 │   ├── app.py / prediction.py / report_pdf.py / wsgi.py
 │   ├── limits.py / example_records.py   # límites públicos y registros de ejemplo
@@ -406,7 +415,7 @@ Notas:
 ├── models/ + deploy/       # bundle de inferencia versionado (pesos, umbrales, métricas) y scripts de Windows para ejecutarlo
 ├── tests/                  # suite pytest
 ├── docs/                   # informe técnico y guías de experimentos
-├── tasks/                  # plan y tareas del despliegue público
+├── tasks/                  # plan y tareas de la demo local; auditoría de mejoras (analisis_mejoras.md)
 ├── images/                 # logo y capturas para documentación
 ├── runs/ saved/ data/      # producto generado (git-ignored)
 ├── requirements.txt / requirements-cuda.txt / requirements-dev.txt
@@ -427,7 +436,7 @@ python webapp/app.py --saved saved        # desarrollo: usa los checkpoints de s
 powershell -ExecutionPolicy Bypass -File deploy\start_local.ps1   # demo en esta PC (Windows 11): waitress + bundle, sin saved/ ni runs/
 ```
 
-La demo corre en la propia PC, sin servidor ni nube. El bundle (pesos de inferencia de 19 MB por modelo, umbrales, métricas y siete ECG de ejemplo) la hace independiente de las carpetas locales; sirve en CPU (≈2,4 s por análisis, ≈0,9 GB de RAM). Por defecto solo es accesible desde la misma PC; la red local y un túnel temporal son opcionales. Detalles, arranque automático, variables de entorno y endpoints en [webapp/README.md](webapp/README.md); tareas pendientes en [tasks/todo.md](tasks/todo.md).
+La demo corre en la propia PC, sin servidor ni nube. El bundle (pesos de inferencia de 19 MB por modelo, umbrales, métricas y siete ECG de ejemplo) la hace independiente de las carpetas locales; sirve en CPU (≈2,4 s por análisis, ≈0,9 GB de RAM). Por defecto solo es accesible desde la misma PC; la red local y un túnel temporal son opcionales. Detalles de arranque, variables de entorno y endpoints en [webapp/README.md](webapp/README.md); tareas pendientes en [tasks/todo.md](tasks/todo.md).
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
@@ -439,7 +448,8 @@ La demo corre en la propia PC, sin servidor ni nube. El bundle (pesos de inferen
 * **Ensemble**: promedio ponderado de dos checkpoints con calibración por modelo (`ensemble_evaluate.py`).
 * **Comparación de evaluaciones**: dos runs (p. ej. ResNet v1 vs v2) con idéntico dataset, split y métricas (`compare_models.py`).
 * **Robustez controlada**: ruido gaussiano, baseline wander, escalado de amplitud y apagado de derivaciones (`robustness.py`).
-* **Métrica oficial estilo Challenge 2020** sobre los 27 códigos puntuados (`challenge_score.py`).
+* **Métrica oficial estilo Challenge 2020** sobre 24 clases (equivalentes fusionadas como el evaluador oficial), desde decisiones guardadas o un checkpoint (`challenge_score.py`).
+* **Errores por origen**: exact-match y F1 por hospital, y diagnóstico de las celdas origen×clase sin anotar (`error_analysis.py --train-h5`).
 * **Diagnóstico por registro**: inspección de casos individuales (`_archive/diagnose_prediction.py`, `_archive/debug_record_prediction.py`).
 * **Figuras empíricas e IC bootstrap**: curvas ROC/PR con punto de operación, barras de robustez e intervalos por bootstrap (`make_figures.py`, `bootstrap_ci.py`).
 * **Auditorías**: desglose por sexo y latencia de inferencia (`sex_breakdown.py`, `benchmark_latency.py`).
@@ -452,7 +462,8 @@ Los resultados se visualizan automáticamente en la webapp. Comandos en [example
 ## Pruebas y ejecución local
 
 ```sh
-pytest tests/ -q
+pytest tests/ -q                        # ≈ 7 min
+python tools/check_docs_commands.py     # comprueba que los comandos de los .md siguen existiendo
 ```
 
 ```sh
@@ -493,6 +504,8 @@ Los tests de los scripts de Windows (`deploy/*.ps1`) se omiten en otros sistemas
 - [x] Revisión de seguridad de la webapp (carga de checkpoints, subidas, rutas) y de la interfaz (accesibilidad, contraste, carga)
 - [x] Descargas más livianas sin cambiar resultados: PNG del trazado 762 → 306 KB, PDF 952 → 406 KB, Plotly 4,6 → 1,3 MB (gzip)
 - [x] Bundle de inferencia + configuración por entorno + waitress: la webapp corre sin `saved/` ni `runs/`, en esta PC con Windows 11 (CPU, solo accesible localmente por defecto)
+- [x] Endurecimiento de la webapp: ReDoS en el texto pegado, tope de tamaño del `.mat`, `/use_model` apagado por defecto, tope de cuerpo en waitress, escape de comillas
+- [x] Protocolo de reporte común (mismo `threshold_beta`) y verificador de comandos de la documentación
 - [ ] Probar la demo en uso real desde otro dispositivo de la red local (ver [tasks/todo.md](tasks/todo.md))
 - [ ] Entrenamiento distribuido multi-GPU
 - [x] Script de búsqueda de hiperparámetros con Optuna (`tune_optuna.py`)

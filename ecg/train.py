@@ -351,7 +351,7 @@ def train(args, params: dict, epoch_callback=None):
                 extra={"pos_weight": pos_weight.cpu(), "input_shape": [load.NUM_LEADS, load.WINDOW_LENGTH]},
             )
             checkpoint_name = "best.pt"
-            print("✓ Nuevo mejor modelo")
+            print("-> Nuevo mejor modelo")
 
         row = {
             "epoch": epoch + 1,

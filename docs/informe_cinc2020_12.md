@@ -53,7 +53,7 @@ Pasos:
 9. recorte centrado / multi-ventana o padding hasta 5000 muestras;
 10. guardar HDF5 train/val/test.
 
-El split usa `MultilabelStratifiedShuffleSplit`; no hay fallback por fuente.
+El split usa `MultilabelStratifiedShuffleSplit`; no hay fallback por fuente. Es un split **por registro**: no agrupa por paciente (las cabeceras de CINC2020 no traen ID de paciente, y PTB-XL tiene varios registros por paciente), así que una fuga por paciente no se puede medir con estos datos. Ninguna ventana ni registro aparece en dos splits, pero el 3.0 % del test y el 2.1 % de validación tienen una señal idéntica a la de un registro de un split anterior; quitarlos mueve el F1 del test en −0.0002.
 
 ## Modelo
 
@@ -78,13 +78,15 @@ Implementación: `ecg/train.py`.
 
 Implementación: `examples/cinc2020/evaluate.py`.
 
-- thresholds por clase optimizados en validation;
+- thresholds por clase optimizados en validation (F1 o F0.5; **toda comparación entre modelos usa el mismo punto de operación**);
 - AUROC por clase;
 - AUPRC por clase;
 - sensibilidad;
 - especificidad;
 - F1;
-- matrices de confusión 2x2.
+- matrices de confusión 2x2;
+- métrica Challenge de 24 clases (`challenge_score.py`; las parejas equivalentes se fusionan como en el evaluador oficial);
+- F1 por origen y diagnóstico de las celdas origen×clase sin anotar (`error_analysis.py`): hay orígenes que nunca etiquetan algunas clases y esas celdas se entrenan como negativas.
 
 ## Calibración, umbrales y ensemble
 

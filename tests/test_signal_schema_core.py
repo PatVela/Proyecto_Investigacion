@@ -135,8 +135,6 @@ def test_known_schemas_do_not_warn(recwarn):
 
 
 def test_save_checkpoint_always_stamps_the_real_schema(tmp_path):
-    import torch
-
     from ecg import network, util
 
     path = tmp_path / "ckpt.pt"

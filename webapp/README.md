@@ -103,7 +103,7 @@ Modo ensemble (modelo final recomendado): promedia dos checkpoints con calibraci
 python webapp/app.py --saved saved --eval-dir runs/eval/ensemble-f1-platt --exp-dir runs/reports --model $resnet --model-b $resnet2 --platt runs/eval/eval-resnet/platt_validation.csv --platt-b runs/eval/eval-resnet-v2/platt_validation.csv --platt-ensemble runs/eval/ensemble-f1-platt/platt_ensemble_validation.csv --port 5002
 ```
 
-Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`.
+Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`. El servidor de desarrollo escucha solo en `127.0.0.1`; para abrirlo a la red local use `--host 0.0.0.0` (el lanzador de Windows lo hace con `-Lan`).
 
 Con `--eval-dir` la app lee métricas, umbrales, temperaturas y curvas de esa carpeta; con `--exp-dir` lee la comparación de modelos y la robustez. Si se omiten, se buscan automáticamente.
 
@@ -178,7 +178,7 @@ La app valida que el stem coincida, lee el header, preprocesa la señal, compara
 | `GET` | `/examples` | Lista de registros de ejemplo incluidos (id, origen, clases verdaderas y predichas de referencia) |
 | `GET` | `/results/<archivo>` | Descarga artefactos generados (PDF, PNG, CSV convertido) |
 | `GET` | `/models` | Checkpoints disponibles en la carpeta configurada (el cliente no puede elegir otra) |
-| `POST` | `/use_model` | Cambia el checkpoint activo (vacío = selección automática). Solo acepta `.pt` dentro de la carpeta de modelos configurada |
+| `POST` | `/use_model` | Cambia el checkpoint activo (vacío = selección automática). Solo acepta `.pt` dentro de la carpeta de modelos configurada. **Apagado por defecto** (403): cambia el modelo de todos los visitantes y la interfaz no lo usa; actívelo con `ECG_ENABLE_USE_MODEL=1` |
 | `GET` | `/metrics` | Métricas de evaluación en JSON (si existen) |
 | `GET` | `/experiments` | Comparación y robustez en JSON (si existen) |
 | `GET` | `/curves?split=test` | Curvas ROC/PR por clase en JSON (si existen) |
@@ -186,7 +186,7 @@ La app valida que el stem coincida, lee el header, preprocesa la señal, compara
 
 ### Cómo se llenan las secciones de métricas y experimentos
 
-Ejecute el pipeline de evaluación y experimentos (ver [examples/cinc2020/README.md](../examples/cinc2020/README.md#uso)); la webapp detecta automáticamente los CSV generados y completa las tablas, resúmenes de mejor/peor clase, ganador arquitectónico y caídas de robustez. La evaluación también calibra los umbrales por clase que la app usa en lugar del respaldo global 0.5, y exporta las curvas ROC/PR que alimentan los gráficos interactivos. Si existe calibración previa (`calibrate.py`), la app aplica temperature scaling automáticamente. Si sus carpetas tienen otros nombres, indíquelas con `--eval-dir` y `--exp-dir` (ver Ejecución).
+Ejecute el pipeline de evaluación y experimentos (ver [examples/cinc2020/README.md](../examples/cinc2020/README.md#uso)); la webapp detecta automáticamente los CSV generados y completa las tablas, resúmenes de mejor/peor clase, ganador arquitectónico y caídas de robustez. La evaluación también calibra los umbrales por clase que la app usa en lugar del respaldo global 0.5, y exporta las curvas ROC/PR que alimentan los gráficos interactivos. Si existe calibración previa (`calibrate.py`), la app la aplica automáticamente: la afín `a·logit + b` (`platt_validation.csv`) o, si no hay, la temperatura por clase. Si sus carpetas tienen otros nombres, indíquelas con `--eval-dir` y `--exp-dir` (ver Ejecución).
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
@@ -203,7 +203,7 @@ python tools/smoke_deployment.py http://127.0.0.1:5002 --expect-ensemble   # 19 
 
 Abra http://127.0.0.1:5002. `deploy/ensemble.env` define el ensemble final (rutas relativas a la raíz del repositorio);
 `ECG_ENV_FILE` elige otro archivo y vacío no carga ninguno. Las variables ya definidas en el entorno tienen prioridad.
-En Linux o macOS el equivalente es `python -m waitress --host=127.0.0.1 --port=5002 --threads=4 webapp.wsgi:app`.
+En Linux o macOS el equivalente es `python -m waitress --host=127.0.0.1 --port=5002 --threads=4 --max-request-body-size=6291456 webapp.wsgi:app` (el lanzador de Windows calcula ese tope como `ECG_MAX_UPLOAD_MB` + 1 MB: waitress guarda el cuerpo de la petición antes de que Flask compruebe su tamaño y su tope por defecto es 1 GiB).
 
 ### Quién puede conectarse
 
@@ -238,9 +238,9 @@ terminaron (antes el PNG y el PDF completaban 1 de cada 3 veces y Plotly no term
 demostración corta y mejor desde un teléfono con datos móviles; en la misma sala, `127.0.0.1` o `-Lan` no tienen este problema.
 No se identificó la causa (puede ser la subida de la conexión): probar con otra red.
 
-Por defecto se sirve **en CPU** (`ECG_DEVICE=cpu`): la inferencia tarda 44 ms en CPU y 9 ms en GPU por modelo, pero la
-petición completa tarda ≈ 2,4 s porque casi todo es el PDF y los gráficos; medido con la GPU, la petición es igual de
-lenta y gasta 280 MB más de RAM. Así la GPU queda libre para entrenar.
+Por defecto se sirve **en CPU** (`ECG_DEVICE=cpu`): la inferencia tarda ≈ 43 ms (v1) y ≈ 93 ms (v2) por ventana en CPU y ≈ 5,5 ms en GPU
+(`benchmark_latency.py`, lote 1), pero la petición completa tarda ≈ 2,4 s porque casi todo es el PDF y los gráficos; medido con la
+GPU, la petición es igual de lenta y gasta 280 MB más de RAM. Así la GPU queda libre para entrenar.
 
 ### Uso bajo demanda
 
@@ -263,7 +263,8 @@ La pantalla puede apagarse; la última orden hace que cerrar la tapa no suspenda
 | Ruta | Contenido |
 |---|---|
 | `models/*.pt` | Pesos de inferencia (≈19 MB c/u, sin estado del optimizador); cargan con `weights_only=True` |
-| `deploy/manifest.json` | SHA-256, época y `val_loss` de cada modelo, alpha, versión de torch |
+| `deploy/manifest.json` | SHA-256, época y `val_loss` de cada modelo, alpha, método de calibración, versión de torch |
+| `deploy/platt_a.csv`, `platt_b.csv`, `platt_ensemble.csv` | Calibración afín de cada modelo y del promedio (`ECG_PLATT*` en `deploy/ensemble.env`) |
 | `deploy/results/<eval>/`, `deploy/reports/` | Métricas, curvas ROC/PR, umbrales, comparación y robustez (sin rutas locales) |
 | `webapp/examples/` | Siete registros de test (CC BY 4.0; ver su `README.md`) |
 
@@ -285,7 +286,8 @@ python tools/build_examples.py --predictions runs/eval/ensemble-f1-platt/predict
 | `ECG_EXAMPLES_DIR` | `webapp/examples` | Registros de ejemplo y su `examples.json` |
 | `ECG_NORMAL_FALLBACK_MIN_PROB` | 0.40 | Si ninguna clase supera su umbral, añade NSR cuando P(NSR) ≥ este valor (`0` desactiva) |
 | `ECG_REFERENCE` | — | Referencia opcional que se muestra en la interfaz |
-| `ECG_MAX_UPLOAD_MB` | 5 | Tamaño máximo por solicitud (413 en JSON) |
+| `ECG_MAX_UPLOAD_MB` | 5 | Tamaño máximo por solicitud (413 en JSON). `deploy\start_local.ps1` limita además el cuerpo en waitress a este valor + 1 MB (413 antes de llegar a Flask) |
+| `ECG_ENABLE_USE_MODEL` | — | `1` activa `POST /use_model`; apagado por defecto |
 | `ECG_RATE_LIMIT_MAX` / `ECG_RATE_LIMIT_WINDOW` | 20 / 60 s | Solicitudes de `/predict` por IP (429 + `Retry-After`; `0` desactiva) |
 | `ECG_TRUST_PROXY` | 0 | Nº de proxies de confianza cuando la app recibe `X-Forwarded-For` de un proxy. **Con waitress no basta**: waitress elimina esa cabecera salvo que se le configure `--trusted-proxy…` (lo hace `-Tunnel`); sin eso todos los visitantes de un túnel comparten una sola IP y uno agota el límite de todos. Solo es seguro si la app escucha en `127.0.0.1` |
 | `ECG_DEVICE` | auto | `cpu`, `cuda` o `auto` (GPU si existe). `cuda` sin GPU impide arrancar. `deploy\start_local.ps1` usa `cpu` salvo `-UseGpu` |

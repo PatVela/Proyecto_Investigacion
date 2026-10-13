@@ -69,3 +69,9 @@ def test_validate_phase_raises_directly(tmp_path):
     analyzer.digital = np.zeros((5, 100))
     with pytest.raises(ValueError, match="leads"):
         analyzer.validate_dimensions()
+
+
+def test_default_dataset_dir_is_dataset2020_at_the_repository_root():
+    """El script vive en tools/: su raíz debe ser la del repositorio, no tools/ (antes buscaba tools/dataset2020)."""
+    repo_root = Path(__file__).resolve().parent.parent
+    assert api.PROJECT_ROOT == repo_root and api.DATASET_DIR == repo_root / "dataset2020"

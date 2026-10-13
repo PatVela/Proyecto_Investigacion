@@ -31,6 +31,7 @@ if str(REPO_ROOT) not in sys.path:
 
 
 DEFAULT_ENV_FILE = REPO_ROOT / "deploy" / "ensemble.env"
+DEFAULT_HOST = "127.0.0.1"          # solo esta máquina salvo que se pida otra cosa (--host 0.0.0.0 abre la red local)
 
 
 def load_env_file(path) -> dict:
@@ -114,7 +115,7 @@ def main(argv=None):
     parser.add_argument("--reference", default=None, help="Referencia opcional. Equivale a ECG_REFERENCE.")
     parser.add_argument("--thresholds", default=None, help="thresholds_validation.csv opcional. Equivale a ECG_THRESHOLDS.")
     parser.add_argument("--normal-fallback-min-prob", type=float, default=None, help="Fallback NSR si no hay positivos; 0 desactiva.")
-    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--host", default=DEFAULT_HOST, help="Interfaz de escucha. Por defecto solo esta máquina; 0.0.0.0 abre la app a la red local.")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "5002")))
     args = parser.parse_args(argv)
 

@@ -4,7 +4,7 @@ Plan y justificación: `tasks/plan.md`. Verificación base de cada tarea: `pytes
 
 ## Fase 1: núcleo independiente de carpetas locales (hecha y fusionada en `main`)
 
-- [x] **T1. Bundle de modelos de inferencia**: `tools/export_inference_bundle.py` → `models/*.pt` (solo pesos, ≤ 20 MB c/u, `weights_only=True`) y copia de umbrales, temperaturas y reportes a `deploy/`. Prueba de paridad: `tests/test_inference_bundle.py`.
+- [x] **T1. Bundle de modelos de inferencia**: `tools/export_inference_bundle.py` → `models/*.pt` (solo pesos, ≤ 20 MB c/u, `weights_only=True`) y copia de umbrales, calibración (afín o temperaturas) y reportes a `deploy/`. Prueba de paridad: `tests/test_inference_bundle.py`.
 - [x] **T2. Configuración solo por entorno + manifiesto**: `deploy/ensemble.env`, `webapp/wsgi.py`; `tools/smoke_deployment.py` (19 comprobaciones por HTTP).
 - [x] **T3. Arranque con waitress** (`webapp.wsgi:app`), sin servidor de desarrollo.
 - [x] **T4. Modelos en caché y concurrencia acotada**: `tests/test_model_cache.py`.
@@ -35,6 +35,10 @@ Plan y justificación: `tasks/plan.md`. Verificación base de cada tarea: `pytes
 - [ ] **T9. Prueba de uso real** (S, requiere al autor)
   - Iniciar `deploy\start_local.ps1`, correr `python tools/smoke_deployment.py http://127.0.0.1:5002 --expect-ensemble` → 19/19, abrir la interfaz en un navegador (teclado, tema oscuro, móvil) y analizar un ejemplo.
   - Solo si se quiere mostrarla fuera de la PC: `-Lan` desde un teléfono de la misma red, o `-Tunnel` desde un teléfono con datos móviles (ya probado desde esta PC: ver T7 y las limitaciones de velocidad en `webapp/README.md`).
+
+## Endurecimiento posterior (hecho)
+
+- [x] **H1. Hallazgos de seguridad de la auditoría** (S1–S6): regex cuadrática de `clean_path_text`, tope de tamaño del `.mat`, `/use_model` apagado por defecto, tope de cuerpo en waitress (`--max-request-body-size`), servidores de desarrollo en `127.0.0.1`, `escapeHtml` con comillas y tope de longitud del nombre del paciente. Verificado con `tests/test_hardening.py` y en vivo (10 MB a `/predict` → 413 de waitress; `/use_model` → 403).
 
 ## Opcional (solo si hace falta)
 - [x] **O1. Reducir las descargas pesadas** (hecho): PNG 762 → 306 KB, PDF 952 → 406 KB y Plotly 4,6 → 1,3 MB (gzip), sin cambiar resultados. Verificado con `tests/test_payload_size.py` y en el navegador (gráficos de Plotly y trazado ECG). Opcional pendiente: un Plotly parcial (solo barras y líneas) lo bajaría a ≈ 1 MB sin comprimir, pero exige descargar otro paquete.

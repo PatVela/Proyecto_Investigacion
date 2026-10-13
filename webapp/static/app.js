@@ -504,9 +504,8 @@ function calibrationText(result) {
 }
 
 function escapeHtml(s) {
-  const d = document.createElement("div");
-  d.textContent = String(s ?? "");
-  return d.innerHTML;
+  // También comillas: el resultado se usa dentro de atributos HTML (p. ej. el nombre de registro del .hea subido).
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
 function setStatus(msg, cls) {
