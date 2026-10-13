@@ -490,6 +490,19 @@ const PALETTE = [
 ];
 
 // ============================================================ utils =======
+function calibrationText(result) {
+  const es = LANG === "es";
+  const labels = {
+    temperature: es ? "temperature scaling por clase" : "per-class temperature scaling",
+    platt: es ? "calibración afín por clase (a·logit + b)" : "per-class affine calibration (a·logit + b)",
+    "platt+ensemble": es ? "calibración afín por clase en cada modelo y sobre el promedio" : "per-class affine calibration on each model and on the average",
+    mixed: es ? "calibración por clase (temperatura y/o afín según el modelo)" : "per-class calibration (temperature and/or affine per model)",
+  };
+  if (!result.calibrated) return es ? "sin calibrar" : "uncalibrated";
+  const source = result.platt_source || result.temperature_source;
+  return `${labels[result.calibration_method] || labels.temperature}${source ? ` (${baseName(source)})` : ""}`;
+}
+
 function escapeHtml(s) {
   const d = document.createElement("div");
   d.textContent = String(s ?? "");
@@ -979,7 +992,7 @@ function renderTechnical(result) {
     row("Val loss", fmtNum(result.checkpoint_val_loss)),
     row(LANG === "es" ? "Umbral" : "Threshold", result.using_class_thresholds ? (LANG === "es" ? "calibrado por clase" : "class-calibrated") : result.threshold),
     row(LANG === "es" ? "Fuente de umbrales" : "Threshold source", baseName(result.threshold_source)),
-    row(LANG === "es" ? "Calibración" : "Calibration", result.calibrated ? `${LANG === "es" ? "temperature scaling por clase" : "per-class temperature scaling"} (${baseName(result.temperature_source)})` : (LANG === "es" ? "sin calibrar" : "uncalibrated")),
+    row(LANG === "es" ? "Calibración" : "Calibration", calibrationText(result)),
     row(LANG === "es" ? "Clases reales" : "True classes", cmp.available ? listOrNone(cmp.true_classes) : "—"),
     row(LANG === "es" ? "Clases predichas" : "Predicted classes", cmp.predicted_classes ? listOrNone(cmp.predicted_classes) : "—"),
     rowHtml(LANG === "es" ? "Coincidencia exacta" : "Exact match", exactBadge),

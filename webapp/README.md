@@ -76,7 +76,7 @@ Aplicación Flask tipo dashboard: se sube un ECG, se analiza con el ensemble de 
 * Secciones de comparación arquitectónica y robustez alimentadas por los experimentos.
 * Gráficas interactivas de métricas y curvas ROC/PR por clase (Plotly).
 * Historial de análisis de la sesión con re-descarga de artefactos.
-* Temperature scaling automático si existe calibración previa.
+* Calibración automática si existe: temperatura por clase o calibración afín `a·logit + b` (la afín sustituye a la temperatura del mismo modelo; en un ensemble también se calibra el promedio).
 * Interfaz bilingüe ES/EN con identidad UNSA (escudo, granate/dorado) y tema claro/oscuro persistentes.
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
@@ -97,10 +97,10 @@ $resnet = Get-ChildItem saved/cinc2020/cinc2020_resnet/*/best.pt | Sort-Object L
 $resnet2 = Get-ChildItem saved/cinc2020/cinc2020_resnet_v2*/*/best.pt | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
 ```
 
-Modo ensemble (modelo final recomendado): promedia dos checkpoints con calibración por modelo y usa los umbrales del directorio del ensemble (`ensemble-f1` = umbrales F1, el punto de operación de la demo; `ensemble` = umbrales F0.5):
+Modo ensemble (modelo final recomendado): promedia dos checkpoints con calibración por modelo y usa los umbrales del directorio del ensemble (`ensemble-f1-platt` = umbrales F1 con calibración afín, el punto de operación de la demo; `ensemble-f1` = F1 con temperatura; `ensemble` = umbrales F0.5):
 
 ```powershell
-python webapp/app.py --saved saved --eval-dir runs/eval/ensemble-f1 --exp-dir runs/reports --model $resnet --model-b $resnet2 --temperatures runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv --port 5002
+python webapp/app.py --saved saved --eval-dir runs/eval/ensemble-f1-platt --exp-dir runs/reports --model $resnet --model-b $resnet2 --platt runs/eval/eval-resnet/platt_validation.csv --platt-b runs/eval/eval-resnet-v2/platt_validation.csv --platt-ensemble runs/eval/ensemble-f1-platt/platt_ensemble_validation.csv --port 5002
 ```
 
 Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`.
@@ -268,8 +268,9 @@ La pantalla puede apagarse; la última orden hace que cerrar la tapa no suspenda
 | `webapp/examples/` | Siete registros de test (CC BY 4.0; ver su `README.md`) |
 
 ```bash
-python tools/export_inference_bundle.py --checkpoint-a <best.pt v1> --checkpoint-b <best.pt v2>   --eval-dir runs/eval/ensemble-f1 --temperatures-a runs/eval/eval-resnet/temperatures_validation.csv   --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv --reports-dir runs/reports
-python tools/build_examples.py --predictions runs/eval/ensemble-f1/predictions_test.csv --dataset dataset2020
+python tools/export_inference_bundle.py --checkpoint-a <best.pt v1> --checkpoint-b <best.pt v2> --eval-dir runs/eval/ensemble-f1-platt --platt-a runs/eval/eval-resnet/platt_validation.csv --platt-b runs/eval/eval-resnet-v2/platt_validation.csv --platt-ensemble runs/eval/ensemble-f1-platt/platt_ensemble_validation.csv --reports-dir runs/reports
+python tools/build_examples.py --predictions runs/eval/ensemble-f1-platt/predictions_test.csv --refresh-references   # mismos 7 ejemplos, referencias nuevas
+# (selección desde cero: --dataset dataset2020 en lugar de --refresh-references)
 ```
 
 ### Variables de entorno
@@ -277,7 +278,8 @@ python tools/build_examples.py --predictions runs/eval/ensemble-f1/predictions_t
 | Variable | Defecto | Efecto |
 |---|---|---|
 | `ECG_MODEL`, `ECG_MODEL_B`, `ECG_ALPHA` | del `.env` | Modelos del ensemble y peso del A. Una ruta inexistente **impide arrancar** (no se sustituye por otro modelo) |
-| `ECG_TEMPERATURES`, `ECG_TEMPERATURES_B`, `ECG_THRESHOLDS`, `ECG_EVAL_DIR`, `ECG_EXP_DIR` | del `.env` | Calibración, umbrales y resultados que muestra la interfaz |
+| `ECG_PLATT`, `ECG_PLATT_B`, `ECG_PLATT_ENSEMBLE` | del `.env` | Calibración afín (`class,a,b`) del modelo A, del B y del promedio del ensemble. Gana a la temperatura del mismo modelo |
+| `ECG_TEMPERATURES`, `ECG_TEMPERATURES_B`, `ECG_THRESHOLDS`, `ECG_EVAL_DIR`, `ECG_EXP_DIR` | del `.env` | Calibración por temperatura, umbrales y resultados que muestra la interfaz |
 | `ECG_SAVED` | `saved/` (el bundle usa `models/`) | Carpeta de checkpoints; `/use_model` solo acepta archivos de aquí |
 | `ECG_UPLOADS`, `ECG_RESULTS` | `webapp/uploads`, `webapp/results` | Carpetas temporales de subidas e informes |
 | `ECG_EXAMPLES_DIR` | `webapp/examples` | Registros de ejemplo y su `examples.json` |
@@ -331,7 +333,7 @@ webapp/
 - [x] Gráficas interactivas de métricas por clase (Plotly)
 - [x] Curvas ROC/PR interactivas por clase
 - [x] Historial de análisis por sesión
-- [x] Temperature scaling automático + fila de calibración
+- [x] Calibración automática (temperatura o afín) + fila de calibración
 - [x] Inferencia ensemble (dos checkpoints + calibración por modelo)
 - [ ] Comparador lado a lado de dos registros
 - [ ] Exportación del análisis a Excel

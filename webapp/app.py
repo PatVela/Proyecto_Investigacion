@@ -281,6 +281,42 @@ def _load_temperatures_for_app(model_path: str | None, saved_dir: str | None, en
         model_path, saved_dir, env_var)
 
 
+def _load_platt_for_app(
+    model_path: str | None,
+    saved_dir: str | None,
+    env_var: str = "ECG_PLATT",
+    filename: str = "platt_validation.csv",
+) -> tuple[dict | None, str | None]:
+    """Busca la calibración afín ``class,a,b`` de ``calibrate.py --method platt``.
+
+    ``ECG_PLATT`` / ``ECG_PLATT_B`` son la de cada modelo y ``ECG_PLATT_ENSEMBLE`` (archivo
+    ``platt_ensemble_validation.csv`` de ``ensemble_evaluate.py --recalibrate-ensemble``) la del promedio.
+    Devuelve ``({clase: {"a": ..., "b": ...}}, ruta)``; un archivo sin las dos columnas o sin todas las clases
+    se ignora.
+    """
+    a_values, source = _find_class_values_csv(filename, "a", [load.CLASS_NAMES], model_path, saved_dir, env_var)
+    if a_values is None:
+        return None, None
+    b_values, source_b = _find_class_values_csv(filename, "b", [load.CLASS_NAMES], model_path, saved_dir, env_var)
+    if b_values is None or source_b != source:
+        return None, None
+    return {name: {"a": a_values[name], "b": b_values[name]} for name in a_values}, source
+
+
+def _load_platt_set_for_app(app) -> dict:
+    """Calibración afín de A, B y del promedio (solo hay B y promedio en modo ensemble)."""
+    out = {"platt": None, "platt_source": None, "platt_b": None, "platt_source_b": None,
+           "platt_ensemble": None, "platt_source_ensemble": None}
+    out["platt"], out["platt_source"] = _load_platt_for_app(app.config["ECG_MODEL"], app.config["ECG_SAVED_DIR"])
+    if app.config["ECG_MODEL_B"]:
+        out["platt_b"], out["platt_source_b"] = _load_platt_for_app(
+            app.config["ECG_MODEL_B"], app.config["ECG_SAVED_DIR"], env_var="ECG_PLATT_B")
+        out["platt_ensemble"], out["platt_source_ensemble"] = _load_platt_for_app(
+            app.config["ECG_MODEL"], app.config["ECG_SAVED_DIR"], env_var="ECG_PLATT_ENSEMBLE",
+            filename="platt_ensemble_validation.csv")
+    return out
+
+
 PERTURBATION_LABELS = {
     "clean": ("Señal limpia", "Clean signal"),
     "gaussian_noise": ("Ruido gaussiano", "Gaussian noise"),
@@ -676,6 +712,7 @@ def create_app() -> Flask:
                 temperatures_b=class_temperatures_b,
                 temperature_source_b=temperature_source_b,
                 alpha=app.config["ECG_ALPHA"],
+                **_load_platt_set_for_app(app),
             )
             result["patient_name"] = clean_path_text(request.form.get("patient_name", ""))
             result["patient_age"] = clean_path_text(request.form.get("patient_age", "")) or result.get("patient_age")
@@ -741,6 +778,7 @@ def create_app() -> Flask:
         if app.config["ECG_MODEL_B"]:
             tmps_b, tmps_b_source = _load_temperatures_for_app(
                 app.config["ECG_MODEL_B"], app.config["ECG_SAVED_DIR"], env_var="ECG_TEMPERATURES_B")
+        platt = _load_platt_set_for_app(app)
         return jsonify({
             "status": "ok",
             "ECG_MODEL": app.config["ECG_MODEL"],
@@ -758,6 +796,12 @@ def create_app() -> Flask:
             "ensemble_alpha": app.config["ECG_ALPHA"],
             "temperatures_b_found": tmps_b is not None,
             "temperature_b_source": tmps_b_source,
+            "platt_found": platt["platt"] is not None,
+            "platt_source": platt["platt_source"],
+            "platt_b_found": platt["platt_b"] is not None,
+            "platt_b_source": platt["platt_source_b"],
+            "platt_ensemble_found": platt["platt_ensemble"] is not None,
+            "platt_ensemble_source": platt["platt_source_ensemble"],
             "normal_fallback_min_probability": app.config["ECG_NORMAL_FALLBACK_MIN_PROB"],
             "num_classes": load.NUM_CLASSES,
             "accepted_uploads": [".csv", ".hea + .mat"],
@@ -781,6 +825,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--thresholds", default=None, help="thresholds_validation.csv generado por evaluate.py. Si se omite, se busca automáticamente.")
     parser.add_argument("--temperatures", default=None, help="temperatures_validation.csv de calibrate.py para el modelo A. Si se omite, se busca automáticamente.")
     parser.add_argument("--temperatures-b", default=None, help="temperatures_validation.csv de calibrate.py para el modelo B (ensemble).")
+    parser.add_argument("--platt", default=None, help="platt_validation.csv de calibrate.py --method platt para el modelo A (sustituye a su temperatura).")
+    parser.add_argument("--platt-b", default=None, help="platt_validation.csv para el modelo B (ensemble).")
+    parser.add_argument("--platt-ensemble", default=None, help="platt_ensemble_validation.csv de ensemble_evaluate.py --recalibrate-ensemble (calibra el promedio).")
     parser.add_argument("--eval-dir", default=None, help="Carpeta con salidas de evaluate.py (métricas, umbrales, temperaturas, curvas). Si se omite, se busca automáticamente.")
     parser.add_argument("--exp-dir", default=None, help="Carpeta con model_comparison.csv y robustness.csv. Si se omite, se busca automáticamente.")
     parser.add_argument("--normal-fallback-min-prob", type=float, default=None, help="Si ninguna clase supera umbral, añadir NSR cuando P(NSR) sea al menos este valor. Use 0 para desactivar.")
@@ -811,6 +858,12 @@ def main(argv: list[str] | None = None) -> None:
         os.environ["ECG_TEMPERATURES"] = clean_path_text(args.temperatures)
     if args.temperatures_b is not None:
         os.environ["ECG_TEMPERATURES_B"] = clean_path_text(args.temperatures_b)
+    if args.platt is not None:
+        os.environ["ECG_PLATT"] = clean_path_text(args.platt)
+    if args.platt_b is not None:
+        os.environ["ECG_PLATT_B"] = clean_path_text(args.platt_b)
+    if args.platt_ensemble is not None:
+        os.environ["ECG_PLATT_ENSEMBLE"] = clean_path_text(args.platt_ensemble)
     if args.eval_dir is not None:
         os.environ["ECG_EVAL_DIR"] = clean_path_text(args.eval_dir)
     if args.exp_dir is not None:

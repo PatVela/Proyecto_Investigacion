@@ -28,7 +28,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from ecg import load, predict, util
-from ecg.calibration import apply_temperature, load_temperatures_csv
+from ecg.calibration import apply_platt_logits, apply_temperature, load_platt_csv, load_temperatures_csv, to_logits
+
+
+def prediction_logits(output: dict) -> np.ndarray:
+    """Logits crudos de una salida de ``predict_hdf5``; si no los trae, el logit recortado de las probabilidades."""
+    if output.get("logits") is not None:
+        return np.asarray(output["logits"], dtype=np.float64)
+    return to_logits(output["probabilities"])
 
 
 def safe_metric(fn, y_true, y_score):
@@ -247,7 +254,9 @@ def save_roc_pr_curves(out_dir, y_true, y_prob, class_names, split, max_points=2
     return len(roc_rows), len(pr_rows)
 
 
-def run_evaluation(config, checkpoint, output_dir, batch_size=None, num_workers=None, device="auto", no_amp=False, normal_fallback_min_prob=None, preload=True, temperatures=None, threshold_beta=1.0, nsr_exclusive_min_prob=None, fixed_threshold=None):
+def run_evaluation(config, checkpoint, output_dir, batch_size=None, num_workers=None, device="auto", no_amp=False, normal_fallback_min_prob=None, preload=True, temperatures=None, threshold_beta=1.0, nsr_exclusive_min_prob=None, fixed_threshold=None, platt=None):
+    if temperatures and platt:
+        raise ValueError("Use temperatures o platt, no ambos: son dos calibraciones alternativas de las mismas probabilidades.")
     output_dir = util.resolve_path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -258,9 +267,13 @@ def run_evaluation(config, checkpoint, output_dir, batch_size=None, num_workers=
 
     val = predict.predict_hdf5(checkpoint, val_h5, batch_size=batch_size, num_workers=num_workers, device=device, amp=not no_amp, preload=preload)
     temp_vec = load_temperatures_csv(temperatures, val["class_names"]) if temperatures else None
+    platt_ab = load_platt_csv(platt, val["class_names"]) if platt else None
     if temp_vec is not None:
         print(f"Aplicando temperature scaling desde {temperatures}.")
         val["probabilities"] = apply_temperature(val["probabilities"], temp_vec)
+    elif platt_ab is not None:
+        print(f"Aplicando calibración afín (a·logit + b) desde {platt}.")
+        val["probabilities"] = apply_platt_logits(prediction_logits(val), *platt_ab)
     if fixed_threshold is not None:
         print(f"Usando umbral fijo={fixed_threshold} (sin optimización).")
         thresholds, threshold_df = fixed_thresholds(val["labels"], val["probabilities"], val["class_names"], fixed=float(fixed_threshold))
@@ -278,6 +291,8 @@ def run_evaluation(config, checkpoint, output_dir, batch_size=None, num_workers=
     test = predict.predict_hdf5(checkpoint, test_h5, batch_size=batch_size, num_workers=num_workers, device=device, amp=not no_amp, preload=preload)
     if temp_vec is not None:
         test["probabilities"] = apply_temperature(test["probabilities"], temp_vec)
+    elif platt_ab is not None:
+        test["probabilities"] = apply_platt_logits(prediction_logits(test), *platt_ab)
     test_class_df, test_global, test_pred = evaluate_predictions(
         test["labels"], test["probabilities"], thresholds, test["class_names"], "test",
         normal_fallback_min_prob=normal_fallback_min_prob,
@@ -296,6 +311,7 @@ def run_evaluation(config, checkpoint, output_dir, batch_size=None, num_workers=
     summary = {
         "checkpoint": str(checkpoint),
         "temperatures": str(temperatures) if temperatures else None,
+        "platt": str(platt) if platt else None,
         "label_schema": load.LABEL_SCHEMA,
         "problem_type": "multilabel sigmoid + BCEWithLogitsLoss",
         "class_names": val["class_names"],
@@ -327,6 +343,7 @@ def main():
     parser.add_argument("--no-preload", action="store_true", help="Desactiva la precarga del HDF5 a RAM (lectura por disco, lento)")
     parser.add_argument("--normal-fallback-min-prob", type=float, default=None, help="Postprocesamiento opcional: si no hay positivos, añadir NSR cuando P(NSR) >= valor. Ejemplo: 0.40")
     parser.add_argument("--temperatures", default=None, help="CSV class,temperature de calibrate.py; se aplica antes de optimizar umbrales y métricas")
+    parser.add_argument("--platt", default=None, help="CSV class,a,b de calibrate.py --method platt; calibración afín alternativa a --temperatures")
     parser.add_argument("--threshold-beta", type=float, default=1.0, help="Beta del F-beta para optimizar umbrales: 1.0=F1, 0.5=menos FPs, 2.0=menos FNs")
     parser.add_argument("--fixed-threshold", type=float, default=None, help="Umbral fijo para todas las clases (desactiva la optimización; para ablaciones)")
     parser.add_argument("--nsr-exclusive-min-prob", type=float, default=None, help="Si P(NSR) >= valor, predecir SOLO NSR. AVISO: en ablación redujo F1-macro sin mejorar precisión; no recomendado.")
@@ -353,6 +370,7 @@ def main():
         normal_fallback_min_prob=args.normal_fallback_min_prob,
         preload=not args.no_preload,
         temperatures=args.temperatures,
+        platt=args.platt,
         threshold_beta=args.threshold_beta,
         fixed_threshold=args.fixed_threshold,
         nsr_exclusive_min_prob=args.nsr_exclusive_min_prob,

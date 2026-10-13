@@ -182,3 +182,40 @@ def test_examples_reproduce_the_evaluation_with_the_real_bundle(tmp_path, manife
     finally:
         os.environ.clear()
         os.environ.update(saved)
+
+
+# --------------------------------------------------------------------------- #
+# actualizar las referencias de los ejemplos sin cambiar la selección
+# --------------------------------------------------------------------------- #
+def test_refresh_references_updates_probabilities_and_keeps_the_selection(tmp_path):
+    import pandas as pd
+
+    from tools import build_examples
+
+    out = tmp_path / "examples"
+    out.mkdir()
+    original = [{"id": "R1", "record": "R1", "kind": "correct", "source_db": "ptb-xl", "dx_codes": ["1"],
+                 "true_classes": ["NSR"], "reference_predicted_classes": ["NSR"],
+                 "reference_probabilities": {"NSR": 0.9, "AF": 0.1}}]
+    (out / "examples.json").write_text(json.dumps(original), encoding="utf-8")
+    pd.DataFrame({"record_name": ["R0", "R1"], "true_NSR": [0, 1], "prob_NSR": [0.2, 0.61234567], "pred_NSR": [0, 1],
+                  "true_AF": [1, 0], "prob_AF": [0.8, 0.45], "pred_AF": [1, 1]}).to_csv(tmp_path / "p.csv", index=False)
+    refreshed = build_examples.refresh_references(tmp_path / "p.csv", out)
+    assert refreshed[0]["reference_probabilities"] == {"NSR": 0.61235, "AF": 0.45}
+    assert refreshed[0]["reference_predicted_classes"] == ["NSR", "AF"]
+    assert {k: v for k, v in refreshed[0].items() if not k.startswith("reference_")} == \
+           {k: v for k, v in original[0].items() if not k.startswith("reference_")}
+    assert json.loads((out / "examples.json").read_text(encoding="utf-8")) == refreshed
+
+
+def test_refresh_references_fails_loudly_for_a_record_missing_in_the_predictions(tmp_path):
+    import pandas as pd
+
+    from tools import build_examples
+
+    out = tmp_path / "examples"
+    out.mkdir()
+    (out / "examples.json").write_text(json.dumps([{"id": "X", "record": "X", "reference_probabilities": {}}]), encoding="utf-8")
+    pd.DataFrame({"record_name": ["R0"], "true_NSR": [0], "prob_NSR": [0.2], "pred_NSR": [0]}).to_csv(tmp_path / "p.csv", index=False)
+    with pytest.raises(ValueError, match="X"):
+        build_examples.refresh_references(tmp_path / "p.csv", out)

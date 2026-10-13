@@ -61,7 +61,7 @@ def page():
     os.environ["ECG_UPLOADS"] = os.environ.get("TEMP", "/tmp") + "/ui_a11y_up"
     os.environ["ECG_RESULTS"] = os.environ.get("TEMP", "/tmp") + "/ui_a11y_res"
     # con los resultados del bundle se renderizan todas las tablas (métricas, comparación, robustez)
-    os.environ["ECG_EVAL_DIR"] = str(REPO_ROOT / "deploy" / "results" / "ensemble-f1")
+    os.environ["ECG_EVAL_DIR"] = str(REPO_ROOT / "deploy" / "results" / "ensemble-f1-platt")
     os.environ["ECG_EXP_DIR"] = str(REPO_ROOT / "deploy" / "reports")
     from webapp.app import create_app
 

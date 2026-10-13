@@ -26,4 +26,4 @@ Escriben fuera de esta carpeta (git-ignored), todo bajo `runs/`: `eval/`, `figs/
 
 ## Chequeo humano
 
-Antes de pasar de 04 a 05+, revisar `metrics_global.csv` y `thresholds_validation.csv` de la evaluación. Umbrales y temperaturas se ajustan **solo en validación**, nunca en test.
+Antes de pasar de 04 a 05+, revisar `metrics_global.csv` y `thresholds_validation.csv` de la evaluación. Umbrales y calibración (temperaturas o parámetros afines) se ajustan **solo en validación**, nunca en test. Compare modelos solo con el mismo `threshold_beta`; el F1 sin enmascarar por origen es el titular y el enmascarado un diagnóstico.

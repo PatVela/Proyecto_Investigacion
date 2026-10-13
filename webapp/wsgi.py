@@ -9,7 +9,7 @@ Variables reconocidas:
     ECG_THRESHOLDS -> thresholds_validation.csv opcional.
     ECG_NORMAL_FALLBACK_MIN_PROB -> umbral mínimo para fallback NSR.
     ECG_ENV_FILE   -> archivo KEY=VALUE con las variables anteriores (más ECG_MODEL_B,
-                      ECG_ALPHA, ECG_TEMPERATURES[_B], ECG_EVAL_DIR, ECG_EXP_DIR).
+                      ECG_ALPHA, ECG_TEMPERATURES[_B], ECG_PLATT[_B|_ENSEMBLE], ECG_EVAL_DIR, ECG_EXP_DIR).
                       Por defecto ``deploy/ensemble.env`` si existe; vacío = no cargar.
                       Las variables ya definidas en el entorno tienen prioridad.
 

@@ -7,7 +7,10 @@ considera registros de 10 s a 500 Hz (una ventana). Guarda en el manifiesto las
 probabilidades que produjo la evaluación, para verificar la app contra ellas.
 
     python tools/build_examples.py \\
-      --predictions runs/eval/ensemble-f1/predictions_test.csv --dataset dataset2020
+      --predictions runs/eval/ensemble-f1-platt/predictions_test.csv --dataset dataset2020
+
+Si cambia la calibración o los umbrales pero no la selección, ``--refresh-references`` solo actualiza en
+``examples.json`` las probabilidades y decisiones de referencia de los mismos registros (no copia ni borra archivos).
 """
 
 from __future__ import annotations
@@ -113,13 +116,38 @@ def build(predictions: Path, dataset: Path, out_dir: Path, seed: int = 0) -> lis
     return manifest
 
 
+def refresh_references(predictions: Path, out_dir: Path) -> list[dict]:
+    """Actualiza ``reference_probabilities`` y ``reference_predicted_classes`` de los ejemplos ya elegidos."""
+    pred = pd.read_csv(predictions).set_index("record_name")
+    classes = [c[len("true_"):] for c in pred.columns if c.startswith("true_")]
+    manifest_path = Path(out_dir) / "examples.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    missing = [m["record"] for m in manifest if m["record"] not in pred.index]
+    if missing:
+        raise ValueError(f"Registros de ejemplo ausentes en {predictions}: {missing}")
+    for m in manifest:
+        row = pred.loc[m["record"]]
+        m["reference_predicted_classes"] = [c for c in classes if row[f"pred_{c}"] == 1]
+        m["reference_probabilities"] = {c: round(float(row[f"prob_{c}"]), 5) for c in classes}
+    manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+    return manifest
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Genera los registros de ejemplo de la webapp.")
     p.add_argument("--predictions", required=True, help="predictions_test.csv del ensemble")
-    p.add_argument("--dataset", required=True, help="Carpeta raíz de CINC2020 con los .hea/.mat")
+    p.add_argument("--dataset", default=None, help="Carpeta raíz de CINC2020 con los .hea/.mat (no hace falta con --refresh-references)")
     p.add_argument("--out", default=str(REPO_ROOT / "webapp" / "examples"))
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--refresh-references", action="store_true",
+                   help="Solo actualiza las probabilidades de referencia de los ejemplos ya elegidos")
     args = p.parse_args()
+    if args.refresh_references:
+        manifest = refresh_references(Path(args.predictions), Path(args.out))
+        print(f"Referencias actualizadas para {len(manifest)} ejemplos desde {args.predictions}")
+        return
+    if not args.dataset:
+        p.error("--dataset es obligatorio salvo con --refresh-references")
     manifest = build(Path(args.predictions), Path(args.dataset), Path(args.out), args.seed)
     for m in manifest:
         print(f"{m['id']:<10} {m['kind']:<8} {m['source_db']:<14} verdad={m['true_classes']} predicho={m['reference_predicted_classes']}")
