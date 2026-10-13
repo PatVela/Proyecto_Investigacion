@@ -13,7 +13,7 @@
 | `augment.py` | Aumentación solo de train, preserva etiquetas | — |
 | `hdf5_dataset.py` | `HDF5ECGDataset` único (train, evaluación, ensemble): valida el HDF5 antes de precargarlo | `util`, `schema`, `signal`, `augment` |
 | `network.py` | ResNet-34 tipo Hannun y CNN convencional | `schema`, `signal`, torch |
-| `calibration.py` | Temperature scaling por clase, ECE y Brier | — |
+| `calibration.py` | Temperature scaling y calibración afín (`a·logit + b`) por clase, ECE y Brier | `tests/test_calibration.py` |
 | `util.py` | Seeds, dispositivo, `dataloader_kwargs`, `decode_h5_string`, guardar/cargar checkpoints (`load_checkpoint(..., trusted=False)` usa `weights_only=True`) | `schema` |
 | `train.py` | Entrenamiento reproducible (`python -m ecg.train`) | `hdf5_dataset`, `load`, `network`, `util` |
 | `predict.py` | Inferencia desde checkpoint (CLI/CSV), usada por webapp | `hdf5_dataset`, `load`, `network`, `util` |
@@ -27,7 +27,7 @@
   - Salidas generadas (`runs/`) y el bundle de despliegue (`models/`, `deploy/`, `webapp/examples/`) quedan obsoletos hasta regenerarlos (`tools/export_inference_bundle.py`, `tools/build_examples.py`).
 - **`signal.py` (preproceso):** debe ser idéntico en entrenamiento e inferencia (causa histórica del bug en `docs/fix_prediccion_cinc2020.md`); revisar `predict.py`, `webapp/prediction.py`, `tools/audit_signal_scaling.py`. `resample_signal` solo acepta frecuencias de 50 a 10 000 Hz (`MIN/MAX_SAMPLING_RATE_HZ`); `preprocessing_for_schema` avisa si el checkpoint no declara esquema y falla si es desconocido.
 - **`network.py`:** cambia el formato de `best.pt`; revisar `predict.load_model`, `export_onnx.py` y regenerar `models/*.pt`.
-- **`calibration.py`:** afecta `calibrate.py`, `evaluate.py`, `robustness.py`, webapp.
+- **`calibration.py`:** afecta `calibrate.py`, `evaluate.py`, `ensemble_evaluate.py`, `robustness.py` (solo temperatura), webapp y el bundle (`deploy/platt_*.csv`).
 
 ## Chequeo humano
 

@@ -239,24 +239,33 @@ $resnet2
 ```powershell
 python examples/cinc2020/calibrate.py --checkpoint $resnet --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet
 python examples/cinc2020/calibrate.py --checkpoint $resnet2 --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet-v2
+python examples/cinc2020/calibrate.py --method platt --checkpoint $resnet --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet
+python examples/cinc2020/calibrate.py --method platt --checkpoint $resnet2 --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet-v2
 ```
+
+La primera pareja ajusta una temperatura por clase (`temperatures_validation.csv`); la segunda, una calibración afín `sigmoid(a·logit + b)` por clase (`platt_validation.csv`, sin pisar lo anterior). Entrenar con `pos_weight` y label smoothing sube la probabilidad base de todos los registros, y eso solo lo corrige el término `b`: con la temperatura el ECE de v2 queda en 0.114 y con la afín en 0.014 (ver `docs/resultados_finales.md`). La demo usa la afín.
 
 ### Paso 5 — Evaluar (~10 min c/u en GPU)
 
 ```powershell
 python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet --temperatures runs/eval/eval-resnet/temperatures_validation.csv --threshold-beta 0.5
 python examples/cinc2020/evaluate.py examples/cinc2020/config_resnet_v2.json $resnet2 --output-dir runs/eval/eval-resnet-v2 --temperatures runs/eval/eval-resnet-v2/temperatures_validation.csv --threshold-beta 0.5
+python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet-f1 --temperatures runs/eval/eval-resnet/temperatures_validation.csv --threshold-beta 1.0
+python examples/cinc2020/evaluate.py examples/cinc2020/config_resnet_v2.json $resnet2 --output-dir runs/eval/eval-resnet-v2-f1 --temperatures runs/eval/eval-resnet-v2/temperatures_validation.csv --threshold-beta 1.0
+python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet-platt-f1 --platt runs/eval/eval-resnet/platt_validation.csv --threshold-beta 1.0
+python examples/cinc2020/evaluate.py examples/cinc2020/config_resnet_v2.json $resnet2 --output-dir runs/eval/eval-resnet-v2-platt-f1 --platt runs/eval/eval-resnet-v2/platt_validation.csv --threshold-beta 1.0
 ```
 
-Sin `--nsr-exclusive-min-prob`: esa regla resultó perjudicial en ablación (−11 pts de F1-macro sin ganancia de precisión) y no se usa. Cada directorio contendrá umbrales por clase, métricas por clase y globales, predicciones de validación/test, matrices de confusión 2×2, curvas ROC/PR y un resumen JSON (`evaluation_summary.json`).
+Las dos primeras líneas usan umbrales F0.5 y las demás F1: **compare solo evaluaciones con el mismo `--threshold-beta`** (v2 − v1 es +3.5 puntos con F0.5 pero +1.2 con F1 en ambos). `--temperatures` y `--platt` son alternativos. Sin `--nsr-exclusive-min-prob`: esa regla resultó perjudicial en ablación (−11 pts de F1-macro sin ganancia de precisión) y no se usa. Cada directorio contendrá umbrales por clase, métricas por clase y globales, predicciones de validación/test, matrices de confusión 2×2, curvas ROC/PR y un resumen JSON (`evaluation_summary.json`).
 
 ### Paso 6 — Comparar v1 vs v2 y elegir el mejor
 
 ```powershell
 python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet --eval-b runs/eval/eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output runs/reports/model_comparison.csv
+python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet-f1 --eval-b runs/eval/eval-resnet-v2-f1 --label-a "ResNet v1 (F1)" --label-b "ResNet v2 (F1)" --output runs/reports/model_comparison_f1.csv
 ```
 
-Abra `runs/reports/model_comparison.csv` en su visor de CSV, mire F1-macro en test y defina el ganador (ajuste según lo que vea; aquí se asume v2):
+`compare_models.py` se detiene si las dos evaluaciones tienen distinto `threshold_beta` (`--allow-different-beta` lo permite y deja la columna en el CSV). Abra `runs/reports/model_comparison.csv` en su visor de CSV, mire F1-macro en test y defina el ganador (ajuste según lo que vea; aquí se asume v2):
 
 ```powershell
 $mejor = $resnet2
@@ -268,15 +277,16 @@ $evalMejor = "runs/eval/eval-resnet-v2"
 ```powershell
 python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble --alpha 0.5 --threshold-beta 0.5 --temperatures-a runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv
 python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble-f1 --alpha 0.5 --threshold-beta 1.0 --temperatures-a runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv
+python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble-f1-platt --alpha 0.5 --threshold-beta 1.0 --platt-a runs/eval/eval-resnet/platt_validation.csv --platt-b runs/eval/eval-resnet-v2/platt_validation.csv --recalibrate-ensemble
 python examples/cinc2020/compare_models.py --eval-a "$evalMejor" --eval-b runs/eval/ensemble --label-a "ResNet mejor" --label-b "Ensemble" --output runs/reports/comparacion_ensemble.csv
 python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --temperatures "$evalMejor/temperatures_validation.csv" --output runs/reports/robustness.csv
-python examples/cinc2020/challenge_score.py --checkpoint $mejor --test-h5 data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --output-dir runs/eval/metrica-challenge
-python examples/cinc2020/error_analysis.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --output runs/reports/errores_origen.csv
+python examples/cinc2020/challenge_score.py --predictions runs/eval/ensemble-f1-platt/predictions_test.csv --test-h5 data/cinc2020_12/test.h5 --output-dir runs/eval/metrica-challenge/ensemble-f1-platt
+python examples/cinc2020/error_analysis.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --train-h5 data/cinc2020_12/train.h5 --output runs/reports/errores_origen.csv
 python examples/cinc2020/make_figures.py --eval-dir "$evalMejor" --outdir runs/figs/figs_eval --robustness runs/reports/robustness.csv
 python examples/cinc2020/bootstrap_ci.py --predictions "$evalMejor/predictions_test.csv" --predictions-baseline runs/eval/eval-resnet/predictions_test.csv --output runs/reports/bootstrap_v2-v1.json --n-bootstrap 1000
 ```
 
-Son dos puntos de operación del mismo ensemble: `runs/eval/ensemble` (umbrales F0.5, mayor precisión) y `runs/eval/ensemble-f1` (umbrales F1, recomendado para screening; es el que se empaqueta para la demo pública). Sin `--nsr-exclusive-min-prob`: esa regla resultó perjudicial.
+Son puntos de operación del mismo ensemble: `runs/eval/ensemble` (umbrales F0.5, mayor precisión), `runs/eval/ensemble-f1` (umbrales F1, calibración por temperatura) y `runs/eval/ensemble-f1-platt` (umbrales F1, calibración afín por modelo y del promedio; recomendado para screening y el que se empaqueta para la demo). `challenge_score.py --predictions` puntúa las decisiones guardadas de cualquiera de ellos (24 clases, equivalentes fusionadas como el evaluador oficial); `error_analysis.py --train-h5` añade el diagnóstico de celdas origen×clase sin anotar (solo diagnóstico: el F1 sin enmascarar es el titular). Sin `--nsr-exclusive-min-prob`: esa regla resultó perjudicial.
 
 ### Paso 8 — Diagnóstico de registros ejemplo
 
@@ -292,7 +302,7 @@ python examples/cinc2020/_archive/diagnose_prediction.py --checkpoint $mejor --c
 ### Paso 9 — Webapp (ensemble final)
 
 ```powershell
-python webapp/app.py --saved saved --eval-dir runs/eval/ensemble-f1 --exp-dir runs/reports --model $resnet --model-b $resnet2 --temperatures runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv --port 5002
+python webapp/app.py --saved saved --eval-dir runs/eval/ensemble-f1-platt --exp-dir runs/reports --model $resnet --model-b $resnet2 --platt runs/eval/eval-resnet/platt_validation.csv --platt-b runs/eval/eval-resnet-v2/platt_validation.csv --platt-ensemble runs/eval/ensemble-f1-platt/platt_ensemble_validation.csv --port 5002
 ```
 
 Abra http://127.0.0.1:5002 y pruebe con `E00001.hea + E00001.mat`.
@@ -372,7 +382,7 @@ Notas:
 │   ├── predict.py          # inferencia desde checkpoints (CSV/HDF5)
 │   ├── train.py            # entrenamiento + logs reproducibles
 │   ├── augment.py          # aumentación de señal (preserva etiquetas)
-│   ├── calibration.py      # temperature scaling por clase
+│   ├── calibration.py      # temperature scaling y calibración afín por clase, ECE, Brier
 │   └── util.py             # checkpoints, parámetros y seeds
 ├── examples/cinc2020/      # pipeline: datos, evaluación y experimentos
 │   ├── build_datasets.py / evaluate.py / compare_models.py
@@ -425,7 +435,7 @@ La demo corre en la propia PC, sin servidor ni nube. El bundle (pesos de inferen
 ## Experimentos
 
 * **Evaluación multilabel**: AUROC/AUPRC por clase, sensibilidad, especificidad, F1 macro/micro y matrices 2×2 (`evaluate.py`).
-* **Calibración**: temperature scaling por clase + umbrales F-beta orientados a precisión (`calibrate.py`).
+* **Calibración**: temperature scaling o calibración afín (`a·logit + b`) por clase + umbrales F-beta (`calibrate.py`).
 * **Ensemble**: promedio ponderado de dos checkpoints con calibración por modelo (`ensemble_evaluate.py`).
 * **Comparación de evaluaciones**: dos runs (p. ej. ResNet v1 vs v2) con idéntico dataset, split y métricas (`compare_models.py`).
 * **Robustez controlada**: ruido gaussiano, baseline wander, escalado de amplitud y apagado de derivaciones (`robustness.py`).
@@ -474,7 +484,7 @@ Los tests de los scripts de Windows (`deploy/*.ps1`) se omiten en otros sistemas
 - [x] Experimentos de comparación de evaluaciones y robustez
 - [x] Ensemble promedio de checkpoints + inferencia ensemble en la webapp
 - [x] Umbrales F-beta y selección de checkpoint por F1-macro
-- [x] Calibración de probabilidades (temperature scaling por clase + reporte ECE/Brier)
+- [x] Calibración de probabilidades (temperature scaling y calibración afín por clase + reporte ECE/Brier)
 - [x] Curvas ROC/PR por clase en CSV + gráficas interactivas Plotly en la webapp
 - [x] Análisis de errores por subconjunto de origen (sesgo por hospital)
 - [x] Exportación a ONNX verificada numéricamente contra PyTorch

@@ -55,14 +55,14 @@ Esta carpeta contiene el pipeline experimental completo del proyecto: desde la d
 |---|---|
 | `build_datasets.py` | Construye `train/val/test.h5` + CSV de distribución y resúmenes |
 | `evaluate.py` | Métricas multilabel + umbrales calibrados en validación |
-| `compare_models.py` | Compara dos evaluaciones (p. ej. ResNet v1 vs v2) |
+| `compare_models.py` | Compara dos evaluaciones con el mismo `threshold_beta` (p. ej. ResNet v1 vs v2) |
 | `robustness.py` | Robustez ante perturbaciones controladas de la señal |
-| `challenge_score.py` | Métrica oficial estilo Challenge 2020 (27 códigos) |
+| `challenge_score.py` | Métrica oficial estilo Challenge 2020 (24 clases, equivalentes fusionadas) desde decisiones guardadas o un checkpoint |
 | `_archive/diagnose_prediction.py` | Diagnóstico detallado de un registro |
 | `_archive/debug_record_prediction.py` | Compara señal webapp vs señal HDF5 por registro |
-| `calibrate.py` | Temperature scaling por clase + reporte ECE/Brier |
+| `calibrate.py` | Calibración por clase (temperatura o afín `--method platt`) + reporte ECE/Brier |
 | `ensemble_evaluate.py` | Ensemble promedio de dos checkpoints |
-| `error_analysis.py` | Errores por subconjunto de origen (hospital/fuente) |
+| `error_analysis.py` | Errores por subconjunto de origen (hospital/fuente) y diagnóstico de celdas origen×clase sin anotar |
 | `export_onnx.py` | Exportación a ONNX con verificación numérica |
 | `audit_dx_codes.py` | Cobertura Dx→clase: frecuencias por código SNOMED |
 | `make_figures.py` | Figuras ROC/PR empíricas + robustez + aprendizaje |
@@ -143,7 +143,7 @@ python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --out
 python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet --eval-b runs/eval/eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output runs/reports/model_comparison.csv
 ```
 
-Las etiquetas son opcionales (por defecto usa el nombre de cada directorio).
+Las etiquetas son opcionales (por defecto usa el nombre de cada directorio). Las dos evaluaciones deben tener el mismo `threshold_beta` (se lee de `evaluation_summary.json`); si no, el script se detiene, porque la diferencia de F1-macro mezclaría modelo y punto de operación (`--allow-different-beta` lo permite y deja la columna en el CSV).
 
 ### 6. Robustez controlada
 
@@ -161,19 +161,22 @@ $mat1 = [System.IO.Path]::ChangeExtension($hea1, '.mat')
 python examples/cinc2020/_archive/diagnose_prediction.py --checkpoint $mejor --config examples/cinc2020/config.json --thresholds "$evalMejor/thresholds_validation.csv" --record E00001 --hea $hea1 --mat $mat1
 ```
 
-### 8. Métrica oficial estilo Challenge 2020 (27 códigos)
+### 8. Métrica oficial estilo Challenge 2020 (24 clases)
 
 ```powershell
-python examples/cinc2020/challenge_score.py --checkpoint $mejor --test-h5 data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --output-dir runs/eval/metrica-challenge
+python examples/cinc2020/challenge_score.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --output-dir runs/eval/metrica-challenge/mejor
 ```
 
-### 9. Calibrar probabilidades (temperature scaling)
+Puntúa las decisiones ya guardadas de una evaluación (también las de un ensemble). Las clases equivalentes del evaluador oficial (CRBBB/RBBB, PAC/SVPB, PVC/VPB) se fusionan, así que se puntúan 24 clases (`--no-merge-equivalent` conserva las 27 columnas). Desde un checkpoint (`--checkpoint`) hay que pasar además `--temperatures` con las temperaturas con las que se ajustaron los umbrales; sin ellas los umbrales se aplican a probabilidades crudas y la métrica sale subestimada (así se obtuvo el antiguo 0.2348). El esquema de 12 grupos no puede llegar a 1: un clasificador perfecto de grupos puntúa ≈ 0.50.
+
+### 9. Calibrar probabilidades (temperatura o calibración afín)
 
 ```powershell
 python examples/cinc2020/calibrate.py --checkpoint $resnet --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet
+python examples/cinc2020/calibrate.py --method platt --checkpoint $resnet --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet
 ```
 
-Ajusta una temperatura por clase sobre validación y guarda el CSV de temperaturas + reporte ECE/Brier. Aplíquelo en evaluación con `--temperatures runs/eval/eval-resnet/temperatures_validation.csv`; la webapp lo detecta automáticamente.
+La primera ajusta una temperatura por clase sobre validación y guarda `temperatures_validation.csv` + `calibration_report.json` (ECE/Brier). Aplíquela en evaluación con `--temperatures`. La segunda ajusta `sigmoid(a·logit + b)` por clase sobre los logits crudos del checkpoint y guarda `platt_validation.csv` + `calibration_report_platt.json` (no pisa los de la temperatura); se aplica con `--platt`. Entrenar con `pos_weight = neg/pos` y label smoothing sube la probabilidad base de todos los registros (un desplazamiento que una temperatura no corrige): el ECE de v2 pasa de 0.114 a 0.014. La calibración afín conserva el orden de las puntuaciones (a > 0), así que F1, AUROC y AUPRC no cambian; sí cambia la escala de los umbrales, que se reoptimizan. `--predictions predictions_validation.csv` también sirve, pero solo trae probabilidades y el ajuste es menos preciso (avisa). La webapp detecta cualquiera de las dos.
 
 ### 10. Exportar a ONNX
 
@@ -209,7 +212,10 @@ Ensemble promedio de dos checkpoints (mismo layout de salida que `evaluate.py`).
 
 ```powershell
 python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble --alpha 0.5 --threshold-beta 0.5 --temperatures-a runs/eval/eval-resnet/temperatures_validation.csv --temperatures-b runs/eval/eval-resnet-v2/temperatures_validation.csv
+python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble-f1-platt --alpha 0.5 --threshold-beta 1.0 --platt-a runs/eval/eval-resnet/platt_validation.csv --platt-b runs/eval/eval-resnet-v2/platt_validation.csv --recalibrate-ensemble
 ```
+
+Con `--platt-a/--platt-b` cada modelo se calibra con su calibración afín; `--recalibrate-ensemble` ajusta, solo con validación, otra sobre el promedio (promediar probabilidades calibradas no deja una probabilidad calibrada) y la guarda como `platt_ensemble_validation.csv` en el directorio de salida. `runs/eval/ensemble-f1-platt` es el que se empaqueta para la demo.
 
 Para re-entrenar la ResNet con receta anti-sobreajuste (más épocas, más regularización), usar `examples/cinc2020/config_resnet_v2.json` con `ecg.train`. Ese config selecciona el mejor checkpoint por F1-macro en validación (`early_stopping_metric: val_f1_macro`) en vez de por `val_loss`, porque ambas métricas pueden discrepar; `history.csv` registra ambas curvas en todos los runs. Además activa aumentación de señal (`augment: true`: ruido, deriva basal, escala, desplazamiento temporal, dropout de derivación) y label smoothing (`label_smoothing: 0.05`) para frenar el sobreajuste. Resultados finales (v1 vs v2 vs ensemble) en [docs/resultados_finales.md](../../docs/resultados_finales.md).
 

@@ -50,7 +50,7 @@ Ambos modelos deben usar:
 - mismas métricas de evaluación.
 
 ```powershell
-python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet --eval-b runs/eval/eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output runs/reports/model_comparison.csv
+python examples/cinc2020/compare_models.py --eval-a runs/eval/eval-resnet --eval-b runs/eval/eval-resnet-v2 --label-a "ResNet v1" --label-b "ResNet v2" --output runs/reports/model_comparison.csv   # mismo --threshold-beta en ambas (0.5)
 ```
 
 ## Experimento C — Ensemble v1+v2 (modelo final)
@@ -60,7 +60,7 @@ python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $res
 python examples/cinc2020/compare_models.py --eval-a "$evalMejor" --eval-b runs/eval/ensemble --label-a "ResNet mejor" --label-b "Ensemble" --output runs/reports/comparacion_ensemble.csv
 ```
 
-Promedio simple con calibración por modelo y umbrales F0.5 tuneados sobre el promedio. El punto de operación F1 (recomendado para screening y para la demo) se obtiene con `--threshold-beta 1.0 --output-dir runs/eval/ensemble-f1`; no se usa `--nsr-exclusive-min-prob`.
+Promedio simple con calibración por modelo y umbrales F0.5 tuneados sobre el promedio (con `--platt-a/--platt-b --recalibrate-ensemble` la calibración es afín y el promedio se recalibra; ver `docs/resultados_finales.md`). El punto de operación F1 (recomendado para screening y para la demo) se obtiene con `--threshold-beta 1.0 --output-dir runs/eval/ensemble-f1`; no se usa `--nsr-exclusive-min-prob`.
 Ver resultados en [resultados_finales.md](resultados_finales.md).
 
 ## Métricas a reportar

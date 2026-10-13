@@ -8,7 +8,7 @@
 | `check_missing.py` | Integridad .hea/.mat de `dataset2020/` (`--kind`) | `tests/test_tools_missing.py` |
 | `download_missing.py` | Descarga los .hea/.mat faltantes desde PhysioNet (`--kind`) | — |
 | `audit_signal_scaling.py` | Audita ganancia/normalización de señal | `tests/test_tools_audit.py` |
-| `export_inference_bundle.py` | Convierte los dos checkpoints en `models/*.pt` (solo pesos) y copia umbrales, temperaturas y reportes a `deploy/` sin rutas locales | `tests/test_inference_bundle.py` |
+| `export_inference_bundle.py` | Convierte los dos checkpoints en `models/*.pt` (solo pesos) y copia umbrales, calibración (temperaturas o `--platt-a/-b/--platt-ensemble`) y reportes a `deploy/` sin rutas locales | `tests/test_inference_bundle.py` |
 | `build_examples.py` | Elige 7 registros del test (seed 0) y los copia a `webapp/examples/` con las probabilidades de referencia | `tests/test_examples.py` |
 | `smoke_deployment.py` | 19 comprobaciones por HTTP contra una URL (solo stdlib): `python tools/smoke_deployment.py URL --expect-ensemble` | `tests/test_deploy_*.py` |
 
