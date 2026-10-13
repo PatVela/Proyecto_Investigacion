@@ -13,7 +13,7 @@ import torch
 pytest.importorskip("flask")
 
 from ecg import load, network, schema, signal
-from webapp import examples as store
+from webapp import example_records as store
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 EXAMPLES_DIR = REPO_ROOT / "webapp" / "examples"
