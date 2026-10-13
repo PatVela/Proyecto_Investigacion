@@ -211,10 +211,20 @@ En Linux o macOS el equivalente es `python -m waitress --host=127.0.0.1 --port=5
 |---|---|---|
 | Solo esta PC (por defecto) | `deploy\start_local.ps1` | Únicamente `127.0.0.1`; verificado: la IP de la red local no responde |
 | Red local | `deploy\start_local.ps1 -Lan` | Teléfonos y otras PCs de la misma red (`http://<IP de la PC>:5002`). Windows pide permiso al Firewall: permitir solo redes privadas |
-| Internet, temporal | `deploy\start_local.ps1 -Tunnel` | Quien reciba la URL `https://….trycloudflare.com` que muestra el script; cambia en cada ejecución y deja de existir al cerrarlo. Requiere `winget install --id Cloudflare.cloudflared` (sin cuenta). Activa `ECG_TRUST_PROXY=1` y obliga a escuchar solo en `127.0.0.1` |
+| Internet, temporal | `deploy\start_local.ps1 -Tunnel` | Quien reciba la URL `https://….trycloudflare.com` que muestra el script; cambia en cada ejecución y deja de existir al cerrarlo. Requiere `winget install --id Cloudflare.cloudflared` (sin cuenta). Configura waitress para confiar en el túnel (`--trusted-proxy`) y obliga a escuchar solo en `127.0.0.1`; así cada visitante tiene su propio límite |
 
-Otras opciones: `-Port`, `-Threads` y `-UseGpu`. El modo túnel no está probado de extremo a extremo en esta PC porque
-`cloudflared` no está instalado; sí están probados el rechazo cuando falta y la incompatibilidad con `-Lan`.
+Otras opciones: `-Port`, `-Threads` y `-UseGpu`.
+
+**Probado con un túnel real** (`cloudflared` 2026.10.0, desde el navegador integrado de la app): la página, el análisis de un
+ejemplo (con las mismas probabilidades que la evaluación) y la lista de ejemplos funcionan por internet con la consola vacía.
+Un visitante que agota su límite (20 solicitudes por minuto) recibe 429, mientras otros visitantes y quien entra directo por
+`127.0.0.1` no se ven afectados; anteponer IPs falsas en `X-Forwarded-For` no sirve para esquivarlo.
+
+**Limitación medida: el túnel es lento con archivos grandes.** Desde esta conexión la hoja de estilos (24 KB) tarda 1–4 s,
+pero el PNG del ECG (≈ 760 KB) y el PDF (≈ 950 KB) tardaron entre 20 y 90 s o se atascaron en 2 de cada 3 intentos
+(≈ 10–20 KB/s), y Plotly (4,3 MB sin comprimir) no terminó de bajar en 120 s; en local las mismas descargas tardan
+milisegundos. Úselo solo para una demostración corta y mejor desde un teléfono con datos móviles; en la misma sala,
+`127.0.0.1` o `-Lan` no tienen este problema. No se identificó la causa (puede ser la subida de la conexión): probar con otra red.
 
 Por defecto se sirve **en CPU** (`ECG_DEVICE=cpu`): la inferencia tarda 44 ms en CPU y 9 ms en GPU por modelo, pero la
 petición completa tarda ≈ 2,4 s porque casi todo es el PDF y los gráficos; medido con la GPU, la petición es igual de
@@ -263,7 +273,7 @@ python tools/build_examples.py --predictions runs/eval/ensemble-f1/predictions_t
 | `ECG_REFERENCE` | — | Referencia opcional que se muestra en la interfaz |
 | `ECG_MAX_UPLOAD_MB` | 5 | Tamaño máximo por solicitud (413 en JSON) |
 | `ECG_RATE_LIMIT_MAX` / `ECG_RATE_LIMIT_WINDOW` | 20 / 60 s | Solicitudes de `/predict` por IP (429 + `Retry-After`; `0` desactiva) |
-| `ECG_TRUST_PROXY` | 0 | Nº de proxies de confianza delante (un túnel cuenta como 1): usa `X-Forwarded-For` para identificar al cliente. Sin él, todos los visitantes de un túnel comparten un único límite. Solo es seguro si la app escucha en `127.0.0.1` |
+| `ECG_TRUST_PROXY` | 0 | Nº de proxies de confianza cuando la app recibe `X-Forwarded-For` de un proxy. **Con waitress no basta**: waitress elimina esa cabecera salvo que se le configure `--trusted-proxy…` (lo hace `-Tunnel`); sin eso todos los visitantes de un túnel comparten una sola IP y uno agota el límite de todos. Solo es seguro si la app escucha en `127.0.0.1` |
 | `ECG_DEVICE` | auto | `cpu`, `cuda` o `auto` (GPU si existe). `cuda` sin GPU impide arrancar. `deploy\start_local.ps1` usa `cpu` salvo `-UseGpu` |
 | `ECG_RESULT_TTL_SECONDS` | 3600 | Vida de los informes generados (`0` = no borrar) |
 | `ECG_KEEP_UPLOADS` | — | `1` conserva los ECG subidos (por defecto se borran al terminar) |
