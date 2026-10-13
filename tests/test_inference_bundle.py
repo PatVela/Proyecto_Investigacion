@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 import torch
 
-from ecg import load, network, predict, util
+from ecg import load, network, predict
 from tools import export_inference_bundle as bundle
 
 NAMES = load.CLASS_NAMES
