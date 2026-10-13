@@ -14,7 +14,7 @@ from typing import Iterable
 
 import numpy as np
 import pandas as pd
-from scipy.io import loadmat
+from scipy.io import loadmat, whosmat
 from scipy.signal import butter, resample_poly, sosfiltfilt
 
 
@@ -423,10 +423,20 @@ def preprocess_to_windows(
     return np.stack(windows).astype(np.float32, copy=False), [int(s) for s in starts]
 
 
+# Un .mat comprimido de pocos MB puede declarar gigabytes (razón medida 1025x). El registro más largo de CINC2020
+# (INCART, 30 min a 257 Hz) tiene 12 x 462 600 elementos; el tope deja holgura para 69 min a 500 Hz y 12 derivaciones.
+MAX_MAT_ELEMENTS = 25_000_000
+
+
 def load_mat_signal(mat_path: str | Path, num_leads: int = NUM_LEADS) -> np.ndarray:
-    mat = loadmat(mat_path)
-    if "val" not in mat:
+    declared = {name: shape for name, shape, _ in whosmat(mat_path)}      # solo cabeceras: no descomprime los datos
+    if "val" not in declared:
         raise KeyError("No existe variable 'val' en el .mat")
+    elements = int(np.prod(declared["val"], dtype=np.float64))
+    if elements > MAX_MAT_ELEMENTS:
+        raise ValueError(f"El .mat declara {elements:,} elementos en 'val' (forma {tuple(declared['val'])}): "
+                         f"demasiado grande, el máximo es {MAX_MAT_ELEMENTS:,}.")
+    mat = loadmat(mat_path, variable_names=["val"])                       # ignora cualquier otra variable del archivo
     raw = np.asarray(mat["val"], dtype=np.float32)
     if raw.ndim != 2:
         raise ValueError(f"Shape inesperado en .mat: {raw.shape}")

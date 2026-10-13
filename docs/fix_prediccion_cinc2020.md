@@ -93,8 +93,8 @@ python -m ecg.train examples/cinc2020/config.json -e cinc2020_resnet
 python examples/cinc2020/calibrate.py --checkpoint $resnet --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet
 python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet --temperatures runs/eval/eval-resnet/temperatures_validation.csv --threshold-beta 0.5
 
-# 4) Métrica oficial estilo Challenge (27 códigos)
-python examples/cinc2020/challenge_score.py --checkpoint $resnet --test-h5 data/cinc2020_12/test.h5 --thresholds runs/eval/eval-resnet/thresholds_validation.csv --output-dir runs/eval/metrica-challenge
+# 4) Métrica oficial estilo Challenge (24 clases; puntúa las decisiones guardadas de la evaluación anterior)
+python examples/cinc2020/challenge_score.py --predictions runs/eval/eval-resnet/predictions_test.csv --test-h5 data/cinc2020_12/test.h5 --output-dir runs/eval/metrica-challenge/eval-resnet
 
 # 5) Verificar casos reportados
 $hea14 = Get-ChildItem dataset2020 -Recurse -Filter E00014.hea | Select-Object -First 1 -ExpandProperty FullName
@@ -125,6 +125,6 @@ python webapp/app.py --saved saved
 Si las métricas globales siguen bajas tras migrar, adjuntar:
 
 - `runs/eval/eval-resnet/metrics_global.csv`, `metrics_per_class.csv`,
-  `thresholds_validation.csv`, `runs/eval/metrica-challenge/challenge_metric.json`;
+  `thresholds_validation.csv`, `runs/eval/metrica-challenge/eval-resnet/challenge_metric.json`;
 - `saved/.../training_summary.json` (o `history.csv`);
 - salida de `diagnose_prediction.py` para `E00001` y `E00014`.

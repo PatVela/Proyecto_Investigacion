@@ -125,7 +125,7 @@ Receta con aumentación de señal, label smoothing, más épocas y selección po
 python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet --temperatures runs/eval/eval-resnet/temperatures_validation.csv --threshold-beta 0.5
 ```
 
-Genera umbrales por clase, métricas por clase y globales, predicciones, matrices de confusión 2×2 y curvas ROC/PR por clase. Para v2 use su config, checkpoint y carpeta (`runs/eval/eval-resnet-v2`). Para cuantificar el fallback normal en todo el conjunto:
+Genera umbrales por clase, métricas por clase y globales, predicciones, matrices de confusión 2×2 y curvas ROC/PR por clase. Para v2 use su config, checkpoint y carpeta (`runs/eval/eval-resnet-v2`). `--temperatures` y `--platt` (calibración afín, §9) son alternativos; `--threshold-beta 1.0` da el punto F1 (valor por defecto) y `0.5` el de menos falsos positivos. Para cuantificar el fallback normal en todo el conjunto:
 
 ```powershell
 python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet-fallback --normal-fallback-min-prob 0.40
@@ -151,7 +151,7 @@ Las etiquetas son opcionales (por defecto usa el nombre de cada directorio). Las
 python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --temperatures "$evalMejor/temperatures_validation.csv" --output runs/reports/robustness.csv
 ```
 
-Perturbaciones: ruido gaussiano, baseline wander, escalado de amplitud y apagado de derivaciones (incluye fila base `clean`). Pase siempre `--temperatures` del mismo eval-dir que los umbrales: sin él, los umbrales calibrados se aplican sobre probabilidades crudas (protocolo mismatched, base subestimada).
+Perturbaciones: ruido gaussiano, baseline wander, escalado de amplitud y apagado de derivaciones (incluye fila base `clean`). Pase siempre `--temperatures` (o `--platt`, alternativo) del mismo eval-dir que los umbrales: sin él, los umbrales calibrados se aplican sobre probabilidades crudas (protocolo mismatched, base subestimada).
 
 ### 7. Diagnóstico de predicción
 
@@ -167,7 +167,7 @@ python examples/cinc2020/_archive/diagnose_prediction.py --checkpoint $mejor --c
 python examples/cinc2020/challenge_score.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --output-dir runs/eval/metrica-challenge/mejor
 ```
 
-Puntúa las decisiones ya guardadas de una evaluación (también las de un ensemble). Las clases equivalentes del evaluador oficial (CRBBB/RBBB, PAC/SVPB, PVC/VPB) se fusionan, así que se puntúan 24 clases (`--no-merge-equivalent` conserva las 27 columnas). Desde un checkpoint (`--checkpoint`) hay que pasar además `--temperatures` con las temperaturas con las que se ajustaron los umbrales; sin ellas los umbrales se aplican a probabilidades crudas y la métrica sale subestimada (así se obtuvo el antiguo 0.2348). El esquema de 12 grupos no puede llegar a 1: un clasificador perfecto de grupos puntúa ≈ 0.50.
+Puntúa las decisiones ya guardadas de una evaluación (también las de un ensemble). Las clases equivalentes del evaluador oficial (CRBBB/RBBB, PAC/SVPB, PVC/VPB) se fusionan, así que se puntúan 24 clases (`--no-merge-equivalent` conserva las 27 columnas). Desde un checkpoint (`--checkpoint`) hay que pasar además `--temperatures` con las temperaturas con las que se ajustaron los umbrales; sin ellas los umbrales se aplican a probabilidades crudas y la métrica sale subestimada (así se obtuvo el antiguo 0.2348). El esquema de 12 grupos no puede llegar a 1: un clasificador perfecto de grupos puntúa 0.496.
 
 ### 9. Calibrar probabilidades (temperatura o calibración afín)
 
@@ -189,14 +189,10 @@ Usa `onnx`/`onnxruntime` de `requirements.txt`. Verifica el grafo y compara num�
 ### 11. Análisis de errores por origen
 
 ```powershell
-python examples/cinc2020/error_analysis.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --output runs/reports/errores_origen.csv
+python examples/cinc2020/error_analysis.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --train-h5 data/cinc2020_12/train.h5 --output runs/reports/errores_origen.csv
 ```
 
-Reporta exact-match y F1 macro/micro por cada subconjunto de origen (hospital/fuente).
-
-El diseño experimental completo está en [docs/experimentos_cinc2020.md](../../docs/experimentos_cinc2020.md).
-
-<p align="right">(<a href="#readme-top">volver arriba</a>)</p>
+Reporta exact-match y F1 macro/micro por cada subconjunto de origen (hospital/fuente). Con `--train-h5` añade `f1_macro_annotated` (F1 medio solo sobre las clases que el origen anota; en `f1_macro` una clase ausente cuenta 0, y por eso CPSC aparece en ≈ 0.45 aunque sus 7 clases anotadas dan ≈ 0.77) y escribe `<salida>.masked.json` con el F1 global con y sin enmascarar las celdas origen×clase sin positivos en train y cuántos falsos positivos caen en ellas. El enmascarado es un **diagnóstico**: solo elimina falsos positivos, así que siempre sube; el titular es el F1 sin enmascarar. `--min-train-prevalence 0.005` también enmascara las celdas casi sin anotar.
 
 ### 12. Máxima accuracy: F-beta y ensemble
 
@@ -263,16 +259,18 @@ python -m ecg.train examples/cinc2020/config_regular_cnn.json -e cinc2020_regula
 
 Desglose de F1-macro por sexo, ms/ventana y parámetros, y entrenamiento de la CNN convencional (misma receta que v1) como línea base no residual.
 
+El diseño experimental completo está en [docs/experimentos_cinc2020.md](../../docs/experimentos_cinc2020.md).
+
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
 ## Roadmap
 
 - [x] Evaluación multilabel con umbrales calibrados
 - [x] Comparación de evaluaciones + robustez controlada
-- [x] Métrica oficial del Challenge sobre 27 códigos
+- [x] Métrica oficial del Challenge sobre 24 clases (equivalentes fusionadas)
 - [x] Curvas ROC/PR por clase exportadas a CSV
 - [x] Análisis de errores por subconjunto de origen
-- [x] Calibración temperature scaling + reporte ECE/Brier
+- [x] Calibración (temperature scaling y calibración afín por clase) + reporte ECE/Brier
 - [x] Exportación a ONNX verificada numéricamente
 - [ ] Validación cruzada leave-one-source-out (generalización por hospital)
 - [ ] Curvas de calibración (reliability diagrams) exportadas a CSV

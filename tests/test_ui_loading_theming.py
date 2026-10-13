@@ -1,6 +1,5 @@
 """Carga, caché, contraste, tema/idioma y navegación por URL de la interfaz (PR 2 de la auditoría web)."""
 
-import colorsys
 import itertools
 import os
 import re

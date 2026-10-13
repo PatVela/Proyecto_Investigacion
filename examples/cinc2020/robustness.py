@@ -7,7 +7,6 @@ ruido gaussiano, baseline wander, escalado de amplitud y apagado de derivaciones
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -22,13 +21,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from ecg import predict, util
-from ecg.calibration import apply_temperature, load_temperatures_csv
+from ecg.calibration import apply_platt_logits, apply_temperature, load_platt_csv, load_temperatures_csv
 
 
 def apply_perturbation(x, kind, level, rng):
     """x: tensor (B, 12, 5000) ya normalizado."""
-    if kind == "clean":
-        return x
     if kind == "clean":
         return x
     if kind == "gaussian_noise":
@@ -52,22 +49,28 @@ def apply_perturbation(x, kind, level, rng):
 
 
 @torch.no_grad()
-def evaluate_under_perturbation(model, dataset, thresholds, device, kind, level, batch_size, num_workers, max_samples, seed, temperatures=None):
+def evaluate_under_perturbation(model, dataset, thresholds, device, kind, level, batch_size, num_workers, max_samples, seed, temperatures=None, platt=None):
+    """F1/precisión/recall bajo una perturbación. ``temperatures`` (C,) o ``platt`` = (a, b) de (C,): calibraciones alternativas."""
+    if temperatures is not None and platt is not None:
+        raise ValueError("Use temperatures o platt, no ambos: son dos calibraciones alternativas.")
     rng = np.random.default_rng(seed)
     if max_samples is not None and max_samples < len(dataset):
         indices = rng.choice(len(dataset), size=max_samples, replace=False)
         dataset = Subset(dataset, indices.tolist())
     loader = DataLoader(dataset, **predict._loader_kwargs(batch_size, num_workers, pin_memory=(device.type == "cuda")))
-    probs, labels = [], []
+    probs, logits, labels = [], [], []
     for x, y in tqdm(loader, desc=f"{kind}:{level}", leave=False):
         x = x.to(device, non_blocking=True)
         x = apply_perturbation(x, kind, level, rng)
-        p = torch.sigmoid(model(x)).float().cpu().numpy()
-        probs.append(p)
+        z = model(x)
+        probs.append(torch.sigmoid(z).float().cpu().numpy())
+        logits.append(z.float().cpu().numpy())
         labels.append(y.numpy())
     y_prob = np.concatenate(probs, axis=0)
     if temperatures is not None:
         y_prob = apply_temperature(y_prob, temperatures)
+    elif platt is not None:
+        y_prob = apply_platt_logits(np.concatenate(logits, axis=0), *platt)
     y_true = np.concatenate(labels, axis=0).astype(np.uint8)
     y_pred = (y_prob >= thresholds[None, :]).astype(np.uint8)
     return {
@@ -99,6 +102,7 @@ def main():
     parser.add_argument("test_h5", default="data/cinc2020_12/test.h5")
     parser.add_argument("--thresholds", default=None, help="thresholds_validation.csv; si se omite usa 0.5")
     parser.add_argument("--temperatures", default=None, help="temperatures_validation.csv de calibrate.py; sin este flag las probs no se calibran")
+    parser.add_argument("--platt", default=None, help="platt_validation.csv de calibrate.py --method platt; alternativa a --temperatures")
     parser.add_argument("--output", default="runs/reports/robustness.csv")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--num-workers", type=int, default=0,
@@ -108,6 +112,8 @@ def main():
     parser.add_argument("--device", choices=["auto", "cuda", "cpu"], default="auto")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
+    if args.temperatures and args.platt:
+        parser.error("--temperatures y --platt son alternativos: indique solo uno.")
 
     util.set_seed(args.seed)
     device = predict.get_device(args.device)
@@ -115,8 +121,11 @@ def main():
     dataset = predict.HDF5PredictionDataset(args.test_h5, preload=not args.no_preload)
     thresholds = load_thresholds(args.thresholds, class_names)
     temp_vec = load_temperatures_csv(args.temperatures, class_names) if args.temperatures else None
+    platt_ab = load_platt_csv(args.platt, class_names) if args.platt else None
     if temp_vec is not None:
         print(f"Aplicando temperature scaling desde {args.temperatures}.")
+    elif platt_ab is not None:
+        print(f"Aplicando calibración afín desde {args.platt}.")
 
     perturbations = [
         ("clean", 0.0),
@@ -135,7 +144,7 @@ def main():
         rows.append(evaluate_under_perturbation(
             model, dataset, thresholds, device, kind, level,
             args.batch_size, args.num_workers, args.max_samples, args.seed,
-            temperatures=temp_vec,
+            temperatures=temp_vec, platt=platt_ab,
         ))
 
     out = Path(args.output)
