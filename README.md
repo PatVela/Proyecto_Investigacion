@@ -388,7 +388,7 @@ Notas:
 ├── tools/                  # descarga/verificación CINC2020, auditorías, bundle de despliegue y prueba de humo
 ├── webapp/                 # dashboard Flask + informe PDF
 │   ├── app.py / prediction.py / report_pdf.py / wsgi.py
-│   ├── limits.py / examples.py   # límites públicos y registros de ejemplo
+│   ├── limits.py / example_records.py   # límites públicos y registros de ejemplo
 │   ├── pdf_image.py / compression.py   # PNG de paleta en el PDF sin reconvertir; gzip de las respuestas de texto
 │   ├── examples/           # 7 registros de test (CC BY 4.0)
 │   ├── project_info.py     # datos institucionales

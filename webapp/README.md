@@ -310,7 +310,7 @@ webapp/
 ├── app.py            # Flask + rutas + carga de métricas/experimentos
 ├── prediction.py     # inferencia con caché de modelos, conversión WFDB→CSV y gráficos
 ├── limits.py         # límite de solicitudes por IP, limpieza de informes, enteros de entorno
-├── examples.py       # carga y validación de los registros de ejemplo
+├── example_records.py  # carga y validación de los registros de ejemplo (no se llama examples.py: taparía el paquete examples/ de la raíz)
 ├── examples/         # 7 registros .hea/.mat + examples.json (ver su README)
 ├── report_pdf.py     # informe PDF profesional
 ├── pdf_image.py      # incrusta el PNG de paleta en el PDF sin reconvertirlo a RGB
