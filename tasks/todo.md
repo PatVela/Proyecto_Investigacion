@@ -37,6 +37,6 @@ Plan y justificación: `tasks/plan.md`. Verificación base de cada tarea: `pytes
   - Solo si se quiere mostrarla fuera de la PC: `-Lan` desde un teléfono de la misma red, o `-Tunnel` desde un teléfono con datos móviles (ya probado desde esta PC: ver T7 y las limitaciones de velocidad en `webapp/README.md`).
 
 ## Opcional (solo si hace falta)
-- [ ] **O1. Comprimir `plotly.min.js`** (4,3 MB sin comprimir) si se usa `-Tunnel` con muchos visitantes.
+- [x] **O1. Reducir las descargas pesadas** (hecho): PNG 762 → 306 KB, PDF 952 → 406 KB y Plotly 4,6 → 1,3 MB (gzip), sin cambiar resultados. Verificado con `tests/test_payload_size.py` y en el navegador (gráficos de Plotly y trazado ECG). Opcional pendiente: un Plotly parcial (solo barras y líneas) lo bajaría a ≈ 1 MB sin comprimir, pero exige descargar otro paquete.
 - [ ] **O2. Instantánea citable del repositorio** (DOI) si el autor quiere un respaldo de reproducibilidad; no es necesaria para la demo.
 - [ ] **O3. Prueba con lector de pantalla y otros navegadores.**
