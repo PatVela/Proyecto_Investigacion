@@ -12,14 +12,14 @@ Réplica académica de Hannun et al. (Nat Med 2019): clasificador multilabel de 
 | `tools/` | Chequeos y descarga de datos CINC2020, bundle de despliegue, prueba de humo | `tools/CONTEXT.md` |
 | `tests/` | Suite pytest | `tests/CONTEXT.md` |
 | `docs/` | Informe técnico, experimentos, resultados, fix histórico | `docs/CONTEXT.md` |
-| `models/`, `deploy/` | **Versionados.** Bundle de inferencia (pesos `models/*.pt`, `deploy/ensemble.env`, umbrales, métricas, lanzador de Windows `deploy/start_local.ps1`) con el que la webapp corre sin `saved/` ni `runs/`. Se regenera con `tools/export_inference_bundle.py`; no editar a mano | `webapp/README.md` (Despliegue) |
+| `models/`, `deploy/` | **Versionados.** Bundle de inferencia (pesos `models/*.pt`, `deploy/ensemble.env`, umbrales, métricas, lanzador de Windows `deploy/start_local.ps1`) con el que la webapp corre sin `saved/` ni `runs/`. Se regenera con `tools/export_inference_bundle.py`; no editar a mano | `webapp/README.md` (Ejecución local) |
 | `tasks/` | Plan y lista de tareas para ejecutar la demo en esta PC (`plan.md`, `todo.md`) | — |
 
 La definición del pipeline (etapas 01–08, entradas, salidas, chequeos humanos) está en `CONTEXT.md`.
 
 ## Producto generado (git-ignored, solo existe en disco local)
 
-Todo lo que produce el pipeline vive bajo `runs/` (ignorado por git y Docker). No editar a mano; se regenera con el pipeline.
+Todo lo que produce el pipeline vive bajo `runs/` (ignorado por git). No editar a mano; se regenera con el pipeline.
 
 | Ruta | Contenido |
 |---|---|

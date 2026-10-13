@@ -134,6 +134,8 @@ def _build_reportlab_pdf(prediction: dict, output_path: Path) -> str:
     from reportlab.pdfgen.canvas import Canvas as _Canvas
     from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+    from webapp.pdf_image import indexed_png_image
+
     # Paleta institucional UNSA: granate + oro (verdes/rojos semánticos intactos)
     NAVY = colors.HexColor("#84030c")
     NAVY_DARK = colors.HexColor("#5e0208")
@@ -296,12 +298,14 @@ def _build_reportlab_pdf(prediction: dict, output_path: Path) -> str:
     story.append(Paragraph("5. Trazado ECG analizado", s_h1))
     plot_path = prediction.get("plot_path")
     if plot_path and Path(plot_path).exists():
-        img = Image(str(plot_path))
         max_w = content_w
         max_h = 118 * mm
-        scale = min(max_w / img.imageWidth, max_h / img.imageHeight, 1.0)
-        img.drawWidth = img.imageWidth * scale
-        img.drawHeight = img.imageHeight * scale
+        img = indexed_png_image(plot_path, max_w, max_h)       # PNG de paleta incrustado sin reconvertir (PDF más liviano)
+        if img is None:                                         # PNG de otro tipo (p. ej. RGB): ruta estándar de reportlab
+            img = Image(str(plot_path))
+            scale = min(max_w / img.imageWidth, max_h / img.imageHeight, 1.0)
+            img.drawWidth = img.imageWidth * scale
+            img.drawHeight = img.imageHeight * scale
         story.append(img)
         story.append(Paragraph(
             "Trazado de 12 derivaciones con retícula ECG (0.04 s por cuadro pequeño). "
