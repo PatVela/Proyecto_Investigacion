@@ -11,7 +11,8 @@
   -Threads  Hilos de waitress (4 por defecto).
   -Lan      Escucha en toda la red local (0.0.0.0): telefonos u otras PCs de la misma red.
   -Tunnel   Ademas abre un tunel rapido de Cloudflare: URL https publica y temporal, sin cuenta.
-            Activa ECG_TRUST_PROXY=1 y obliga a escuchar solo en 127.0.0.1.
+            Configura waitress para confiar en el tunel (cuenta un proxy y lee X-Forwarded-For) y obliga
+            a escuchar solo en 127.0.0.1; asi cada visitante tiene su propio limite de solicitudes.
   -UseGpu   Infiere en la GPU si hay (ECG_DEVICE=auto).
 
 .EXAMPLE
@@ -63,8 +64,13 @@ if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyCon
 
 $bindHost = if ($Lan) { "0.0.0.0" } else { "127.0.0.1" }
 if ($UseGpu) { $env:ECG_DEVICE = "auto" } elseif (-not $env:ECG_DEVICE) { $env:ECG_DEVICE = "cpu" }
-if ($Tunnel) { $env:ECG_TRUST_PROXY = "1" }
-$serveArgs = @("-m", "waitress", "--host=$bindHost", "--port=$Port", "--threads=$Threads", "webapp.wsgi:app")
+$serveArgs = @("-m", "waitress", "--host=$bindHost", "--port=$Port", "--threads=$Threads")
+if ($Tunnel) {
+    # waitress borra X-Forwarded-For salvo que confie en el proxy: sin esto todos los visitantes del tunel
+    # compartirian una sola IP (127.0.0.1) y un visitante agotaria el limite de todos.
+    $serveArgs += @("--trusted-proxy=127.0.0.1", "--trusted-proxy-count=1", "--trusted-proxy-headers=x-forwarded-for")
+}
+$serveArgs += "webapp.wsgi:app"                    # waitress exige la aplicacion como ultimo argumento
 
 Write-Host "ECG webapp: http://127.0.0.1:$Port   (dispositivo: $($env:ECG_DEVICE), escucha en $bindHost)"
 if ($Lan) {
