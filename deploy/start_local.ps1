@@ -4,7 +4,7 @@
 
 .DESCRIPTION
   Por defecto escucha solo en 127.0.0.1 (nadie mas puede conectarse) y sirve en CPU:
-  la inferencia tarda 44 ms en CPU y 9 ms en GPU, pero la peticion completa tarda ~2,4 s
+  la inferencia tarda 43-93 ms por modelo en CPU y 5,5 ms en GPU, pero la peticion completa tarda ~2,4 s
   casi toda en el PDF y los graficos, asi que la GPU no acelera nada y queda libre para entrenar.
 
   -Port     Puerto (5002 por defecto).
@@ -64,7 +64,12 @@ if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyCon
 
 $bindHost = if ($Lan) { "0.0.0.0" } else { "127.0.0.1" }
 if ($UseGpu) { $env:ECG_DEVICE = "auto" } elseif (-not $env:ECG_DEVICE) { $env:ECG_DEVICE = "cpu" }
-$serveArgs = @("-m", "waitress", "--host=$bindHost", "--port=$Port", "--threads=$Threads")
+# waitress guarda el cuerpo de la peticion antes de que Flask compruebe su tamano; su tope por defecto es 1 GiB.
+# Se limita al mismo valor que ECG_MAX_UPLOAD_MB (5 por defecto) mas 1 MB de holgura para las cabeceras multipart.
+$maxUploadMb = 5
+if ($env:ECG_MAX_UPLOAD_MB -match '^[0-9]+$' -and [int]$env:ECG_MAX_UPLOAD_MB -ge 1) { $maxUploadMb = [int]$env:ECG_MAX_UPLOAD_MB }
+$maxBody = ($maxUploadMb + 1) * 1MB
+$serveArgs = @("-m", "waitress", "--host=$bindHost", "--port=$Port", "--threads=$Threads", "--max-request-body-size=$maxBody")
 if ($Tunnel) {
     # waitress borra X-Forwarded-For salvo que confie en el proxy: sin esto todos los visitantes del tunel
     # compartirian una sola IP (127.0.0.1) y un visitante agotaria el limite de todos.

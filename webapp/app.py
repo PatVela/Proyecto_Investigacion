@@ -30,12 +30,16 @@ from webapp import example_records as example_store
 from webapp.compression import compress_response
 from webapp import project_info as proj
 from webapp.limits import SlidingWindowLimiter, cleanup_old_jobs, int_env
-from webapp.prediction import clean_path_text, resolve_existing_path, resolve_model_path, run_prediction_from_uploads, serving_device
+from webapp.prediction import clean_field_text, clean_path_text, resolve_existing_path, resolve_model_path, run_prediction_from_uploads, serving_device
 from webapp.report_pdf import build_pdf_report
 
 
 DEFAULT_UPLOADS = REPO_ROOT / "webapp" / "uploads"
 DEFAULT_RESULTS = REPO_ROOT / "webapp" / "results"
+DEFAULT_HOST = "127.0.0.1"          # el servidor de desarrollo solo escucha en esta máquina salvo que se pida otra cosa
+MAX_FORM_TEXT_CHARS = 1024          # tope de los textos de formulario que llegan del cliente
+MAX_PATIENT_NAME_CHARS = 120        # con 480 000 caracteres reportlab tardaba 9.5 s y caía al PDF mínimo
+MAX_PATIENT_AGE_CHARS = 20
 DEFAULT_EXAMPLES = REPO_ROOT / "webapp" / "examples"
 DEFAULT_SAVED = REPO_ROOT / "saved"
 
@@ -638,8 +642,11 @@ def create_app() -> Flask:
 
     @app.post("/use_model")
     def use_model_route():
+        # Cambia el modelo de todos los visitantes y la interfaz no lo usa: apagado salvo que se active a propósito.
+        if os.environ.get("ECG_ENABLE_USE_MODEL") != "1":
+            return jsonify({"ok": False, "error": "Cambio de modelo desactivado. Defina ECG_ENABLE_USE_MODEL=1 para permitirlo."}), 403
         data = request.get_json(silent=True) or {}
-        model = clean_path_text(data.get("model", ""))
+        model = clean_field_text(data.get("model", ""), MAX_FORM_TEXT_CHARS)
         if not model:
             app.config["ECG_MODEL"] = ""
             return jsonify({"ok": True, "model": "", "message": "Selección automática activada."})
@@ -659,7 +666,7 @@ def create_app() -> Flask:
 
     @app.post("/predict")
     def predict_route():
-        example_id = clean_path_text(request.form.get("example", ""))
+        example_id = clean_field_text(request.form.get("example", ""), MAX_FORM_TEXT_CHARS)
         if example_id:                                   # registro de ejemplo incluido: mismo flujo que una subida
             try:
                 stored = example_store.example_files(examples_manifest, app.config["ECG_EXAMPLES_DIR"], example_id)
@@ -702,7 +709,7 @@ def create_app() -> Flask:
                 upload_root=app.config["ECG_UPLOADS_DIR"],
                 results_root=app.config["ECG_RESULTS_DIR"],
                 threshold=threshold,
-                reference_labels=clean_path_text(request.form.get("true_labels", "")),
+                reference_labels=clean_field_text(request.form.get("true_labels", ""), MAX_FORM_TEXT_CHARS),
                 thresholds=class_thresholds,
                 threshold_source=threshold_source,
                 temperatures=class_temperatures,
@@ -714,8 +721,8 @@ def create_app() -> Flask:
                 alpha=app.config["ECG_ALPHA"],
                 **_load_platt_set_for_app(app),
             )
-            result["patient_name"] = clean_path_text(request.form.get("patient_name", ""))
-            result["patient_age"] = clean_path_text(request.form.get("patient_age", "")) or result.get("patient_age")
+            result["patient_name"] = clean_field_text(request.form.get("patient_name", ""), MAX_PATIENT_NAME_CHARS)
+            result["patient_age"] = clean_field_text(request.form.get("patient_age", ""), MAX_PATIENT_AGE_CHARS) or result.get("patient_age")
             result["ok"] = True
 
             if result.get("plot_path"):
@@ -831,7 +838,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--eval-dir", default=None, help="Carpeta con salidas de evaluate.py (métricas, umbrales, temperaturas, curvas). Si se omite, se busca automáticamente.")
     parser.add_argument("--exp-dir", default=None, help="Carpeta con model_comparison.csv y robustness.csv. Si se omite, se busca automáticamente.")
     parser.add_argument("--normal-fallback-min-prob", type=float, default=None, help="Si ninguna clase supera umbral, añadir NSR cuando P(NSR) sea al menos este valor. Use 0 para desactivar.")
-    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--host", default=DEFAULT_HOST, help="Interfaz de escucha. Por defecto solo esta máquina; 0.0.0.0 abre la app a la red local.")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "5002")))
     args = parser.parse_args(argv)
 

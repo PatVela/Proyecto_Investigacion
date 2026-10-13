@@ -68,6 +68,7 @@ def test_use_model_with_unknown_path_is_a_404_and_keeps_current_model(env, tmp_p
     saved = tmp_path / "saved"; saved.mkdir()
     good = _ckpt(saved / "best.pt")
     env.setenv("ECG_MODEL", str(good))
+    env.setenv("ECG_ENABLE_USE_MODEL", "1")                            # /use_model está apagado por defecto
     client = create_app().test_client()
     resp = client.post("/use_model", json={"model": str(saved / "typo.pt")})
     assert resp.status_code == 404 and "no existe" in resp.get_json()["error"]
