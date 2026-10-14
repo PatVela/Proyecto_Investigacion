@@ -10,6 +10,8 @@ Modos (``--kind``):
     mats  - reporta .hea locales sin su .mat.
     pairs - compara carpetas locales contra PhysioNet y reporta registros
             donde faltan ambos archivos.
+
+Código de salida 0 si no falta nada y se pudo comprobar todo; 1 si falta algo o alguna carpeta no se pudo comprobar.
 """
 
 from __future__ import annotations
@@ -17,21 +19,25 @@ from __future__ import annotations
 import argparse
 import glob
 import os
-import re
-import urllib.request
+import sys
 from collections import defaultdict
+
+try:
+    from tools.download_missing import obtener_archivos_remotos      # desde el paquete (tests, python -m)
+except ImportError:
+    from download_missing import obtener_archivos_remotos            # python tools/check_missing.py: tools/ es sys.path[0]
 
 BASE_URL = "https://physionet.org/files/challenge-2020/1.0.2/training/"
 
 
-def verificar_faltantes(data_dir: str = "dataset2020", want_ext: str = ".mat") -> None:
-    """Reporta archivos ``want_ext`` cuyo par existe pero ellos faltan."""
+def verificar_faltantes(data_dir: str = "dataset2020", want_ext: str = ".mat") -> int:
+    """Reporta archivos ``want_ext`` cuyo par existe pero ellos faltan. Devuelve 0 si no falta ninguno, 1 si no."""
     have_ext = ".hea" if want_ext == ".mat" else ".mat"
     print(f"Escaneando carpetas en '{data_dir}'...\n")
     have_files = glob.glob(os.path.join(data_dir, "**", f"*{have_ext}"), recursive=True)
     if not have_files:
         print(f"No se encontraron archivos {have_ext} en '{data_dir}'. Revisa la ruta.")
-        return
+        return 1
 
     faltantes_por_carpeta: dict[str, list[str]] = defaultdict(list)
     total_ok = total_faltantes = 0
@@ -49,34 +55,22 @@ def verificar_faltantes(data_dir: str = "dataset2020", want_ext: str = ".mat") -
     print(f"Registros incompletos (falta {want_ext}):      {total_faltantes}\n")
     if total_faltantes == 0:
         print(f"¡Todo perfecto! Todos los archivos {have_ext} tienen su respectivo {want_ext}.")
-        return
+        return 0
     print("==== DETALLE DE CARPETAS AFECTADAS ====")
     for carpeta, archivos in faltantes_por_carpeta.items():
         print(f"\nCarpeta: {carpeta}")
         print(f"  Faltan {len(archivos)} archivos {want_ext}")
         detalle = archivos[:5] if len(archivos) > 5 else archivos
         print(f"  Ejemplos faltantes: {detalle}")
+    return 1
 
 
-def obtener_archivos_remotos(url_subcarpeta: str) -> set[str]:
-    """Lee el índice HTML de una carpeta en PhysioNet y extrae los registros."""
-    try:
-        req = urllib.request.Request(url_subcarpeta, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req) as response:
-            html = response.read().decode("utf-8")
-            heas = re.findall(r'href="([^"]+\.hea)"', html)
-            return set(f[:-4] for f in heas)
-    except Exception as exc:  # noqa: BLE001 - se reporta y se sigue
-        print(f"Error al leer índice remoto {url_subcarpeta}: {exc}")
-        return set()
-
-
-def verificar_parejas_faltantes(data_dir: str = "dataset2020") -> None:
-    """Reporta registros donde faltan ambos archivos contra PhysioNet."""
+def verificar_parejas_faltantes(data_dir: str = "dataset2020") -> int:
+    """Reporta registros donde faltan ambos archivos contra PhysioNet. Devuelve 0 solo si no falta ninguno y se comprobó todo."""
     base_path = os.path.join(data_dir, "physionet.org", "files", "challenge-2020", "1.0.2", "training")
     if not os.path.exists(base_path):
         print(f"Error: No se encontró la carpeta base '{base_path}'.")
-        return
+        return 1
 
     carpetas_locales = []
     for root, dirs, _files in os.walk(base_path):
@@ -85,12 +79,17 @@ def verificar_parejas_faltantes(data_dir: str = "dataset2020") -> None:
 
     print(f"Escaneando {len(carpetas_locales)} subcarpetas contra el servidor de PhysioNet...\n")
     faltan_ambos: list[str] = []
+    sin_comprobar: list[str] = []
     total_remotos = 0
     for i, carpeta in enumerate(carpetas_locales, 1):
         rel_folder = os.path.relpath(carpeta, base_path).replace("\\", "/")
         url_folder = BASE_URL + rel_folder + "/"
         print(f"[{i}/{len(carpetas_locales)}] Verificando remoto: {rel_folder} ... ", end="", flush=True)
         registros_remotos = obtener_archivos_remotos(url_folder)
+        if registros_remotos is None:
+            sin_comprobar.append(rel_folder)
+            print("SIN COMPROBAR")
+            continue
         total_remotos += len(registros_remotos)
         archivos_locales = set(os.listdir(carpeta))
         locales_incompletos = 0
@@ -107,21 +106,26 @@ def verificar_parejas_faltantes(data_dir: str = "dataset2020") -> None:
         print("==== LISTA DE REGISTROS QUE FALTAN POR COMPLETO (AMBOS ARCHIVOS) ====")
         for rec in faltan_ambos:
             print(f" - {rec}")
-    else:
+    if sin_comprobar:
+        print(f"NO se pudo comprobar {len(sin_comprobar)} carpeta(s): {', '.join(sin_comprobar)}.\n"
+              "No se puede afirmar que no falte ningún par; revise la conexión y vuelva a ejecutar.")
+    elif not faltan_ambos:
         print("¡Excelente! No falta ningún par (.hea + .mat) en ninguna carpeta.")
+    return 1 if faltan_ambos or sin_comprobar else 0
 
 
-def main(argv: list[str] | None = None) -> None:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Verifica integridad .hea/.mat del dataset local")
     parser.add_argument("--kind", choices=["heas", "mats", "pairs"], default="mats",
                         help="Qué verificar: heas, mats o pares contra PhysioNet")
     parser.add_argument("--data-dir", default="dataset2020", help="Raíz del dataset local")
     args = parser.parse_args(argv)
     if args.kind == "pairs":
-        verificar_parejas_faltantes(args.data_dir)
+        resultado = verificar_parejas_faltantes(args.data_dir)
     else:
-        verificar_faltantes(args.data_dir, want_ext=".hea" if args.kind == "heas" else ".mat")
+        resultado = verificar_faltantes(args.data_dir, want_ext=".hea" if args.kind == "heas" else ".mat")
+    return 1 if resultado else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

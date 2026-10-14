@@ -58,6 +58,27 @@ def _loader_kwargs(params: dict, shuffle: bool) -> dict:
     )
 
 
+# Claves de la configuración que algún código lee (train.py, network.params_from_config, hdf5_dataset/augment, evaluate.py)
+# más los metadatos informativos de los config*.json. Cualquier otra se ignora sin error: una errata como "conv_dropuot"
+# entrenaba con el valor por defecto (0.2) y config_used.json seguía mostrando la clave mal escrita, como si hubiera
+# surtido efecto. tests/test_train_monitor.py comprueba que este conjunto cubre lo que el código lee de verdad.
+KNOWN_CONFIG_KEYS = frozenset({
+    "amp", "aug_baseline_amp", "aug_lead_drop_prob", "aug_noise_std", "aug_prob", "aug_scale_range", "aug_seed",
+    "aug_shift_max", "augment", "batch", "batch_size", "config_path", "conv_dropout", "conv_filter_length",
+    "conv_num_filters_start", "conv_num_skip", "conv_subsample_lengths", "dev", "device", "drop_rate",
+    "early_stopping_metric", "early_stopping_patience", "epochs", "filter_length", "input_length", "is_regular_conv",
+    "kernel_size", "label_smoothing", "learning_rate", "lr", "max_epochs", "min_lr", "num_classes", "num_leads",
+    "num_workers", "patience", "pin_memory", "prefetch_factor", "reduce_lr_factor", "reduce_lr_patience", "save_dir",
+    "seed", "test", "train", "weight_decay",
+    "dataset", "label_schema", "problem_type",                    # metadatos: documentan la receta, nada los lee
+})
+
+
+def unknown_config_keys(params: dict) -> list[str]:
+    """Claves de ``params`` que ningún código lee (probable errata)."""
+    return sorted(set(params) - KNOWN_CONFIG_KEYS)
+
+
 def load_config(config_path: str | Path) -> dict:
     path = Path(config_path)
     with path.open("r", encoding="utf-8") as handle:
@@ -221,6 +242,10 @@ def train(args, params: dict, epoch_callback=None):
     util.set_seed(seed)
     params["seed"] = int(seed)
 
+    unknown = unknown_config_keys(params)
+    if unknown:
+        print(f"AVISO: la configuración trae claves que nada lee y se ignoran: {unknown}. "
+              "Si es una errata de un hiperparámetro, esta corrida usa su valor por defecto.")
     params.setdefault("num_classes", load.NUM_CLASSES)
     params.setdefault("num_leads", load.NUM_LEADS)
     params.setdefault("input_length", load.WINDOW_LENGTH)

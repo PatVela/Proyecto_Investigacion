@@ -1,6 +1,6 @@
 name: tests
 
-# La suite (≈ 450 pruebas, ≈ 6 min) solo corría si alguien se acordaba: las PR #16-#18 llegaron a main con 0 comprobaciones.
+# La suite (≈ 500 pruebas, ≈ 6 min) solo corría si alguien se acordaba: las PR #16-#18 llegaron a main con 0 comprobaciones.
 # Corre en Linux con la rueda CPU de PyTorch; las pruebas de los scripts de Windows (deploy/*.ps1) y las que necesitan
 # datos locales (dataset2020/, runs/) se omiten solas. La versión de torch es la de requirements.txt (2.14.0).
 on:
@@ -8,6 +8,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+
+# El flujo solo lee el código: sin permisos de escritura aunque el repositorio los conceda por defecto.
+permissions:
+  contents: read
 
 concurrency:
   group: tests-${{ github.ref }}
@@ -18,8 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
