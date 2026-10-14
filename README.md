@@ -16,7 +16,7 @@
 [![Issues][issues-shield]][issues-url]
 [![GPL-3.0 License][license-shield]][license-url]
 [![Python 3.10+][python-shield]][python-url]
-[![PyTorch 2.8][pytorch-shield]][pytorch-url]
+[![PyTorch 2.14][pytorch-shield]][pytorch-url]
 
 <!-- PROJECT LOGO -->
 <br />
@@ -414,6 +414,7 @@ Notas:
 │   └── templates/ + static/
 ├── models/ + deploy/       # bundle de inferencia versionado (pesos, umbrales, métricas) y scripts de Windows para ejecutarlo
 ├── tests/                  # suite pytest
+├── .github/workflows/      # CI: pytest y verificador de comandos en cada PR y push a main
 ├── docs/                   # informe técnico y guías de experimentos
 ├── tasks/                  # plan y tareas de la demo local; auditoría de mejoras (analisis_mejoras.md)
 ├── images/                 # logo y capturas para documentación
@@ -549,7 +550,7 @@ Distribuido bajo licencia GPL-3.0. Ver `LICENSE` para más información.
 [license-url]: https://github.com/PatVela/Proyecto_Investigacion/blob/main/LICENSE
 [python-shield]: https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python
 [python-url]: https://www.python.org/
-[pytorch-shield]: https://img.shields.io/badge/pytorch-2.8-ee4c2c?style=for-the-badge&logo=pytorch
+[pytorch-shield]: https://img.shields.io/badge/pytorch-2.14-ee4c2c?style=for-the-badge&logo=pytorch
 [pytorch-url]: https://pytorch.org/
 [product-screenshot]: images/informe-ejemplo.png
 [Python-badge]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white

@@ -65,7 +65,7 @@ del centro se pierden, pero la etiqueta del registro completo se mantiene
 |---|--------|----------|----------------------|
 | 1 | Esquema **v2**: 12 grupos expandidos que cubren las 27 clases puntuadas; all-zero 21%→0.6% | `ecg/schema.py` (antes `ecg/load.py` monolítico), README, docs | **Sí** (HDF5 + train) |
 | 2 | Normalización **física**: mV vía ganancia/baseline + pasa-banda 0.5–50 Hz + clip ±5 mV (modos `global_zscore`/`per_lead_zscore` disponibles) | `ecg/load.py` | **Sí** |
-| 3 | **Multi-ventana**: train hasta 4 ventanas/registro largo; inferencia deslizante con agregación max | `ecg/load.py`, `ecg/predict.py`, `webapp/prediction.py` | Parcial (train sí; inferencia mejora también checkpoints v1) |
+| 3 | **Multi-ventana**: train hasta 4 ventanas/registro largo; inferencia deslizante (en la webapp, media de las ventanas ya calibradas desde la PR #18; con el máximo añadía 85 falsos positivos en 1019 registros largos de test) | `ecg/load.py`, `ecg/predict.py`, `webapp/prediction.py` | Parcial (train sí; inferencia mejora también checkpoints v1) |
 | 4 | Compatibilidad v1↔v2: preprocesamiento según `label_schema` del checkpoint, traducción LAD/RBBB, CSV con marcador `# Preprocessed`, heurística de unidades | `ecg/load.py`, `ecg/predict.py`, `webapp/*` | No |
 | 5 | Robustez: `best.pt` reales primero (sintéticos al final), validación de nombres de clase, chequeo esquema HDF5↔checkpoint, thresholds legacy | `ecg/util.py`, `ecg/predict.py`, `ecg/train.py`, `webapp/app.py` | No |
 | 6 | **Métrica oficial** estilo Challenge (27 códigos + `weights.csv`) | `examples/cinc2020/challenge_score.py`, `official/` | No |

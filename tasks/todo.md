@@ -39,6 +39,7 @@ Plan y justificación: `tasks/plan.md`. Verificación base de cada tarea: `pytes
 ## Endurecimiento posterior (hecho)
 
 - [x] **H1. Hallazgos de seguridad de la auditoría** (S1–S6): regex cuadrática de `clean_path_text`, tope de tamaño del `.mat`, `/use_model` apagado por defecto, tope de cuerpo en waitress (`--max-request-body-size`), servidores de desarrollo en `127.0.0.1`, `escapeHtml` con comillas y tope de longitud del nombre del paciente. Verificado con `tests/test_hardening.py` y en vivo (10 MB a `/predict` → 413 de waitress; `/use_model` → 403).
+- [x] **H2. Auditoría del repositorio** (PR #18 y #19 y la limpieza posterior): media de las ventanas calibradas en registros largos (antes máximo: +20 % de falsos positivos), rechazo de señales planas o de menos de 2 s, unidades de CSV con el percentil 99,9, `.mat` dañado con 400, rutas del servidor ocultas, informes caducados no servidos, exportador del bundle que exige que los umbrales correspondan a la calibración, CI en GitHub Actions, `torch==2.14.0`, descargas del dataset a `.part` y aviso de claves de configuración desconocidas.
 
 ## Opcional (solo si hace falta)
 - [x] **O1. Reducir las descargas pesadas** (hecho): PNG 762 → 306 KB, PDF 952 → 406 KB y Plotly 4,6 → 1,3 MB (gzip), sin cambiar resultados. Verificado con `tests/test_payload_size.py` y en el navegador (gráficos de Plotly y trazado ECG). Opcional pendiente: un Plotly parcial (solo barras y líneas) lo bajaría a ≈ 1 MB sin comprimir, pero exige descargar otro paquete.
