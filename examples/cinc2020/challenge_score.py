@@ -52,6 +52,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from ecg import load, predict, util  # noqa: E402
+from ecg.calibration import load_thresholds_csv  # noqa: E402
 
 OFFICIAL_DIR = Path(__file__).resolve().parent / "official"
 _OFFICIAL = None
@@ -281,15 +282,10 @@ def per_code_metrics(y_true: np.ndarray, y_prob: np.ndarray, y_pred: np.ndarray,
 
 
 def load_thresholds_for_classes(path: str | None, class_names: list[str]) -> np.ndarray:
-    values = np.full(len(class_names), 0.5, dtype=np.float32)
+    """Umbrales por clase de ``thresholds_validation.csv``; sin archivo, 0.5 global."""
     if not path:
-        return values
-    df = pd.read_csv(util.resolve_path(path))
-    mapping = {str(r["class"]): float(r["threshold"]) for _, r in df.iterrows()}
-    for i, name in enumerate(class_names):
-        if name in mapping:
-            values[i] = mapping[name]
-    return values
+        return np.full(len(class_names), 0.5, dtype=np.float32)
+    return load_thresholds_csv(util.resolve_path(path), class_names)
 
 
 def main() -> None:

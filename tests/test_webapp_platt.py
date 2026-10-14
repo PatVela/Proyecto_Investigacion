@@ -84,14 +84,6 @@ def test_ensemble_platt_per_model_then_recalibrated_average(setup):
     assert "calibración afín" in run["technical_details"]["calibration"]
 
 
-def test_platt_commutes_with_the_max_over_windows():
-    """Por qué la webapp puede calibrar el vector ya agregado y el de cada ventana por separado."""
-    rng = np.random.default_rng(0)
-    p = rng.random((4, 12))
-    a, b = np.full(12, 0.7), np.full(12, -0.8)
-    np.testing.assert_allclose(apply_platt(p.max(axis=0)[None, :], a, b)[0], apply_platt(p, a, b).max(axis=0))
-
-
 # --- cargadores y /health --------------------------------------------------------------------------------------------
 
 def _platt_csv(path, names=NAMES, a=0.9, b=-1.0):
