@@ -100,6 +100,22 @@ def load_temperatures_csv(path: str | Path, class_names: list[str]) -> np.ndarra
     return np.asarray([values[c] for c in class_names], dtype=np.float64)
 
 
+def load_thresholds_csv(path: str | Path, class_names: list[str]) -> np.ndarray:
+    """Lee ``thresholds_validation.csv`` (``class,threshold,...``) y devuelve el vector (C,) ordenado por ``class_names``.
+
+    Exige una fila por clase: un umbral ausente NO se sustituye por 0.5 (con un checkpoint v1, ``LAD``/``RBBB`` frente a
+    ``AxisDev``/``BBB``, eso evaluaba dos clases con un umbral que nadie eligió y sin avisar).
+    """
+    df = pd.read_csv(path)
+    if "class" not in df.columns or "threshold" not in df.columns:
+        raise ValueError(f"{path} debe tener columnas class,threshold.")
+    values = {str(r["class"]): float(r["threshold"]) for _, r in df.iterrows()}
+    missing = [c for c in class_names if c not in values]
+    if missing:
+        raise ValueError(f"Umbrales faltantes en {path} para: {missing}.")
+    return np.asarray([values[c] for c in class_names], dtype=np.float32)
+
+
 def save_temperatures_csv(path: str | Path, class_names: list[str], temperatures) -> None:
     """Guarda vector (C,) como CSV ``class,temperature``."""
     temps = np.asarray(list(temperatures), dtype=np.float64).reshape(-1)
