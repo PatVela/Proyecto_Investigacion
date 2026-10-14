@@ -94,7 +94,9 @@ def test_packages_only_research_scripts_need_are_not_installed_for_the_demo():
 
 def test_ci_workflow_installs_the_dev_requirements_and_runs_pytest():
     """Sin esto las PR llegaban a main con 0 comprobaciones; si alguien cambia el flujo, que siga haciendo lo esencial."""
-    workflow = (REPO_ROOT / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8")
+    workflow = (REPO_ROOT / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8").replace("\r\n", "\n")
     for needed in ("pull_request:", "requirements-dev.txt", "download.pytorch.org/whl/cpu", "python -m pytest",
-                   "tools/check_docs_commands.py"):
+                   "tools/check_docs_commands.py", "permissions:\n  contents: read"):
         assert needed in workflow, needed
+    assert workflow.index("permissions:") < workflow.index("jobs:")           # permisos a nivel de flujo, de solo lectura
+    assert "@v4" not in workflow and "@v5" not in workflow                    # acciones en Node 20 (en desuso); las actuales usan Node 24
