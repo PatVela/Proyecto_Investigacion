@@ -5,7 +5,7 @@
 -->
 
 [![Python 3.10+][python-shield]][python-url]
-[![PyTorch 2.8][pytorch-shield]][pytorch-url]
+[![PyTorch 2.14][pytorch-shield]][pytorch-url]
 
 <br />
 <div align="center">
@@ -291,5 +291,5 @@ Distribuido bajo licencia GPL-3.0. Ver `LICENSE` en la raíz para más informaci
 
 [python-shield]: https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python
 [python-url]: https://www.python.org/
-[pytorch-shield]: https://img.shields.io/badge/pytorch-2.8-ee4c2c?style=for-the-badge&logo=pytorch
+[pytorch-shield]: https://img.shields.io/badge/pytorch-2.14-ee4c2c?style=for-the-badge&logo=pytorch
 [pytorch-url]: https://pytorch.org/

@@ -7,13 +7,13 @@
 | Módulo | Rol | Depende de |
 |---|---|---|
 | `schema.py` | 12 clases SNOMED, constantes de normalización, `codes_to_vector` | — |
-| `signal.py` | Lectura WFDB/CSV, filtro, remuestreo a 500 Hz, ventanas de 5000 | `schema` |
+| `signal.py` | Lectura WFDB/CSV, filtro, remuestreo a 500 Hz, ventanas de 5000; en inferencia rechaza lo que no es un ECG (`require_usable_signal`: < 2 s o más de 6 derivaciones planas) | `schema` |
 | `datasets.py` | Escaneo, splits estratificados, construcción HDF5 (CLI) | `schema`, `signal` |
 | `load.py` | **Fachada** que reexporta schema/signal/datasets (compatibilidad) | los tres anteriores |
 | `augment.py` | Aumentación solo de train, preserva etiquetas | — |
 | `hdf5_dataset.py` | `HDF5ECGDataset` único (train, evaluación, ensemble): valida el HDF5 antes de precargarlo | `util`, `schema`, `signal`, `augment` |
 | `network.py` | ResNet-34 tipo Hannun y CNN convencional | `schema`, `signal`, torch |
-| `calibration.py` | Temperature scaling y calibración afín (`a·logit + b`) por clase, ECE y Brier | — |
+| `calibration.py` | Temperature scaling y calibración afín (`a·logit + b`) por clase, ECE, Brier y `ensemble_probabilities` (promedio ponderado; lo usan `ensemble_evaluate.py` y la webapp) | — |
 | `util.py` | Seeds, dispositivo, `dataloader_kwargs`, `decode_h5_string`, guardar/cargar checkpoints (`load_checkpoint(..., trusted=False)` usa `weights_only=True`) | `schema` |
 | `train.py` | Entrenamiento reproducible (`python -m ecg.train`) | `hdf5_dataset`, `load`, `network`, `util` |
 | `predict.py` | Inferencia desde checkpoint (CLI/CSV/HDF5; `predict_hdf5` devuelve también los logits crudos), usada por webapp | `hdf5_dataset`, `load`, `network`, `util` |
@@ -26,9 +26,10 @@
   - Evaluación: `challenge_score.py` mapea los 27 códigos oficiales a grupos y puntúa 24 clases (fusiona las parejas equivalentes); `audit_dx_codes.py` marca códigos puntuados sin clase.
   - Salidas generadas (`runs/`) y el bundle de despliegue (`models/`, `deploy/`, `webapp/examples/`) quedan obsoletos hasta regenerarlos (`tools/export_inference_bundle.py`, `tools/build_examples.py`).
 - **`signal.py` (preproceso):** debe ser idéntico en entrenamiento e inferencia (causa histórica del bug en `docs/fix_prediccion_cinc2020.md`); revisar `predict.py`, `webapp/prediction.py`, `tools/audit_signal_scaling.py`. `load_mat_signal` rechaza un `.mat` que declare más de `MAX_MAT_ELEMENTS` (25 M) elementos antes de leerlo; `resample_signal` solo acepta frecuencias de 50 a 10 000 Hz (`MIN/MAX_SAMPLING_RATE_HZ`); `preprocessing_for_schema` avisa si el checkpoint no declara esquema y falla si es desconocido.
+- **`train.py` (configuración):** una clave nueva que lea el código va en `KNOWN_CONFIG_KEYS`; el resto se ignora con un `AVISO` al empezar (`tests/test_train_monitor.py` lo exige).
 - **`network.py`:** cambia el formato de `best.pt`; revisar `predict.load_model`, `export_onnx.py` y regenerar `models/*.pt`.
 - **`calibration.py`:** afecta `calibrate.py`, `evaluate.py`, `ensemble_evaluate.py`, `robustness.py` (solo temperatura), webapp y el bundle (`deploy/platt_*.csv`).
 
 ## Chequeo humano
 
-Tras tocar `schema`/`signal`: correr `pytest tests/test_schema.py tests/test_accuracy.py` y comparar una predicción CLI contra la webapp.
+Tras tocar `schema`/`signal`: correr `pytest tests/test_schema.py tests/test_accuracy.py` y comparar la probabilidad que da la webapp para un registro de test con su fila de `predictions_test.csv` del ensemble (no con `ecg.predict`: es un solo modelo sin calibrar y da otra probabilidad a propósito).
