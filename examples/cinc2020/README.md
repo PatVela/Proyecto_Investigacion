@@ -184,7 +184,7 @@ La primera ajusta una temperatura por clase sobre validación y guarda `temperat
 python examples/cinc2020/export_onnx.py --checkpoint $mejor --output runs/models/resnet12.onnx
 ```
 
-Usa `onnx`/`onnxruntime` de `requirements.txt`. Verifica el grafo y compara numéricamente contra PyTorch.
+Usa `onnx`/`onnxruntime` de `requirements-dev.txt`. Verifica el grafo y compara numéricamente contra PyTorch.
 
 ### 11. Análisis de errores por origen
 

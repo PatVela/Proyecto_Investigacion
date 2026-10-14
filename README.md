@@ -110,7 +110,7 @@ Para tener una copia local funcionando, siga estos pasos.
 * ~15 GB de disco libre si va a descargar CINC2020 completo.
 * 16 GB de RAM recomendados (el pipeline precarga los HDF5 a memoria).
 * GPU NVIDIA opcional (el código corre en CPU; con CUDA instale PyTorch según `requirements-cuda.txt`).
-* Versiones con las que se probó todo el repositorio: Python 3.13 y PyTorch 2.14.0 (CUDA 13). `requirements.txt` fija `torch==2.8.0`; otras versiones no se han verificado.
+* Versiones con las que se probó todo el repositorio: Python 3.13 y PyTorch 2.14.0 (CUDA 13), que son las que fijan `requirements.txt` y `requirements-cuda.txt`; otras versiones no se han verificado.
 
 ### Instalación
 
@@ -149,7 +149,7 @@ git clone https://github.com/PatVela/Proyecto_Investigacion.git
 cd Proyecto_Investigacion
 pip install -r requirements-cuda.txt
 pip install -r requirements.txt
-pip install -r requirements-dev.txt   # solo para correr pytest (incluye requirements.txt)
+pip install -r requirements-dev.txt   # para correr pytest y los scripts de investigación: Optuna, ONNX, wfdb (incluye requirements.txt)
 ```
 
 Verifique GPU **antes de seguir**:
