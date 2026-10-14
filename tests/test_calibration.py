@@ -140,3 +140,19 @@ def test_platt_csv_round_trip_and_validation(tmp_path):
     (tmp_path / "bad.csv").write_text("class,temperature\nA,1\n", encoding="utf-8")
     with pytest.raises(ValueError, match="class,a,b"):
         load_platt_csv(tmp_path / "bad.csv", ["A"])
+
+
+def test_thresholds_csv_is_ordered_by_class_and_never_fills_a_missing_class_with_a_default(tmp_path):
+    import pytest
+
+    from ecg.calibration import load_thresholds_csv
+
+    path = tmp_path / "thresholds_validation.csv"
+    path.write_text("index,class,threshold,validation_f1\n0,A,0.30,0.9\n1,B,0.45,0.8\n", encoding="utf-8")
+    np.testing.assert_allclose(load_thresholds_csv(path, ["B", "A"]), [0.45, 0.30])
+    assert load_thresholds_csv(path, ["A"]).dtype == np.float32
+    with pytest.raises(ValueError, match="faltantes.*'C'"):
+        load_thresholds_csv(path, ["A", "C"])                          # antes: C quedaba en 0.5 sin avisar
+    (tmp_path / "bad.csv").write_text("class,temperature\nA,1\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="class,threshold"):
+        load_thresholds_csv(tmp_path / "bad.csv", ["A"])
