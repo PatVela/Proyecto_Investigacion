@@ -40,7 +40,8 @@ def _eval_dir(path):
     pd.DataFrame({"record_name": ["x"]}).to_csv(path / "predictions_test.csv", index=False)      # no debe copiarse
     (path / "evaluation_summary.json").write_text(json.dumps({
         "checkpoint_a": r"C:\Users\juerg\Investigacion\saved\a\best.pt", "checkpoint_b": "/home/me/saved/b/best.pt",
-        "temperatures_a": "eval-resnet/temperatures_validation.csv", "ensemble_alpha": 0.6,
+        "temperatures_a": "eval-resnet/temperatures_validation.csv", "temperatures_b": "eval-resnet-v2/temperatures_validation.csv",
+        "ensemble_alpha": 0.6,
         "test": {"f1_macro": 0.7}}), encoding="utf-8")
     return path
 
@@ -151,7 +152,8 @@ def built_platt(tmp_path):
     a, b = _checkpoint(tmp_path / "a.pt", 1), _checkpoint(tmp_path / "b.pt", 2)
     eval_dir = _eval_dir(tmp_path / "ensemble-f1-platt")
     summary = json.loads((eval_dir / "evaluation_summary.json").read_text(encoding="utf-8"))
-    summary.update({"platt_a": r"C:\Users\juerg\x\platt_validation.csv", "platt_b": "/home/me/y/platt_validation.csv",
+    summary.update({"temperatures_a": None, "temperatures_b": None,
+                    "platt_a": r"C:\Users\juerg\x\platt_validation.csv", "platt_b": "/home/me/y/platt_validation.csv",
                     "platt_ensemble": r"C:\Users\juerg\x\platt_ensemble_validation.csv", "recalibrate_ensemble": True})
     (eval_dir / "evaluation_summary.json").write_text(json.dumps(summary), encoding="utf-8")
     out = tmp_path / "out"
@@ -194,3 +196,62 @@ def test_every_model_needs_a_calibration_and_platt_files_are_validated(tmp_path)
     pd.DataFrame({"class": NAMES, "temperature": [1.0] * 12}).to_csv(tmp_path / "bad.csv", index=False)
     with pytest.raises(ValueError, match="class,a,b"):
         bundle.build_bundle(a, b, ev, platt_a=tmp_path / "bad.csv", platt_b=_platt(tmp_path / "pb.csv"), out_root=tmp_path / "o2")
+
+
+# --- la evaluación debe corresponder a la calibración que se empaqueta -------------------------------------------------
+
+def _platt_summary(eval_dir, **recorded):
+    """Resumen de una evaluación hecha con calibración afín; ``recorded`` = rutas que dice haber usado."""
+    summary = json.loads((eval_dir / "evaluation_summary.json").read_text(encoding="utf-8"))
+    summary.update({"temperatures_a": None, "temperatures_b": None, "platt_a": None, "platt_b": None, "platt_ensemble": None})
+    summary.update({k: str(v) for k, v in recorded.items()})
+    (eval_dir / "evaluation_summary.json").write_text(json.dumps(summary), encoding="utf-8")
+
+
+def test_refuses_an_eval_dir_computed_with_another_calibration(tmp_path):
+    """Umbrales de la evaluación con temperatura (MI 0,56) no valen para probabilidades con calibración afín (MI 0,33)."""
+    a, b = _checkpoint(tmp_path / "a.pt", 1), _checkpoint(tmp_path / "b.pt", 2)
+    ev = _eval_dir(tmp_path / "ensemble-f1")                          # su resumen declara temperaturas A y B
+    with pytest.raises(ValueError) as error:
+        bundle.build_bundle(a, b, ev, platt_a=_platt(tmp_path / "pa.csv"), platt_b=_platt(tmp_path / "pb.csv"),
+                            out_root=tmp_path / "out")
+    message = str(error.value)
+    assert "temperatures_a" in message and "platt_a" in message and "no corresponde" in message
+    assert not (tmp_path / "out" / "models").exists()                  # falla antes de escribir nada
+
+
+def test_refuses_an_unevaluated_ensemble_recalibration_and_a_stale_calibration_file(tmp_path):
+    a, b = _checkpoint(tmp_path / "a.pt", 1), _checkpoint(tmp_path / "b.pt", 2)
+    ev = _eval_dir(tmp_path / "ensemble-f1-platt")
+    _platt_summary(ev, platt_a=_platt(tmp_path / "recorded_a.csv", a=1.1), platt_b=_platt(tmp_path / "recorded_b.csv", a=1.2))
+    kwargs = dict(platt_b=_platt(tmp_path / "pb.csv", a=1.2), out_root=tmp_path / "out")
+    with pytest.raises(ValueError, match="platt_ensemble"):             # se empaqueta una recalibración que no se evaluó
+        bundle.build_bundle(a, b, ev, platt_a=_platt(tmp_path / "pa.csv", a=1.1), platt_ensemble=_platt(tmp_path / "pe.csv"), **kwargs)
+    with pytest.raises(ValueError, match="ya no tiene el contenido"):  # recalibrado después de evaluar
+        bundle.build_bundle(a, b, ev, platt_a=_platt(tmp_path / "pa2.csv", a=1.5), **kwargs)
+
+
+def test_accepts_an_eval_dir_computed_with_exactly_that_calibration(tmp_path):
+    a, b = _checkpoint(tmp_path / "a.pt", 1), _checkpoint(tmp_path / "b.pt", 2)
+    ev = _eval_dir(tmp_path / "ensemble-f1-platt")
+    _platt_summary(ev, platt_a=_platt(tmp_path / "recorded_a.csv", a=1.1), platt_b=_platt(tmp_path / "recorded_b.csv", a=1.2))
+    manifest = bundle.build_bundle(a, b, ev, platt_a=_platt(tmp_path / "pa.csv", a=1.1), platt_b=_platt(tmp_path / "pb.csv", a=1.2),
+                                   out_root=tmp_path / "out")
+    assert manifest["calibration"]["method"] == "platt"
+
+
+def test_the_committed_bundle_passes_its_own_check():
+    """El bundle versionado es coherente consigo mismo (las rutas de runs/ del resumen pueden no existir en otra máquina)."""
+    deploy = bundle.REPO_ROOT / "deploy"
+    supplied = {"temperatures_a": None, "temperatures_b": None, "platt_a": deploy / "platt_a.csv",
+                "platt_b": deploy / "platt_b.csv", "platt_ensemble": deploy / "platt_ensemble.csv"}
+    bundle.check_eval_matches_calibration(deploy / "results" / "ensemble-f1-platt", supplied)
+
+
+def test_refuses_a_blend_weight_other_than_the_one_the_thresholds_were_chosen_with(tmp_path):
+    a, b = _checkpoint(tmp_path / "a.pt", 1), _checkpoint(tmp_path / "b.pt", 2)
+    ev = _eval_dir(tmp_path / "ensemble-f1")                          # su resumen dice ensemble_alpha = 0.6
+    with pytest.raises(ValueError, match="ensemble_alpha.*0.6.*0.7"):
+        bundle.build_bundle(a, b, ev, _temps(tmp_path / "ta.csv"), _temps(tmp_path / "tb.csv"), alpha=0.7, out_root=tmp_path / "out")
+    assert bundle.build_bundle(a, b, ev, _temps(tmp_path / "ta.csv"), _temps(tmp_path / "tb.csv"), alpha=0.6,
+                               out_root=tmp_path / "ok")["ensemble_alpha"] == 0.6
