@@ -981,7 +981,7 @@ function renderTechnical(result) {
     row(LANG === "es" ? "Frecuencia original" : "Original sampling rate", result.original_sampling_rate ? `${result.original_sampling_rate} Hz` : "—"),
     row(LANG === "es" ? "Frecuencia objetivo" : "Target sampling rate", result.target_sampling_rate ? `${result.target_sampling_rate} Hz` : "—"),
     row(LANG === "es" ? "Ventana" : "Window", `${result.window_seconds} s · ${result.input_length} samples`),
-    row(LANG === "es" ? "Ventanas analizadas" : "Analyzed windows", result.num_windows ? `${result.num_windows} × ${result.window_seconds} s · ${result.window_aggregation || "max"}` : "—"),
+    row(LANG === "es" ? "Ventanas analizadas" : "Analyzed windows", result.num_windows ? `${result.num_windows} × ${result.window_seconds} s · ${result.window_aggregation || "mean"}` : "—"),
     row(LANG === "es" ? "Derivaciones" : "Leads", Array.isArray(result.lead_names) ? result.lead_names.join(", ") : result.lead_names),
     row("DX", result.dx_codes && result.dx_codes.length ? result.dx_codes.join(", ") : "—"),
     detSub(tr("detail.groupDecision")),

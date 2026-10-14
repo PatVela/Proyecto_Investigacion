@@ -118,7 +118,7 @@ def _fmt_windows(prediction: dict) -> str:
     secs = prediction.get("window_seconds", 10)
     text = f"{n} ventana de {secs} s" if n == 1 else f"{n} ventanas de {secs} s"
     if n > 1:
-        text += f" · agregación {prediction.get('window_aggregation', 'max')}"
+        text += f" · agregación {prediction.get('window_aggregation', 'mean')}"
     return text
 
 

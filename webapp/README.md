@@ -69,6 +69,7 @@ Aplicación Flask tipo dashboard: se sube un ECG, se analiza con el ensemble de 
 * Interfaz accesible: navegación por teclado, enlace para saltar al contenido, contraste AA en ambos temas, secciones direccionables por URL (`#upload`, `#vis`, `#det`, `#exp`) y carga diferida de las gráficas.
 * Predicción multilabel con probabilidades, márgenes y umbrales por clase.
 * Detección automática de los umbrales calibrados por la evaluación; respaldo global 0.5 si no existen.
+* Registros de más de ≈ 20 s: hasta 4 ventanas de 10 s; cada una recorre la calibración completa y la probabilidad final es la **media** de las calibradas (con una ventana es la de esa ventana). Los umbrales se ajustaron con una ventana centrada: el máximo de varias ventanas añadía 85 falsos positivos (+20 %) en 1019 registros largos de test sin ganar F1.
 * Trazado ECG con cuadrícula tipo papel milimetrado.
 * Informe PDF profesional con membrete UNSA: veredicto, gráfico de barras y trazado.
 * Comparación con etiquetas reales: automática desde `Dx` (WFDB) o manual para CSV (clases o SNOMED).
