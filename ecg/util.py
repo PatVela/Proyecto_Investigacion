@@ -171,6 +171,31 @@ def find_checkpoints(models_dir: str | os.PathLike) -> list[Path]:
     return sorted(models_dir.rglob("*.pt"))
 
 
+_VAL_LOSS_CACHE: dict[tuple, float | None] = {}
+
+
+def checkpoint_val_loss(path: str | os.PathLike) -> float | None:
+    """``val_loss`` guardada en un checkpoint; None si no la trae o no se puede leer.
+
+    Ordenar los checkpoints cargaba cada ``.pt`` entero (hasta decenas de MB con el estado del optimizador) y la webapp lo
+    repetía varias veces por página y por análisis: con 12 checkpoints en ``saved/`` cada ``GET /`` tardaba 3,5-4,7 s.
+    Se recuerda por (ruta, fecha, tamaño), así que solo se vuelve a leer un archivo si cambia.
+    """
+    path = Path(path)
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    key = (str(path), stat.st_mtime_ns, stat.st_size)
+    if key not in _VAL_LOSS_CACHE:
+        try:
+            value = load_checkpoint(path, map_location="cpu").get("val_loss")
+            _VAL_LOSS_CACHE[key] = None if value is None else float(value)
+        except Exception:
+            _VAL_LOSS_CACHE[key] = None
+    return _VAL_LOSS_CACHE[key]
+
+
 def checkpoint_sort_key(path: Path):
     """Clave de ordenamiento: reales antes que sintéticos, best.pt primero, menor val_loss.
 
@@ -180,11 +205,8 @@ def checkpoint_sort_key(path: Path):
     text = str(path).lower()
     is_synth = 1 if "synth" in text else 0
     is_best_name = 0 if path.name.lower() == "best.pt" else 1
-    try:
-        ckpt = load_checkpoint(path, map_location="cpu")
-        value = ckpt.get("val_loss", None)
-        loss = float(value) if value is not None else float("inf")
-    except Exception:
+    loss = checkpoint_val_loss(path)
+    if loss is None:
         try:
             loss = float(path.name.split("-")[0])
         except Exception:

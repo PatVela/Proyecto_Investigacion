@@ -187,6 +187,18 @@ def test_expired_reports_are_purged_on_the_next_request(make_client, tmp_path):
     assert not stale.exists() and (tmp_path / "res" / body["job_id"]).exists()
 
 
+def test_an_expired_report_is_not_served_even_if_nobody_posts_again(make_client, tmp_path):
+    """Con TTL de 2 s el PDF seguía respondiendo 200 pasado ese tiempo; solo un POST /predict lo borraba."""
+    client = make_client(ECG_RATE_LIMIT_MAX=0, ECG_RESULT_TTL_SECONDS=3600)
+    body = _post_csv(client).get_json()
+    assert client.get(body["pdf_url"]).status_code == 200
+    job = tmp_path / "res" / body["job_id"]
+    os.utime(job, (time.time() - 7200, time.time() - 7200))              # el informe cumple 2 h sin ninguna otra petición
+    assert client.get(body["pdf_url"]).status_code == 404
+    assert not job.exists()
+    assert client.get("/health").status_code == 200
+
+
 def test_privacy_notice_is_in_the_page_and_in_both_languages(make_client):
     html = make_client().get("/").get_data(as_text=True)
     assert 'id="privacyNote"' in html and 'data-i18n="upload.privacy"' in html

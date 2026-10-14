@@ -37,7 +37,7 @@ import pandas as pd
 from werkzeug.utils import secure_filename
 
 from ecg import load, util
-from ecg.calibration import apply_platt, apply_temperature
+from ecg.calibration import apply_platt, apply_temperature, ensemble_probabilities
 from ecg.predict import load_model, predict_array, predict_windows, prepare_csv_windows, preprocessing_for_checkpoint
 
 
@@ -48,6 +48,8 @@ LEADS = load.STANDARD_LEAD_ORDER
 V2_TO_V1_CLASS = {"AxisDev": "LAD", "BBB": "RBBB"}
 # Texto mostrado cuando el checkpoint no declara esquema (no se presenta como si lo declarara).
 UNDECLARED_SCHEMA_TEXT = "sin esquema declarado (se asumió el actual)"
+# Un CSV no declara sus unidades: se infieren (ecg.signal.infer_csv_units) y se muestran para que se pueda ver si se acertó.
+CSV_UNITS_TEXT = {"mv": " · unidades del CSV asumidas: mV", "digital": " · unidades del CSV asumidas: cuentas ADC (÷ 1000)"}
 SLIDING_WINDOWS_MAX = 4
 # Registro de más de ~20 s: se analizan hasta 4 ventanas y la probabilidad final es la MEDIA de las calibradas.
 # Los umbrales y la calibración se ajustaron con una sola ventana; el máximo de varias ventanas correlacionadas
@@ -293,6 +295,7 @@ def prepare_saved_input(
             "processed_windows": windows,
             "csv_reused_without_reprocessing": reused,
             "csv_preprocessed_marker": marker or None,
+            "csv_units": csv_info.get("units"),
             "original_sampling_rate": sampling_rate,
             "lead_names": lead_names,
             "dx_codes": [],
@@ -740,7 +743,7 @@ def run_prediction_from_saved_paths(
     threshold_source: str | None = None,
     temperatures: dict | list | np.ndarray | None = None,
     temperature_source: str | None = None,
-    normal_fallback_min_prob: float | None = 0.40,
+    normal_fallback_min_prob: float | None = None,
     model_path_b: str | None = None,
     temperatures_b: dict | list | np.ndarray | None = None,
     temperature_source_b: str | None = None,
@@ -783,7 +786,6 @@ def run_prediction_from_saved_paths(
     platt_values_e = None
     calibrated_b = False
     if is_ensemble:
-        from examples.cinc2020.ensemble_evaluate import ensemble_probabilities
         resolved_model_b = resolve_model_path(model_path=model_path_b, saved_dir=saved_dir)
         _model_b, _checkpoint_b, class_names_b = get_cached_model(resolved_model_b, device)
         if list(class_names_b) != list(class_names):
@@ -918,6 +920,7 @@ def run_prediction_from_saved_paths(
                 f"12 derivaciones -> reorden estándar -> 500 Hz -> {pre['norm_mode']}"
                 f"{' + bandpass 0.5-50Hz' if pre['bandpass'] else ''} -> "
                 f"{windows.shape[0]} ventana(s) de 5000 ({aggregate_used})"
+                f"{CSV_UNITS_TEXT.get(prepared.get('csv_units'), '')}"
             ),
             "label_schema": ckpt_schema or UNDECLARED_SCHEMA_TEXT,
             "norm_mode": pre["norm_mode"],
@@ -952,7 +955,7 @@ def run_prediction_from_uploads(
     threshold_source: str | None = None,
     temperatures: dict | list | np.ndarray | None = None,
     temperature_source: str | None = None,
-    normal_fallback_min_prob: float | None = 0.40,
+    normal_fallback_min_prob: float | None = None,
     model_path_b: str | None = None,
     temperatures_b: dict | list | np.ndarray | None = None,
     temperature_source_b: str | None = None,
