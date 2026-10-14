@@ -21,7 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from ecg import predict, util
-from ecg.calibration import apply_platt_logits, apply_temperature, load_platt_csv, load_temperatures_csv
+from ecg.calibration import apply_platt_logits, apply_temperature, load_platt_csv, load_temperatures_csv, load_thresholds_csv
 
 
 def apply_perturbation(x, kind, level, rng):
@@ -85,15 +85,8 @@ def evaluate_under_perturbation(model, dataset, thresholds, device, kind, level,
 
 
 def load_thresholds(path, class_names):
-    if not path:
-        return np.full(len(class_names), 0.5, dtype=np.float32)
-    df = pd.read_csv(path)
-    values = np.full(len(class_names), 0.5, dtype=np.float32)
-    for i, name in enumerate(class_names):
-        row = df[df["class"] == name]
-        if not row.empty:
-            values[i] = float(row.iloc[0]["threshold"])
-    return values
+    """Umbrales por clase de ``thresholds_validation.csv``; sin archivo, 0.5 global."""
+    return load_thresholds_csv(path, class_names) if path else np.full(len(class_names), 0.5, dtype=np.float32)
 
 
 def main():
