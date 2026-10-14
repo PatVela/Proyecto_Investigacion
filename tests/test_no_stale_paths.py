@@ -24,3 +24,11 @@ def test_webapp_default_discovery_looks_under_runs(monkeypatch):
     monkeypatch.delenv("ECG_EVAL_DIR", raising=False)
     dirs = [p.as_posix() for p in app_mod._candidate_result_dirs()]
     assert dirs and all("/runs/eval/" in d for d in dirs)
+
+
+def test_local_tool_settings_are_ignored_by_git():
+    """.claude/ (ajustes locales de la herramienta) no debe poder entrar en un commit con ``git add .``."""
+    import subprocess
+
+    ignored = subprocess.run(["git", "check-ignore", "-q", ".claude/settings.json"], cwd=REPO_ROOT)
+    assert ignored.returncode == 0

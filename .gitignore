@@ -36,6 +36,7 @@ runs/
 
 # Entorno y herramientas
 .vscode/
+.claude/
 .env
 __pycache__/
 .pytest_cache/
