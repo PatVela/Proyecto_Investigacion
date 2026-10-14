@@ -176,7 +176,7 @@ La app valida que el stem coincida, lee el header, preprocesa la señal, compara
 | Método | Ruta | Descripción |
 |---|---|---|
 | `GET` | `/` | Dashboard (carga, resultado, detalle técnico, experimentos) |
-| `POST` | `/predict` | Analiza archivos (o `example=<id>`) + umbral; devuelve JSON con probabilidades, trazado y PDF. 400 si el archivo no es válido (también si la señal dura menos de 2 s o está plana en más de 6 derivaciones: no se analiza lo que no es un ECG), 413 si pesa demasiado, 429 si se excede la tasa |
+| `POST` | `/predict` | Analiza archivos (o `example=<id>`) + umbral; devuelve JSON con probabilidades, trazado y PDF. 400 si el archivo no es válido (también si la señal dura menos de 2 s o está plana en más de 6 derivaciones: no se analiza lo que no es un ECG; o si las etiquetas reales escritas a mano traen texto que no es una clase ni un código SNOMED de las 12 clases: se rechaza y dice cuál, no se descarta), 413 si pesa demasiado, 429 si se excede la tasa |
 | `GET` | `/examples` | Lista de registros de ejemplo incluidos (id, origen, clases verdaderas y predichas de referencia) |
 | `GET` | `/results/<archivo>` | Descarga artefactos generados (PDF, PNG, CSV convertido) |
 | `GET` | `/models` | Checkpoints disponibles en la carpeta configurada (el cliente no puede elegir otra) |
