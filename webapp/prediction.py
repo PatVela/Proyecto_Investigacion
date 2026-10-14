@@ -49,7 +49,11 @@ V2_TO_V1_CLASS = {"AxisDev": "LAD", "BBB": "RBBB"}
 # Texto mostrado cuando el checkpoint no declara esquema (no se presenta como si lo declarara).
 UNDECLARED_SCHEMA_TEXT = "sin esquema declarado (se asumió el actual)"
 SLIDING_WINDOWS_MAX = 4
-SLIDING_AGGREGATE = "max"
+# Registro de más de ~20 s: se analizan hasta 4 ventanas y la probabilidad final es la MEDIA de las calibradas.
+# Los umbrales y la calibración se ajustaron con una sola ventana; el máximo de varias ventanas correlacionadas
+# queda sesgado hacia arriba y en 1019 registros largos de test añadía 85 falsos positivos (426 -> 511, +20 %)
+# sin ganar F1 (0,6108 -> 0,6052). La media de calibradas empata con la ventana única (0,6109; 433 FP).
+SLIDING_AGGREGATE = "mean"
 
 
 def _group_for_class(name: str) -> dict:
@@ -686,18 +690,43 @@ def apply_normal_fallback(
     return info
 
 
-def _infer_windows(model, windows: np.ndarray, device) -> tuple[np.ndarray, np.ndarray, str]:
-    """Inferencia por ventanas; devuelve (probabilidades, por_ventana, agregación)."""
+def _infer_windows(model, windows: np.ndarray, device) -> np.ndarray:
+    """Probabilidades crudas por ventana, forma ``(K, 12)``; la agregación se hace después de calibrar."""
     with _INFERENCE_SLOTS:
         return _infer_windows_unlocked(model, windows, device)
 
 
-def _infer_windows_unlocked(model, windows: np.ndarray, device) -> tuple[np.ndarray, np.ndarray, str]:
+def _infer_windows_unlocked(model, windows: np.ndarray, device) -> np.ndarray:
     if windows.shape[0] == 1:
-        probabilities = predict_array(model, windows[0], device=device)
-        return probabilities, probabilities[None, :], "single"
-    probabilities, per_window = predict_windows(model, windows, device=device, aggregate=SLIDING_AGGREGATE)
-    return probabilities, per_window, SLIDING_AGGREGATE
+        return predict_array(model, windows[0], device=device)[None, :]
+    return predict_windows(model, windows, device=device, aggregate=SLIDING_AGGREGATE)[1]
+
+
+def aggregate_window_probabilities(per_window: np.ndarray) -> tuple[np.ndarray, str]:
+    """Probabilidad final de un registro a partir de las de sus ventanas YA calibradas, y cómo se obtuvo.
+
+    Una ventana: se devuelve tal cual (``"single"``, igual que la evaluación). Varias: su media (``SLIDING_AGGREGATE``).
+    """
+    per_window = np.asarray(per_window)
+    if per_window.ndim != 2 or per_window.shape[0] < 1:
+        raise ValueError(f"per_window debe tener forma (K, C) con K >= 1, recibido {per_window.shape}")
+    if per_window.shape[0] == 1:
+        return per_window[0], "single"
+    return per_window.mean(axis=0).astype(np.float32), SLIDING_AGGREGATE
+
+
+def _calibrate_model_windows(per_window, class_names, temperatures, platt):
+    """Calibra las ventanas ``(K, C)`` de un modelo: la afín gana a la temperatura (son alternativas).
+
+    Devuelve ``(ventanas_calibradas, temperaturas_usadas | None, platt_usada | None)``.
+    """
+    platt_values = platt_for_class_names(class_names, platt)
+    temp_values = None if platt_values is not None else temperatures_for_class_names(class_names, temperatures=temperatures)
+    if platt_values is not None:
+        per_window = apply_platt(np.asarray(per_window), *platt_values)
+    elif temp_values is not None:
+        per_window = apply_temperature(np.asarray(per_window), temp_values)
+    return per_window, temp_values, platt_values
 
 
 def run_prediction_from_saved_paths(
@@ -726,8 +755,10 @@ def run_prediction_from_saved_paths(
     """Predice a partir de archivos ya guardados en disco.
 
     Calibración: por modelo, temperatura (``temperatures``) o calibración afín (``platt``; si llegan las dos para el
-    mismo modelo gana la afín) y, en un ensemble, una calibración afín del promedio (``platt_ensemble``). Todas son
-    monótonas, así que calibrar la probabilidad agregada con el máximo de ventanas equivale a agregar las calibradas.
+    mismo modelo gana la afín) y, en un ensemble, una calibración afín del promedio (``platt_ensemble``). Cada ventana
+    recorre toda la cadena (modelo -> calibración -> ensemble -> calibración del promedio) y solo al final se promedian
+    las ventanas (:func:`aggregate_window_probabilities`): así los umbrales, ajustados con una ventana, se aplican a una
+    probabilidad con el mismo significado que en la evaluación.
     """
     result_dir = Path(result_dir)
     result_dir.mkdir(parents=True, exist_ok=True)
@@ -741,16 +772,8 @@ def run_prediction_from_saved_paths(
     prepared = prepare_saved_input(saved_paths, result_dir, norm_mode=pre["norm_mode"], bandpass=pre["bandpass"])
 
     windows = np.asarray(prepared.get("processed_windows", prepared["processed_signal"][None, ...]), dtype=np.float32)
-    probabilities, per_window, aggregate_used = _infer_windows(model, windows, device)
-    temp_values = temperatures_for_class_names(class_names, temperatures=temperatures)
-    platt_values = platt_for_class_names(class_names, platt)
-    if platt_values is not None:
-        temp_values = None                      # la calibración afín sustituye a la temperatura del mismo modelo
-        probabilities = apply_platt(np.asarray(probabilities)[None, :], *platt_values)[0]
-        per_window = apply_platt(np.asarray(per_window), *platt_values)
-    elif temp_values is not None:
-        probabilities = apply_temperature(np.asarray(probabilities)[None, :], temp_values)[0]
-        per_window = apply_temperature(np.asarray(per_window), temp_values)
+    per_window, temp_values, platt_values = _calibrate_model_windows(
+        _infer_windows(model, windows, device), class_names, temperatures, platt)
     calibrated_a = temp_values is not None or platt_values is not None
 
     is_ensemble = model_path_b is not None and str(model_path_b).strip() != ""
@@ -765,26 +788,16 @@ def run_prediction_from_saved_paths(
         _model_b, _checkpoint_b, class_names_b = get_cached_model(resolved_model_b, device)
         if list(class_names_b) != list(class_names):
             raise ValueError("Los checkpoints del ensemble usan distinto orden de clases.")
-        probabilities_b, per_window_b, _ = _infer_windows(_model_b, windows, device)
-        temp_values_b = temperatures_for_class_names(class_names, temperatures=temperatures_b)
-        platt_values_b = platt_for_class_names(class_names, platt_b)
-        if platt_values_b is not None:
-            temp_values_b = None
-            probabilities_b = apply_platt(np.asarray(probabilities_b)[None, :], *platt_values_b)[0]
-            per_window_b = apply_platt(np.asarray(per_window_b), *platt_values_b)
-        elif temp_values_b is not None:
-            probabilities_b = apply_temperature(np.asarray(probabilities_b)[None, :], temp_values_b)[0]
-            per_window_b = apply_temperature(np.asarray(per_window_b), temp_values_b)
+        per_window_b, temp_values_b, platt_values_b = _calibrate_model_windows(
+            _infer_windows(_model_b, windows, device), class_names, temperatures_b, platt_b)
         calibrated_b = temp_values_b is not None or platt_values_b is not None
-        probabilities = ensemble_probabilities(probabilities, probabilities_b, alpha)
         per_window = ensemble_probabilities(np.asarray(per_window), np.asarray(per_window_b), alpha)
         platt_values_e = platt_for_class_names(class_names, platt_ensemble)
         if platt_values_e is not None:
-            probabilities = apply_platt(probabilities[None, :], *platt_values_e)[0]
             per_window = apply_platt(per_window, *platt_values_e)
         else:
-            probabilities = probabilities.astype(np.float32)
             per_window = per_window.astype(np.float32)
+    probabilities, aggregate_used = aggregate_window_probabilities(per_window)
     calibrated = calibrated_a or calibrated_b or platt_values_e is not None
     if platt_values_e is not None:
         calibration_method = "platt+ensemble"
