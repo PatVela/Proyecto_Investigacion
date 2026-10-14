@@ -8,6 +8,7 @@ from __future__ import annotations
 from ecg.schema import BANDPASS_HI_HZ, BANDPASS_LO_HZ, DEFAULT_ADC_GAIN, DEFAULT_NORM_MODE, PHYSICAL_CLIP_MV, parse_dx_field
 
 import re
+import zlib
 from fractions import Fraction
 from pathlib import Path
 from typing import Iterable
@@ -15,6 +16,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 from scipy.io import loadmat, whosmat
+from scipy.io.matlab import MatReadError
 from scipy.signal import butter, resample_poly, sosfiltfilt
 
 
@@ -298,6 +300,26 @@ def compute_window_starts(
     return [int(round(span * i / (k - 1))) for i in range(k)]
 
 
+MIN_RECORD_SECONDS = 2              # por debajo de esto ni siquiera se puede aplicar el pasa-banda (ver bandpass_filter)
+FLAT_RANGE_MV = 0.01                # rango p1-p99 por debajo del cual una derivación no tiene señal (10 µV)
+
+
+def require_usable_signal(signal: np.ndarray, sampling_rate: float = TARGET_FS) -> None:
+    """Lanza ``ValueError`` si no es un ECG analizable: dura menos de 2 s o más de la mitad de las derivaciones están planas.
+
+    Sin esto un archivo vacío, todo 0 o todo NaN llegaba al modelo y recibía diagnósticos (SB 65 %, MI 59 %).
+    Con datos reales: 0 de 6421 ventanas de test y 2 de 33 759 de train (Q0400, Q2961) tienen más de 6 derivaciones planas.
+    Solo la usa la ruta de inferencia (``preprocess_to_windows``): construir los HDF5 no descarta registros por esto.
+    """
+    signal = np.asarray(signal)
+    if signal.shape[0] < MIN_RECORD_SECONDS * sampling_rate:
+        raise ValueError(f"La señal dura {signal.shape[0] / sampling_rate:.1f} s; se necesitan al menos {MIN_RECORD_SECONDS} s.")
+    low, high = np.percentile(signal, [1, 99], axis=0)
+    flat = int(((high - low) < FLAT_RANGE_MV).sum())
+    if flat > signal.shape[1] // 2:
+        raise ValueError(f"La señal está plana (sin latidos) en {flat} de {signal.shape[1]} derivaciones; no se puede analizar.")
+
+
 def fix_length(signal: np.ndarray, target_len: int = WINDOW_LENGTH, mode: str = "center") -> np.ndarray:
     signal = np.asarray(signal)
     if signal.ndim != 2:
@@ -413,6 +435,7 @@ def preprocess_to_windows(
         target_length=None,
         **preprocess_kwargs,
     )
+    require_usable_signal(full, target_fs)
     starts = compute_window_starts(full.shape[0], target_length, windows_max)
     windows = []
     for start in starts:
@@ -428,15 +451,28 @@ def preprocess_to_windows(
 MAX_MAT_ELEMENTS = 25_000_000
 
 
+# Un .mat vacío o a medias (MatReadError, OSError o zlib.error), el de MATLAB v7.3 (NotImplementedError) o un archivo que no
+# es .mat (ValueError) acababan en "Error interno" (500) o con un mensaje de scipy que nadie entiende.
+_MAT_UNREADABLE = ("El .mat está dañado o incompleto, o es MATLAB v7.3 (no soportado); "
+                   "vuelva a guardarlo con save(..., '-v7') o suba el CSV.")
+_MAT_ERRORS = (ValueError, NotImplementedError, MatReadError, EOFError, OSError, zlib.error)
+
+
 def load_mat_signal(mat_path: str | Path, num_leads: int = NUM_LEADS) -> np.ndarray:
-    declared = {name: shape for name, shape, _ in whosmat(mat_path)}      # solo cabeceras: no descomprime los datos
+    try:
+        declared = {name: shape for name, shape, _ in whosmat(mat_path)}      # solo cabeceras: no descomprime los datos
+    except _MAT_ERRORS as exc:
+        raise ValueError(_MAT_UNREADABLE) from exc
     if "val" not in declared:
-        raise KeyError("No existe variable 'val' en el .mat")
+        raise ValueError("El .mat no tiene la variable 'val' (los registros WFDB del Challenge la llaman así).")
     elements = int(np.prod(declared["val"], dtype=np.float64))
     if elements > MAX_MAT_ELEMENTS:
         raise ValueError(f"El .mat declara {elements:,} elementos en 'val' (forma {tuple(declared['val'])}): "
                          f"demasiado grande, el máximo es {MAX_MAT_ELEMENTS:,}.")
-    mat = loadmat(mat_path, variable_names=["val"])                       # ignora cualquier otra variable del archivo
+    try:
+        mat = loadmat(mat_path, variable_names=["val"])                       # ignora cualquier otra variable del archivo
+    except _MAT_ERRORS as exc:
+        raise ValueError(_MAT_UNREADABLE) from exc
     raw = np.asarray(mat["val"], dtype=np.float32)
     if raw.ndim != 2:
         raise ValueError(f"Shape inesperado en .mat: {raw.shape}")
@@ -561,15 +597,20 @@ def read_csv_ecg(csv_path: str | Path) -> tuple[np.ndarray, float, list[str], di
 def infer_csv_units(values: np.ndarray) -> str:
     """Heurística de unidades para CSV crudos de usuario.
 
-    - Si la amplitud máxima supera 20 -> valores digitales/ADC (requieren
-      conversión con ganancia 1000) -> ``\"digital\"``.
+    - Si la amplitud supera 20 -> valores digitales/ADC (requieren conversión con
+      ganancia 1000) -> ``\"digital\"``.
     - En otro caso se asumen milivoltios -> ``\"mv\"``.
+
+    Se usa el percentil 99,9 de |valor| y no el máximo: un pico de saturación suelto (25 mV en una muestra de un CSV en
+    mV) hacía leer todo como cuentas ADC y dividir entre 1000, y el QRS llegaba al modelo con 0,001 mV.
+    shortcut: un artefacto que dure más del 0,1 % de las muestras (> 60 de 60 000) todavía la engaña; subir a la mediana
+    de los máximos por latido si aparece en datos reales.
     """
-    try:
-        peak = float(np.nanmax(np.abs(np.asarray(values, dtype=np.float64))))
-    except Exception:
+    magnitude = np.abs(np.asarray(values, dtype=np.float64))
+    magnitude = magnitude[np.isfinite(magnitude)]
+    if magnitude.size == 0:
         return "mv"
-    return "digital" if peak > 20 else "mv"
+    return "digital" if np.percentile(magnitude, 99.9) > 20 else "mv"
 
 
 # ---------------------------------------------------------------------------

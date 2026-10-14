@@ -174,6 +174,33 @@ def _stage_calibration(temperatures_a, temperatures_b, platt_a, platt_b, platt_e
     return {"files": files, "env": env}
 
 
+def check_eval_matches_calibration(eval_dir: str | Path, supplied: dict, alpha: float | None = None) -> None:
+    """Falla si ``eval_dir`` no se calculó con la calibración que se va a empaquetar.
+
+    Los umbrales de ``eval_dir`` se eligieron sobre probabilidades YA calibradas: con otra calibración dejan de ser los
+    de esas probabilidades (MI 0,56 con temperatura frente a 0,33 con calibración afín) y la demo sale en otro punto de
+    operación sin avisar. ``supplied``: {clave de evaluation_summary.json: archivo que se empaqueta o None}; ``alpha``,
+    el peso del modelo A que se pide (otro peso también cambia las probabilidades del promedio).
+    shortcut: si la ruta guardada en el resumen ya no existe solo se compara que hubiera o no calibración, no su contenido.
+    """
+    summary = json.loads((Path(eval_dir) / "evaluation_summary.json").read_text(encoding="utf-8"))
+    problems = []
+    if alpha is not None and abs(float(alpha) - float(summary.get("ensemble_alpha", alpha))) > 1e-9:
+        problems.append(f"ensemble_alpha: la evaluación usó {summary['ensemble_alpha']} y aquí se pide {alpha}")
+    for key, path in supplied.items():
+        used = summary.get(key)
+        if bool(used) != bool(path):
+            problems.append(f"{key}: la evaluación {'usó' if used else 'no usó'} ese archivo y aquí "
+                            f"{'se empaqueta' if path else 'no se indica'}")
+        elif used:
+            recorded = util.resolve_path(used)
+            if recorded.is_file() and _sha256(recorded) != _sha256(Path(path)):
+                problems.append(f"{key}: {used} ya no tiene el contenido de {path} (se recalibró después de evaluar)")
+    if problems:
+        detail = "\n  ".join(problems)
+        raise ValueError(f"{eval_dir} no corresponde a la calibración indicada; sus umbrales no valen para ella:\n  {detail}")
+
+
 def build_bundle(checkpoint_a, checkpoint_b, eval_dir, temperatures_a=None, temperatures_b=None, reports_dir=None,
                  out_root: str | Path = REPO_ROOT, name_a: str = "resnet34_v1", name_b: str = "resnet34_v2",
                  alpha: float | None = None, platt_a=None, platt_b=None, platt_ensemble=None) -> dict:
@@ -181,6 +208,8 @@ def build_bundle(checkpoint_a, checkpoint_b, eval_dir, temperatures_a=None, temp
     out_root = Path(out_root)
     models_dir, deploy_dir = out_root / "models", out_root / "deploy"
     eval_dir = Path(eval_dir)
+    check_eval_matches_calibration(eval_dir, {"temperatures_a": temperatures_a, "temperatures_b": temperatures_b,
+                                              "platt_a": platt_a, "platt_b": platt_b, "platt_ensemble": platt_ensemble}, alpha)
     if alpha is None:
         alpha = float(json.loads((eval_dir / "evaluation_summary.json").read_text(encoding="utf-8")).get("ensemble_alpha", 0.5))
 

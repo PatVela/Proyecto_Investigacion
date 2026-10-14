@@ -63,6 +63,7 @@ from ecg.signal import (
     preprocess_to_windows,
     read_csv_ecg,
     reorder_leads,
+    require_usable_signal,
     resample_signal,
     to_physical_units,
 )
@@ -140,6 +141,7 @@ __all__ = [
     "process_split_to_hdf5",
     "read_csv_ecg",
     "reorder_leads",
+    "require_usable_signal",
     "resample_signal",
     "scan_records",
     "source_distribution",

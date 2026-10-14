@@ -50,7 +50,7 @@ PC: Windows 11, Intel Core i5-11400H, 24 GB de RAM, NVIDIA RTX 3050 Laptop (4 GB
 | El túnel es lento (medido ≈ 10–25 KB/s). Con PNG 306 KB, PDF 406 KB y Plotly 1,3 MB gzip las descargas ya terminan (9 de 9; antes 1 de 3 y Plotly nunca), pero tardan 10–75 s | Medio | uso opcional y corto, mejor desde datos móviles; para mostrarla en la misma sala usar `127.0.0.1` o `-Lan` |
 | Datos sensibles subidos por un usuario | Alto | no se persisten, aviso visible, ejemplos incluidos |
 | Un visitante cambia el modelo global (`/use_model`) o manda texto que congela el servidor (regex cuadrática) | Alto | `/use_model` apagado salvo `ECG_ENABLE_USE_MODEL=1`; regex lineal con tope de longitud (`tests/test_hardening.py`) |
-| Cambio de versión de torch | Medio | `requirements.txt` fija `torch==2.8.0`; el entorno actual usa 2.14.0 y el bundle pasa el humo con ella |
+| Cambio de versión de torch | Medio | `requirements.txt` y `requirements-cuda.txt` fijan `torch==2.14.0`, la versión con la que se probó todo (suite, bundle y humo) |
 
 ## Orden y dependencias
 ```

@@ -3,3 +3,10 @@
 pytest==9.1.1
 pypdf==6.18.1
 pyflakes==4.0.3
+
+# Scripts de investigación que no hacen falta para entrenar ni para servir la demo:
+#   tune_optuna.py (optuna), export_onnx.py (onnx, onnxruntime), tools/audit_signal_scaling.py (wfdb)
+optuna==5.0.0
+onnx==1.22.0
+onnxruntime==1.30.0
+wfdb==4.3.0

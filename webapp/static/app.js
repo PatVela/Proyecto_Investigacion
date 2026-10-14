@@ -60,6 +60,7 @@ const I18N = {
     "btn.clear": "Limpiar",
     "btn.pdf": "Descargar informe (PDF)",
     "btn.csv": "Descargar CSV convertido",
+    "btn.csv.windows": "Contiene solo una de las {n} ventanas de 10 s analizadas (la que se ve en el trazado): volver a subirlo puede dar otra probabilidad que subir el .hea + .mat.",
     "btn.png": "Abrir trazado PNG",
     "result.title": "Resultado",
     "result.sub": "Predicción multilabel, trazado en papel milimetrado, probabilidades por clase y descarga de reporte.",
@@ -271,6 +272,7 @@ const I18N = {
     "btn.clear": "Clear",
     "btn.pdf": "Download report (PDF)",
     "btn.csv": "Download converted CSV",
+    "btn.csv.windows": "Holds only one of the {n} analyzed 10 s windows (the one in the trace): uploading it again can give a different probability than the .hea + .mat.",
     "btn.png": "Open PNG trace",
     "result.title": "Result",
     "result.sub": "Multilabel prediction, ECG-paper grid trace, per-class probabilities and report download.",
@@ -942,6 +944,7 @@ function renderButtons(result) {
   if (result.converted_csv_url) {
     btnCsv.href = result.converted_csv_url;
     btnCsv.download = `${result.record_name || "ecg"}_convertido.csv`;
+    btnCsv.title = result.num_windows > 1 ? tr("btn.csv.windows").replace("{n}", result.num_windows) : "";
     btnCsv.hidden = false;
   } else {
     btnCsv.hidden = true;

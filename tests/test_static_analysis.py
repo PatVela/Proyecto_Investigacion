@@ -25,3 +25,17 @@ def test_pyflakes_reports_nothing_in_our_own_code():
     for path in _own_python_files():
         pyflakes_api.checkPath(str(path), rep)
     assert stream.getvalue() == "", stream.getvalue()
+
+
+def test_serving_code_does_not_import_the_experiment_scripts():
+    """webapp/ y ecg/ no dependen de examples/ (la demo importaba ensemble_evaluate.py solo para promediar dos vectores)."""
+    import ast
+
+    offenders = []
+    for folder in ("webapp", "ecg"):
+        for path in (REPO_ROOT / folder).glob("*.py"):
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                names = [a.name for a in node.names] if isinstance(node, ast.Import) else \
+                        [node.module or ""] if isinstance(node, ast.ImportFrom) and node.level == 0 else []
+                offenders += [f"{path.name}:{node.lineno} {n}" for n in names if n == "examples" or n.startswith("examples.")]
+    assert not offenders, offenders

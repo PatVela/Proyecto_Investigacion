@@ -69,3 +69,32 @@ def test_scripts_launching_waitress_find_it_declared():
 def test_no_unused_packages_pinned_back():
     declared = _declared()
     assert not ({"gevent", "six", "scikit-multilearn", "pip-tools"} & declared)
+
+
+def _torch_pin(fname: str) -> str:
+    text = (REPO_ROOT / fname).read_text(encoding="utf-8")
+    return re.search(r"^torch==([0-9][^\s+]*)", text, re.M).group(1)
+
+
+def test_torch_pin_is_the_same_everywhere_and_the_one_the_bundle_was_made_with():
+    """Antes requirements.txt fijaba 2.8.0 y todo (suite, bundle, humo) se probó con 2.14.0."""
+    import json
+
+    assert _torch_pin("requirements.txt") == _torch_pin("requirements-cuda.txt")
+    manifest = json.loads((REPO_ROOT / "deploy" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["torch_version"].split("+")[0] == _torch_pin("requirements.txt")
+
+
+def test_packages_only_research_scripts_need_are_not_installed_for_the_demo():
+    runtime = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8").lower()
+    dev = (REPO_ROOT / "requirements-dev.txt").read_text(encoding="utf-8").lower()
+    for package in ("optuna", "onnx", "onnxruntime", "wfdb"):
+        assert not re.search(rf"^{package}==", runtime, re.M) and re.search(rf"^{package}==", dev, re.M), package
+
+
+def test_ci_workflow_installs_the_dev_requirements_and_runs_pytest():
+    """Sin esto las PR llegaban a main con 0 comprobaciones; si alguien cambia el flujo, que siga haciendo lo esencial."""
+    workflow = (REPO_ROOT / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8")
+    for needed in ("pull_request:", "requirements-dev.txt", "download.pytorch.org/whl/cpu", "python -m pytest",
+                   "tools/check_docs_commands.py"):
+        assert needed in workflow, needed

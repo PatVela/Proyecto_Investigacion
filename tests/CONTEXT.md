@@ -1,6 +1,6 @@
 # tests/ — suite pytest
 
-**Trabajo:** red de seguridad (requiere `pip install -r requirements-dev.txt`). Fixtures compartidas en `conftest.py`. Ejecutar: `pytest` desde la raíz (≈ 7 min). Algunos tests se saltan solos si faltan datos locales (bundle, `runs/`).
+**Trabajo:** red de seguridad (requiere `pip install -r requirements-dev.txt`). Fixtures compartidas en `conftest.py`. Ejecutar: `pytest` desde la raíz (≈ 7 min). `.github/workflows/tests.yml` la corre en cada PR y en cada push a `main` (Linux, torch CPU). Algunos tests se saltan solos si faltan datos locales (bundle, `runs/`).
 
 | Área | Tests |
 |---|---|
