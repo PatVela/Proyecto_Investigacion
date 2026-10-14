@@ -10,6 +10,9 @@ Modos (``--kind``):
     mats  - rastrea .hea locales sin .mat y descarga el .mat correspondiente.
     pairs - compara cada carpeta local contra el índice de PhysioNet y
             descarga los pares incompletos (.hea y/o .mat).
+
+Código de salida 0 si se pudo comprobar todo y se descargó sin errores; 1 si algún índice no se pudo leer o falló una
+descarga (en ese caso no se afirma que el dataset esté completo).
 """
 
 from __future__ import annotations
@@ -18,10 +21,12 @@ import argparse
 import glob
 import os
 import re
+import sys
 import urllib.request
 
 BASE_URL = "https://physionet.org/files/challenge-2020/1.0.2/"
 BASE_TRAINING_URL = BASE_URL + "training/"
+TIMEOUT_S = 60                      # sin tope, una conexión colgada dejaba el script esperando para siempre
 
 
 def _remote_subpath(local_path: str) -> str:
@@ -34,11 +39,34 @@ def _remote_subpath(local_path: str) -> str:
     return "/".join(partes[idx_base:])
 
 
-def descargar_faltantes(data_dir: str = "dataset2020", want_ext: str = ".mat") -> None:
-    """Descarga los archivos ``want_ext`` cuyo par existe pero ellos faltan."""
+def _descargar(url: str, destino: str) -> None:
+    """Descarga ``url`` a ``destino`` y solo lo deja con su nombre final si llegó entero.
+
+    Antes se abría el archivo final y se escribía encima: una conexión cortada dejaba un archivo vacío o a medias que la
+    siguiente ejecución daba por bueno ("tu dataset ya está 100 % completo"). ``read()`` sin tamaño lanza
+    ``IncompleteRead`` si faltan bytes respecto de Content-Length.
+    """
+    parcial = destino + ".part"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:
+            datos = resp.read()
+        with open(parcial, "wb") as out_file:
+            out_file.write(datos)
+        os.replace(parcial, destino)
+    finally:
+        if os.path.exists(parcial):
+            os.remove(parcial)
+
+
+def descargar_faltantes(data_dir: str = "dataset2020", want_ext: str = ".mat") -> int:
+    """Descarga los archivos ``want_ext`` cuyo par existe pero ellos faltan. Devuelve 0 si todo salió bien, 1 si hubo errores."""
     have_ext = ".hea" if want_ext == ".mat" else ".mat"
     print(f"Buscando archivos {want_ext} faltantes en la estructura local...")
     have_files = glob.glob(os.path.join(data_dir, "**", f"*{have_ext}"), recursive=True)
+    if not have_files:                     # ruta equivocada o carpeta vacía: no hay nada que comparar, no "todo está completo"
+        print(f"No se encontraron archivos {have_ext} en '{data_dir}'. Revisa la ruta.")
+        return 1
 
     faltantes = []
     for have in have_files:
@@ -48,7 +76,7 @@ def descargar_faltantes(data_dir: str = "dataset2020", want_ext: str = ".mat") -
 
     if not faltantes:
         print(f"¡No faltan archivos {want_ext}! Todo está completo.")
-        return
+        return 0
 
     print(f"Se encontraron {len(faltantes)} archivos {want_ext} faltantes. Descargando...\n")
     exitos = errores = 0
@@ -58,30 +86,46 @@ def descargar_faltantes(data_dir: str = "dataset2020", want_ext: str = ".mat") -
         print(f"[{i}/{len(faltantes)}] Guardando en {rel} ... ", end="", flush=True)
         try:
             os.makedirs(os.path.dirname(want_path), exist_ok=True)
-            urllib.request.urlretrieve(url, want_path)
+            _descargar(url, want_path)
             print("OK")
             exitos += 1
         except Exception as exc:  # noqa: BLE001 - se reporta y se sigue
             print(f"ERROR ({exc})")
             errores += 1
     print(f"\nFinalizado. Exitosos: {exitos} | Errores: {errores}")
+    return 1 if errores else 0
 
 
-def obtener_archivos_remotos(url_subcarpeta: str) -> set[str]:
-    """Lee el índice HTML de una carpeta en PhysioNet y extrae los registros."""
+def obtener_archivos_remotos(url_subcarpeta: str) -> set[str] | None:
+    """Registros que lista el índice HTML de una carpeta de PhysioNet; ``None`` si no se pudo leer (o no lista ninguno).
+
+    Antes devolvía ``set()`` ante un fallo: sin red (o con el sitio caído) todas las carpetas parecían "sin nada
+    pendiente" y el script afirmaba que el dataset estaba completo. Lo comparten ``check_missing.py`` y este script.
+    """
     try:
         req = urllib.request.Request(url_subcarpeta, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=TIMEOUT_S) as response:
             html = response.read().decode("utf-8")
-            heas = re.findall(r'href="([^"]+\.hea)"', html)
-            return set(f[:-4] for f in heas)
     except Exception as exc:  # noqa: BLE001 - se reporta y se sigue
         print(f" Error al conectar con {url_subcarpeta}: {exc}")
-        return set()
+        return None
+    registros = set(f[:-4] for f in re.findall(r'href="([^"]+\.hea)"', html))
+    if not registros:
+        print(f" El índice {url_subcarpeta} no lista ningún registro (¿cambió el formato de la página?)")
+        return None
+    return registros
 
 
-def descargar_pares_faltantes(data_dir: str = "dataset2020") -> None:
-    """Descarga pares incompletos comparando contra el índice de PhysioNet."""
+def _avisar_sin_indice(carpetas: list[str]) -> None:
+    print(f"\nNO se pudo comprobar {len(carpetas)} carpeta(s): {', '.join(carpetas)}.\n"
+          "No se puede afirmar que el dataset esté completo; revise la conexión y vuelva a ejecutar.")
+
+
+def descargar_pares_faltantes(data_dir: str = "dataset2020") -> int:
+    """Descarga pares incompletos comparando contra el índice de PhysioNet.
+
+    Devuelve 0 si se pudo comprobar todo y se descargó sin errores; 1 si algún índice no se pudo leer o falló una descarga.
+    """
     base_path = os.path.join(data_dir, "physionet.org", "files", "challenge-2020", "1.0.2", "training")
 
     subcarpetas_rel = [
@@ -97,6 +141,7 @@ def descargar_pares_faltantes(data_dir: str = "dataset2020") -> None:
     ]
 
     descargas_pendientes: list[tuple[str, str]] = []
+    sin_indice: list[str] = []
     print("--- FASE 1: Identificando archivos faltantes ---")
     for i, rel_folder in enumerate(subcarpetas_rel, 1):
         local_folder = os.path.normpath(os.path.join(base_path, rel_folder))
@@ -105,6 +150,10 @@ def descargar_pares_faltantes(data_dir: str = "dataset2020") -> None:
         archivos_locales = set(os.listdir(local_folder)) if os.path.exists(local_folder) else set()
         url_folder = BASE_TRAINING_URL + rel_folder + "/"
         registros_remotos = obtener_archivos_remotos(url_folder)
+        if registros_remotos is None:
+            sin_indice.append(rel_folder)
+            print(" SIN COMPROBAR")
+            continue
         faltantes_carpeta = 0
         for reg in registros_remotos:
             if (reg + ".hea") not in archivos_locales:
@@ -117,8 +166,11 @@ def descargar_pares_faltantes(data_dir: str = "dataset2020") -> None:
 
     print("\n--- FASE 2: Descargando archivos faltantes ---")
     if not descargas_pendientes:
+        if sin_indice:
+            _avisar_sin_indice(sin_indice)
+            return 1
         print("¡No hay nada pendiente! Tu dataset ya está 100% completo.")
-        return
+        return 0
     print(f"Iniciando la descarga de {len(descargas_pendientes)} archivos...\n")
     exitos, errores = 0, 0
     total = len(descargas_pendientes)
@@ -127,28 +179,30 @@ def descargar_pares_faltantes(data_dir: str = "dataset2020") -> None:
         carpeta_padre = os.path.basename(os.path.dirname(destino))
         print(f"[{i}/{total}] Descargando {carpeta_padre}/{nombre} ... ", end="", flush=True)
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req) as resp, open(destino, "wb") as out_file:
-                out_file.write(resp.read())
+            _descargar(url, destino)
             print("OK")
             exitos += 1
         except Exception as exc:  # noqa: BLE001 - se reporta y se sigue
             print(f"ERROR ({exc})")
             errores += 1
     print(f"\nProceso finalizado. Descargados con éxito: {exitos} | Errores: {errores}")
+    if sin_indice:
+        _avisar_sin_indice(sin_indice)
+    return 1 if errores or sin_indice else 0
 
 
-def main(argv: list[str] | None = None) -> None:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Descarga .hea/.mat faltantes del Challenge 2020")
     parser.add_argument("--kind", choices=["heas", "mats", "pairs"], default="mats",
                         help="Qué descargar: heas, mats o pares incompletos")
     parser.add_argument("--data-dir", default="dataset2020", help="Raíz del dataset local")
     args = parser.parse_args(argv)
     if args.kind == "pairs":
-        descargar_pares_faltantes(args.data_dir)
+        resultado = descargar_pares_faltantes(args.data_dir)
     else:
-        descargar_faltantes(args.data_dir, want_ext=".hea" if args.kind == "heas" else ".mat")
+        resultado = descargar_faltantes(args.data_dir, want_ext=".hea" if args.kind == "heas" else ".mat")
+    return 1 if resultado else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -5,8 +5,8 @@
 | Script | Hace | Test |
 |---|---|---|
 | `check_dataset2020.py` | Valida los HDF5 generados por `build_datasets.py` (formas, etiquetas, `EXPECTED_CLASSES = 12`). No recibe argumentos: cualquier flag (incluido `--help`) lo ejecuta | `tests/test_tools_check.py` |
-| `check_missing.py` | Integridad .hea/.mat de `dataset2020/` (`--kind`) | `tests/test_tools_missing.py` |
-| `download_missing.py` | Descarga los .hea/.mat faltantes desde PhysioNet (`--kind`) | — |
+| `check_missing.py` | Integridad .hea/.mat de `dataset2020/` (`--kind`); comparte `obtener_archivos_remotos` con `download_missing.py` | `tests/test_tools_missing.py` |
+| `download_missing.py` | Descarga los .hea/.mat faltantes desde PhysioNet (`--kind`); baja a `.part` y renombra solo si llegó entero, y no afirma "dataset completo" si no pudo leer el índice (código de salida 1) | `tests/test_tools_missing.py` |
 | `audit_signal_scaling.py` | Audita ganancia/normalización de señal de `dataset2020/` (`python tools/audit_signal_scaling.py`) | `tests/test_tools_audit.py` |
 | `check_docs_commands.py` | Comprueba que cada `python …` de los .md apunta a un script que existe y usa flags que ese script define | `tests/test_docs_commands.py` |
 | `export_inference_bundle.py` | Convierte los dos checkpoints en `models/*.pt` (solo pesos) y copia umbrales, calibración (temperaturas o `--platt-a/-b/--platt-ensemble`) y reportes a `deploy/` sin rutas locales; se niega si `--eval-dir` no se calculó con esa calibración y ese `--alpha` | `tests/test_inference_bundle.py` |
