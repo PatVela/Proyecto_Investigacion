@@ -69,6 +69,7 @@ Aplicación Flask tipo dashboard: se sube un ECG, se analiza con el ensemble de 
 * Interfaz accesible: navegación por teclado, enlace para saltar al contenido, contraste AA en ambos temas, secciones direccionables por URL (`#upload`, `#vis`, `#det`, `#exp`) y carga diferida de las gráficas.
 * Predicción multilabel con probabilidades, márgenes y umbrales por clase.
 * Detección automática de los umbrales calibrados por la evaluación; respaldo global 0.5 si no existen.
+* CSV sin unidades declaradas: se infieren (|valor| al percentil 99,9 > 20 → cuentas ADC ÷ 1000; si no, mV) y la ficha técnica muestra cuáles se asumieron.
 * Registros de más de ≈ 20 s: hasta 4 ventanas de 10 s; cada una recorre la calibración completa y la probabilidad final es la **media** de las calibradas (con una ventana es la de esa ventana). Los umbrales se ajustaron con una ventana centrada: el máximo de varias ventanas añadía 85 falsos positivos (+20 %) en 1019 registros largos de test sin ganar F1.
 * Trazado ECG con cuadrícula tipo papel milimetrado.
 * Informe PDF profesional con membrete UNSA: veredicto, gráfico de barras y trazado.
@@ -128,10 +129,10 @@ python webapp/app.py --saved saved --thresholds runs/eval/eval-resnet-v2/thresho
 
 Si los umbrales calibrados están en una ruta no estándar, páselos explícitamente.
 
-Para demos puede dejar activo el fallback normal: si ninguna clase supera su umbral y `P(NSR) >= 0.40`, la salida final añade `NSR` como postprocesamiento explícito (no cambia probabilidades ni pesos). Para desactivarlo:
+El fallback normal está **apagado por defecto**: las métricas que muestra la web (`evaluation_summary.json`, `normal_fallback_min_prob: null`) se calcularon sin él. Si quiere que, cuando ninguna clase supera su umbral y `P(NSR) >= 0.40`, la salida final añada `NSR` como postprocesamiento explícito (no cambia probabilidades ni pesos; en test afecta a 13 de 6421 registros, 7 NSR reales y 6 no, sin cambiar el F1), actívelo:
 
 ```powershell
-python webapp/app.py --saved saved --normal-fallback-min-prob 0
+python webapp/app.py --saved saved --normal-fallback-min-prob 0.40
 ```
 
 Opcionalmente, entrada WSGI:
@@ -175,7 +176,7 @@ La app valida que el stem coincida, lee el header, preprocesa la señal, compara
 | Método | Ruta | Descripción |
 |---|---|---|
 | `GET` | `/` | Dashboard (carga, resultado, detalle técnico, experimentos) |
-| `POST` | `/predict` | Analiza archivos (o `example=<id>`) + umbral; devuelve JSON con probabilidades, trazado y PDF. 400 si el archivo no es válido, 413 si pesa demasiado, 429 si se excede la tasa |
+| `POST` | `/predict` | Analiza archivos (o `example=<id>`) + umbral; devuelve JSON con probabilidades, trazado y PDF. 400 si el archivo no es válido (también si la señal dura menos de 2 s o está plana en más de 6 derivaciones: no se analiza lo que no es un ECG), 413 si pesa demasiado, 429 si se excede la tasa |
 | `GET` | `/examples` | Lista de registros de ejemplo incluidos (id, origen, clases verdaderas y predichas de referencia) |
 | `GET` | `/results/<archivo>` | Descarga artefactos generados (PDF, PNG, CSV convertido) |
 | `GET` | `/models` | Checkpoints disponibles en la carpeta configurada (el cliente no puede elegir otra) |
@@ -275,6 +276,8 @@ python tools/build_examples.py --predictions runs/eval/ensemble-f1-platt/predict
 # (selección desde cero: --dataset dataset2020 en lugar de --refresh-references)
 ```
 
+El exportador se niega (`ValueError`, sin escribir nada) si `--eval-dir` no corresponde a la calibración y al `--alpha` indicados: sus umbrales se eligieron sobre probabilidades ya calibradas (MI 0,56 con temperatura frente a 0,33 con calibración afín).
+
 ### Variables de entorno
 
 | Variable | Defecto | Efecto |
@@ -285,7 +288,7 @@ python tools/build_examples.py --predictions runs/eval/ensemble-f1-platt/predict
 | `ECG_SAVED` | `saved/` (el bundle usa `models/`) | Carpeta de checkpoints; `/use_model` solo acepta archivos de aquí |
 | `ECG_UPLOADS`, `ECG_RESULTS` | `webapp/uploads`, `webapp/results` | Carpetas temporales de subidas e informes |
 | `ECG_EXAMPLES_DIR` | `webapp/examples` | Registros de ejemplo y su `examples.json` |
-| `ECG_NORMAL_FALLBACK_MIN_PROB` | 0.40 | Si ninguna clase supera su umbral, añade NSR cuando P(NSR) ≥ este valor (`0` desactiva) |
+| `ECG_NORMAL_FALLBACK_MIN_PROB` | 0 | Si ninguna clase supera su umbral, añade NSR cuando P(NSR) ≥ este valor (`0` = apagado; el NSR de la web ya tiene su propio umbral, 0.47 en el bundle) |
 | `ECG_REFERENCE` | — | Referencia opcional que se muestra en la interfaz |
 | `ECG_MAX_UPLOAD_MB` | 5 | Tamaño máximo por solicitud (413 en JSON). `deploy\start_local.ps1` limita además el cuerpo en waitress a este valor + 1 MB (413 antes de llegar a Flask) |
 | `ECG_ENABLE_USE_MODEL` | — | `1` activa `POST /use_model`; apagado por defecto |

@@ -88,6 +88,14 @@ def brier_score(y_true: np.ndarray, y_prob: np.ndarray) -> float:
     return float(np.mean((np.asarray(y_prob, dtype=np.float64) - np.asarray(y_true, dtype=np.float64)) ** 2))
 
 
+def ensemble_probabilities(prob_a, prob_b, alpha: float = 0.5) -> np.ndarray:
+    """Promedio ponderado: alpha * A + (1 - alpha) * B (lo usan ``ensemble_evaluate.py`` y la webapp)."""
+    a = float(alpha)
+    if not 0.0 <= a <= 1.0:
+        raise ValueError(f"alpha debe estar en [0, 1], recibido {alpha}")
+    return a * np.asarray(prob_a, dtype=np.float64) + (1.0 - a) * np.asarray(prob_b, dtype=np.float64)
+
+
 def load_temperatures_csv(path: str | Path, class_names: list[str]) -> np.ndarray:
     """Lee CSV ``class,temperature`` y devuelve vector (C,) ordenado por ``class_names``."""
     df = pd.read_csv(path)

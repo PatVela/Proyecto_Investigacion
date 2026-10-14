@@ -114,3 +114,26 @@ def test_ten_second_record_is_unchanged_by_the_policy(tmp_path):
     run = pred.run_prediction_from_saved_paths([csv], ckpt, None, tmp_path / "r", platt=_platt(0.8, -0.4))
     assert run["num_windows"] == 1 and run["window_aggregation"] == "single"
     np.testing.assert_allclose(_ordered(run, "probability"), np.asarray(run["per_window_probabilities"])[0], atol=1e-7)
+
+
+# --- el CLI de ecg.predict usa la misma regla que la webapp (antes: máximo) -----------------------------------------------
+
+def test_predict_cli_and_functions_default_to_the_mean_of_the_windows(monkeypatch, tmp_path):
+    import inspect
+
+    from ecg import predict
+
+    assert inspect.signature(predict.predict_windows).parameters["aggregate"].default == "mean"
+    assert inspect.signature(predict.predict_csv).parameters["aggregate"].default == "mean"
+    seen = {}
+
+    def fake_predict_csv(checkpoint, csv, **kwargs):
+        seen.update(kwargs)
+        return {"rows": [{"index": 0, "class": "NSR", "probability": 0.5, "prediction": 1}], "label_schema": "x",
+                "norm_mode": "physical", "num_windows": 3, "aggregate": kwargs["aggregate"]}
+
+    monkeypatch.setattr(predict, "predict_csv", fake_predict_csv)
+    predict.main(["ckpt.pt", str(tmp_path / "ecg.csv")])
+    assert seen["aggregate"] == "mean"
+    predict.main(["ckpt.pt", str(tmp_path / "ecg.csv"), "--aggregate", "max"])           # sigue disponible si se pide
+    assert seen["aggregate"] == "max"

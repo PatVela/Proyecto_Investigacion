@@ -105,13 +105,14 @@ def predict_windows(
     model,
     windows: np.ndarray,
     device: torch.device | None = None,
-    aggregate: str = "max",
+    aggregate: str = "mean",
     batch_size: int = 8,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Predice K ventanas ``(K, 5000, 12)`` y agrega a un vector de 12 probs.
 
-    ``aggregate``: ``"max"`` (recomendado para no perder eventos focales),
-    ``"mean"`` o ``"median"``. Devuelve ``(probs_agregadas, probs_por_ventana)``.
+    ``aggregate``: ``"mean"`` (defecto), ``"median"`` o ``"max"``. Los umbrales y la calibración se ajustaron con UNA
+    ventana: el máximo de varias ventanas correlacionadas queda sesgado hacia arriba (en 1019 registros largos de test
+    añadía 85 falsos positivos, +20 %, sin ganar F1). Devuelve ``(probs_agregadas, probs_por_ventana)``.
     """
     device = device or next(model.parameters()).device
     x = np.asarray(windows, dtype=np.float32)
@@ -151,6 +152,8 @@ def prepare_csv_windows(
     raw, sampling_rate, lead_names, csv_meta = load.read_csv_ecg(csv_path)
     marker = (csv_meta.get("preprocessed_mode") or "").lower()
     if marker and marker == str(norm_mode).lower() and raw.shape == (load.WINDOW_LENGTH, load.NUM_LEADS):
+        raw = np.nan_to_num(raw, nan=0.0, posinf=0.0, neginf=0.0)       # igual que preprocess_ecg_array: un NaN no llega al modelo
+        load.require_usable_signal(raw)
         return raw[None, ...], {
             "sampling_rate": sampling_rate, "lead_names": lead_names,
             "marker": marker, "reused": True, "units": None, "starts": [0],
@@ -172,7 +175,7 @@ def predict_csv(
     threshold: float = 0.5,
     device: str = "auto",
     windows_max: int = 1,
-    aggregate: str = "max",
+    aggregate: str = "mean",
 ) -> dict:
     """Lee un CSV ECG, preprocesa y predice 12 probabilidades.
 
@@ -319,8 +322,8 @@ def main(argv: list[str] | None = None) -> None:
                         help="Desactiva la precarga del HDF5 a RAM (lectura por disco, lento)")
     parser.add_argument("--windows-max", type=int, default=4,
                         help="Ventanas de 10 s para CSV largos (1 = recorte centrado)")
-    parser.add_argument("--aggregate", choices=["max", "mean", "median"], default="max",
-                        help="Agregación multi-ventana")
+    parser.add_argument("--aggregate", choices=["mean", "median", "max"], default="mean",
+                        help="Agregación multi-ventana de probabilidades SIN calibrar (la webapp promedia las ya calibradas)")
     parser.add_argument("--output", default=None, help="CSV/JSON de salida")
     args = parser.parse_args(argv)
 

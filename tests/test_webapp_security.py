@@ -87,7 +87,8 @@ def test_models_route_ignores_client_supplied_directory(sandbox):
     resp = client.get("/models", query_string={"saved": str(attacker_dir)})
     assert resp.status_code == 200
     data = resp.get_json()
-    assert Path(data["saved_dir"]) == dirs["saved"].resolve()
+    assert data["saved_dir"] == "saved"                           # la del servidor (en su forma pública), no la del cliente
+    assert str(attacker_dir) not in str(data) and "attacker" not in str(data)
     assert data["models"] == []
     assert not marker.exists()
 

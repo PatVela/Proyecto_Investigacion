@@ -190,3 +190,20 @@ def test_normal_fallback_applies_when_nsr_probability_equals_minimum():
     assert pred.apply_normal_fallback(rows, min_nsr_probability=0.40)["applied"] is True
     out, n = evaluate.apply_normal_fallback(np.zeros((1, 2), dtype=np.uint8), np.array([[0.40, 0.0]]), ["NSR", "AF"], 0.40)
     assert n == 1 and out.tolist() == [[1, 0]]
+
+
+def test_normal_fallback_is_off_by_default_and_only_on_when_asked(monkeypatch, tmp_path):
+    """Las métricas publicadas se calcularon sin el respaldo de NSR: la web no debe aplicarlo si nadie lo pide."""
+    import inspect
+
+    pytest.importorskip("flask")
+    from webapp.app import create_app
+
+    for name in ("run_prediction_from_saved_paths", "run_prediction_from_uploads"):
+        assert inspect.signature(getattr(pred, name)).parameters["normal_fallback_min_prob"].default is None
+    monkeypatch.setenv("ECG_UPLOADS", str(tmp_path / "up"))
+    monkeypatch.setenv("ECG_RESULTS", str(tmp_path / "res"))
+    monkeypatch.delenv("ECG_NORMAL_FALLBACK_MIN_PROB", raising=False)
+    assert create_app().config["ECG_NORMAL_FALLBACK_MIN_PROB"] == 0
+    monkeypatch.setenv("ECG_NORMAL_FALLBACK_MIN_PROB", "0.4")
+    assert create_app().config["ECG_NORMAL_FALLBACK_MIN_PROB"] == pytest.approx(0.4)

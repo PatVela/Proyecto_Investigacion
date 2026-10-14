@@ -18,7 +18,6 @@ import argparse
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -28,6 +27,7 @@ from ecg import load, predict, util
 from ecg.calibration import (
     apply_platt_logits,
     apply_temperature,
+    ensemble_probabilities,
     fit_platt_per_class,
     load_platt_csv,
     load_temperatures_csv,
@@ -35,14 +35,6 @@ from ecg.calibration import (
     to_logits,
 )
 from examples.cinc2020 import evaluate as eval_single
-
-
-def ensemble_probabilities(prob_a, prob_b, alpha: float = 0.5) -> np.ndarray:
-    """Promedio ponderado: alpha * A + (1 - alpha) * B."""
-    a = float(alpha)
-    if not 0.0 <= a <= 1.0:
-        raise ValueError(f"alpha debe estar en [0, 1], recibido {alpha}")
-    return a * np.asarray(prob_a, dtype=np.float64) + (1.0 - a) * np.asarray(prob_b, dtype=np.float64)
 
 
 def _predict_pair(checkpoint_a, checkpoint_b, h5_path, batch_size, num_workers, device, no_amp, preload):

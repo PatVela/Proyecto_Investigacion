@@ -173,3 +173,10 @@ def test_clearing_the_history_asks_for_confirmation():
     assert 'if (!window.confirm(tr("history.confirmClear"))) return;' in JS
     clear_handler = JS[JS.index('const btn = $("btnClearHistory")'):]
     assert clear_handler.index("window.confirm") < clear_handler.index("localStorage.removeItem")
+
+
+def test_converted_csv_button_warns_when_it_holds_one_of_several_windows():
+    """El CSV convertido guarda la ventana central (la del trazado): reanalizarlo no equivale a subir el .hea + .mat."""
+    js = (REPO_ROOT / "webapp" / "static" / "app.js").read_text(encoding="utf-8")
+    assert len(re.findall(r'"btn\.csv\.windows":', js)) == 2                      # ES y EN
+    assert 'btnCsv.title = result.num_windows > 1' in js
