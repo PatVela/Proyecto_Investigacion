@@ -348,10 +348,14 @@ def prepare_saved_input(
 # ---------------------------------------------------------------------------
 # Etiquetas reales / comparación multilabel
 # ---------------------------------------------------------------------------
-def parse_reference_label_text(value: str | Iterable[str] | None) -> list[str]:
-    """Convierte texto manual con clases o SNOMED a nombres del esquema 12-clases."""
+def split_reference_label_text(value: str | Iterable[str] | None) -> tuple[list[str], list[str]]:
+    """``(clases, no_reconocidos)`` de un texto manual con clases o SNOMED (nombres del esquema de 12 clases).
+
+    Lo que no se reconoce se devuelve en vez de descartarse: con ``AFF`` por ``AF`` la comparación seguía como si el
+    registro no tuviera etiqueta, el AF acertado salía como falso positivo y el F1 como 0.0, sin ningún aviso.
+    """
     if value is None:
-        return []
+        return [], []
     if isinstance(value, str):
         parts = re.split(r"[,;\n]+", value)
     else:
@@ -361,6 +365,7 @@ def parse_reference_label_text(value: str | Iterable[str] | None) -> list[str]:
     upper_to_name.update({"LAD": "AxisDev", "RBBB": "BBB"})  # alias legacy v1
     display_to_name = {group["display_name"].upper(): group["name"] for group in load.CLASS_GROUPS_12}
     found: list[str] = []
+    unrecognized: list[str] = []
     seen = set()
     for part in parts:
         raw = str(part).strip()
@@ -373,10 +378,13 @@ def parse_reference_label_text(value: str | Iterable[str] | None) -> list[str]:
         else:
             key = raw.upper().replace(" ", "_")
             name = upper_to_name.get(key) or display_to_name.get(raw.upper())
-        if name and name not in seen:
+        if not name:
+            if raw not in unrecognized:
+                unrecognized.append(raw)
+        elif name not in seen:
             found.append(name)
             seen.add(name)
-    return found
+    return found, unrecognized
 
 
 def _class_order(names: Iterable[str]) -> list[str]:
@@ -763,6 +771,12 @@ def run_prediction_from_saved_paths(
     las ventanas (:func:`aggregate_window_probabilities`): así los umbrales, ajustados con una ventana, se aplican a una
     probabilidad con el mismo significado que en la evaluación.
     """
+    manual_true, unrecognized = split_reference_label_text(reference_labels)
+    if unrecognized:                                  # antes de cargar el modelo: es una entrada inválida (400), no un fallo
+        raise ValueError(
+            f"Etiquetas reales no reconocidas: {', '.join(unrecognized)}. Use clases ({', '.join(load.CLASS_NAMES)}) "
+            "o códigos SNOMED de esas clases, separados por comas."
+        )
     result_dir = Path(result_dir)
     result_dir.mkdir(parents=True, exist_ok=True)
 
@@ -828,9 +842,8 @@ def run_prediction_from_saved_paths(
     using_class_thresholds = thresholds is not None
 
     manual_raw = clean_path_text(reference_labels) if isinstance(reference_labels, (str, os.PathLike)) else ""
-    manual_true = parse_reference_label_text(reference_labels)
     ckpt_matched = translate_classes_to_checkpoint(prepared.get("matched_classes", []), class_names)
-    if manual_raw:
+    if manual_raw and manual_true:                    # solo separadores (",,") no cuenta como etiqueta manual
         label_comparison = build_label_comparison(
             translate_classes_to_checkpoint(manual_true, class_names), sorted_rows, "manual", manual_raw=manual_raw)
     elif prepared.get("true_label_source") == "wfdb_header_dx":
