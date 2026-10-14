@@ -90,7 +90,7 @@ def _apply_env(model=None, saved=None, uploads=None, results=None, reference=Non
 
     if normal_fallback_min_prob is not None:
         os.environ["ECG_NORMAL_FALLBACK_MIN_PROB"] = str(normal_fallback_min_prob)
-    os.environ.setdefault("ECG_NORMAL_FALLBACK_MIN_PROB", "0.40")
+    os.environ.setdefault("ECG_NORMAL_FALLBACK_MIN_PROB", "0")
 
 
 def create_wsgi_app(**kwargs):

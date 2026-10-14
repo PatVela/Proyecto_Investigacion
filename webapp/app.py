@@ -75,6 +75,40 @@ def _jsonable(value: Any):
     return value
 
 
+def _public_path(value):
+    """Lo que ve el visitante de una ruta del servidor: relativa al repositorio o, si queda fuera, solo el nombre.
+
+    ``/health``, ``/models``, la portada y la respuesta de ``/predict`` devolvían rutas absolutas: con ``-Tunnel`` cualquiera
+    con la URL veía cómo está organizado el disco. Un texto sin separadores (p. ej. ``fallback_global_0.5``) no se toca.
+    """
+    text = str(value) if value else ""
+    if "/" not in text and "\\" not in text:
+        return value
+    path = Path(text)
+    try:
+        return path.resolve().relative_to(REPO_ROOT).as_posix()
+    except (ValueError, OSError):
+        return path.name
+
+
+PUBLIC_PATH_FIELDS = ("model_path", "model_path_b", "plot_path", "converted_csv_path", "pdf_path", "threshold_source",
+                      "temperature_source", "temperature_source_b", "platt_source", "platt_source_b", "platt_source_ensemble")
+
+
+def _public_result(result: dict) -> dict:
+    """Copia de la respuesta de ``/predict`` con las rutas del servidor en su forma pública."""
+    public = dict(result)
+    for key in PUBLIC_PATH_FIELDS:
+        if public.get(key):
+            public[key] = _public_path(public[key])
+    public["source_files"] = [_public_path(p) for p in public.get("source_files") or []]
+    details = dict(public.get("technical_details") or {})
+    if details.get("threshold_source"):
+        details["threshold_source"] = _public_path(details["threshold_source"])
+    public["technical_details"] = details
+    return public
+
+
 def _short_model_id(model_path: str | Path | None) -> str:
     if not model_path:
         return ""
@@ -107,13 +141,9 @@ def _list_checkpoints(saved_dir: str | Path) -> list[Path]:
     checkpoints = util.find_checkpoints(saved)
 
     def score(path: Path):
-        try:
-            ckpt = util.load_checkpoint(path, map_location="cpu")
-            val = ckpt.get("val_loss")
-            if val is not None:
-                return (0, float(val), str(path))
-        except Exception:
-            pass
+        val = util.checkpoint_val_loss(path)
+        if val is not None:
+            return (0, val, str(path))
         return (1, path.stat().st_mtime if path.exists() else 0, str(path))
 
     return sorted(checkpoints, key=score)
@@ -528,7 +558,7 @@ def create_app() -> Flask:
     app.config["ECG_EXAMPLES_DIR"] = str(Path(clean_path_text(os.environ.get("ECG_EXAMPLES_DIR", "")) or DEFAULT_EXAMPLES))
     examples_manifest = example_store.load_manifest(app.config["ECG_EXAMPLES_DIR"])
     app.config["ECG_THRESHOLDS"] = clean_path_text(os.environ.get("ECG_THRESHOLDS", ""))
-    app.config["ECG_NORMAL_FALLBACK_MIN_PROB"] = float(os.environ.get("ECG_NORMAL_FALLBACK_MIN_PROB", "0.40"))
+    app.config["ECG_NORMAL_FALLBACK_MIN_PROB"] = float(os.environ.get("ECG_NORMAL_FALLBACK_MIN_PROB", "0"))      # 0 = apagado: las métricas publicadas se calcularon sin esta regla
 
     def _purge_old_jobs() -> None:
         for key in ("ECG_RESULTS_DIR", "ECG_UPLOADS_DIR"):
@@ -592,7 +622,7 @@ def create_app() -> Flask:
         model_info = _checkpoint_info(model_path, saved_dir)
         if app.config["ECG_MODEL_B"] and model_info:
             model_info["model_type"] = f"Ensemble ResNet-34 ×2 (α={float(app.config['ECG_ALPHA']):.2f})"
-            model_info["model_b"] = app.config["ECG_MODEL_B"]
+            model_info["model_b"] = _public_path(app.config["ECG_MODEL_B"])
             model_info["model_b_short"] = _short_display_path(app.config["ECG_MODEL_B"])
         threshold_values, _ = _load_thresholds_for_app(model_path, saved_dir)
         thresholds_info = {
@@ -606,8 +636,8 @@ def create_app() -> Flask:
             checkpoints=[str(p) for p in checkpoints],
             checkpoint_options=[str(p.relative_to(REPO_ROOT)) if str(p).startswith(str(REPO_ROOT)) else str(p) for p in checkpoints],
             model_path=model_path or "",
-            resolved_model=resolved_model,
-            resolved_model_short=_short_display_path(resolved_model),
+            resolved_model=_public_path(resolved_model),
+            resolved_model_short=_short_display_path(_public_path(resolved_model)),
             saved_dir=saved_dir,
             uploads_dir=app.config["ECG_UPLOADS_DIR"],
             results_dir=app.config["ECG_RESULTS_DIR"],
@@ -635,9 +665,9 @@ def create_app() -> Flask:
         checkpoints = _list_checkpoints(saved_dir)
         return jsonify({
             "ok": True,
-            "saved_dir": saved_dir,
-            "models": [str(p) for p in checkpoints],
-            "current": app.config["ECG_MODEL"] or None,
+            "saved_dir": _public_path(saved_dir),
+            "models": [_public_path(p) for p in checkpoints],
+            "current": _public_path(app.config["ECG_MODEL"]) or None,
         })
 
     @app.post("/use_model")
@@ -747,7 +777,7 @@ def create_app() -> Flask:
                 "result_file",
                 filename=_relative_to_results(app, str(pdf_path)),
             )
-            return jsonify(_jsonable(result))
+            return jsonify(_jsonable(_public_result(result)))
         except ValueError as exc:                           # entrada inválida (formato, rango, extensión, etc.)
             return jsonify({"ok": False, "status": "error", "error": str(exc)}), 400
         except Exception as exc:                            # fallo interno: detalle solo en el registro del servidor
@@ -757,6 +787,10 @@ def create_app() -> Flask:
 
     @app.get("/results/<path:filename>")
     def result_file(filename):
+        # La caducidad prometida (1 h) debe valer también para quien descarga: la limpieza solo corría al arrancar y en cada
+        # POST /predict, y un PDF con el nombre del paciente seguía respondiendo 200 horas después.
+        # shortcut: al apagar el servidor los informes recientes quedan en disco hasta el siguiente arranque.
+        _purge_old_jobs()
         return send_from_directory(app.config["ECG_RESULTS_DIR"], filename, as_attachment=False)
 
     @app.get("/metrics")
@@ -788,27 +822,27 @@ def create_app() -> Flask:
         platt = _load_platt_set_for_app(app)
         return jsonify({
             "status": "ok",
-            "ECG_MODEL": app.config["ECG_MODEL"],
-            "resolved_model": resolved,
-            "ECG_SAVED": app.config["ECG_SAVED_DIR"],
-            "ECG_UPLOADS": app.config["ECG_UPLOADS_DIR"],
-            "ECG_RESULTS": app.config["ECG_RESULTS_DIR"],
+            "ECG_MODEL": _public_path(app.config["ECG_MODEL"]),
+            "resolved_model": _public_path(resolved),
+            "ECG_SAVED": _public_path(app.config["ECG_SAVED_DIR"]),
+            "ECG_UPLOADS": _public_path(app.config["ECG_UPLOADS_DIR"]),
+            "ECG_RESULTS": _public_path(app.config["ECG_RESULTS_DIR"]),
             "thresholds_found": ths is not None,
-            "thresholds_source": ths_source,
+            "thresholds_source": _public_path(ths_source),
             "thresholds": ths,
             "temperatures_found": tmps is not None,
-            "temperature_source": tmps_source,
+            "temperature_source": _public_path(tmps_source),
             "ensemble": bool(app.config["ECG_MODEL_B"]),
-            "ECG_MODEL_B": app.config["ECG_MODEL_B"],
+            "ECG_MODEL_B": _public_path(app.config["ECG_MODEL_B"]),
             "ensemble_alpha": app.config["ECG_ALPHA"],
             "temperatures_b_found": tmps_b is not None,
-            "temperature_b_source": tmps_b_source,
+            "temperature_b_source": _public_path(tmps_b_source),
             "platt_found": platt["platt"] is not None,
-            "platt_source": platt["platt_source"],
+            "platt_source": _public_path(platt["platt_source"]),
             "platt_b_found": platt["platt_b"] is not None,
-            "platt_b_source": platt["platt_source_b"],
+            "platt_b_source": _public_path(platt["platt_source_b"]),
             "platt_ensemble_found": platt["platt_ensemble"] is not None,
-            "platt_ensemble_source": platt["platt_source_ensemble"],
+            "platt_ensemble_source": _public_path(platt["platt_source_ensemble"]),
             "normal_fallback_min_probability": app.config["ECG_NORMAL_FALLBACK_MIN_PROB"],
             "num_classes": load.NUM_CLASSES,
             "accepted_uploads": [".csv", ".hea + .mat"],

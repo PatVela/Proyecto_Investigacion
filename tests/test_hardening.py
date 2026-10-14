@@ -77,7 +77,33 @@ def test_load_mat_signal_reads_a_normal_record_and_has_a_cap_above_real_records(
 def test_load_mat_signal_rejects_a_mat_without_the_val_variable(tmp_path):
     path = tmp_path / "other.mat"
     scipy.io.savemat(path, {"x": np.zeros((12, 10))})
-    with pytest.raises(KeyError, match="val"):
+    with pytest.raises(ValueError, match="'val'"):                 # ValueError: la webapp lo contesta con 400, un KeyError daba 500
+        signal.load_mat_signal(path)
+
+
+def _valid_mat_bytes(tmp_path):
+    path = tmp_path / "ok.mat"
+    scipy.io.savemat(path, {"val": (np.random.default_rng(0).normal(size=(12, 5000)) * 1000).astype(np.int16)})
+    return path.read_bytes()
+
+
+@pytest.mark.parametrize("kind", ["vacio", "bytes_al_azar", "truncado", "matlab_v73"])
+def test_unreadable_mat_files_raise_one_clear_value_error(tmp_path, kind):
+    """Antes: vacío -> MatReadError (500), truncado -> OSError (500), v7.3 y bytes al azar -> mensaje críptico de scipy."""
+    import h5py
+
+    path = tmp_path / "x.mat"
+    if kind == "vacio":
+        path.write_bytes(b"")
+    elif kind == "bytes_al_azar":
+        path.write_bytes(np.random.default_rng(1).bytes(4000))
+    elif kind == "truncado":
+        data = _valid_mat_bytes(tmp_path)
+        path.write_bytes(data[: len(data) // 2])
+    else:
+        with h5py.File(path, "w") as f:
+            f["val"] = np.zeros((12, 100), dtype=np.int16)
+    with pytest.raises(ValueError, match="dañado o incompleto, o es MATLAB v7.3"):
         signal.load_mat_signal(path)
 
 

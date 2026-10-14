@@ -109,7 +109,8 @@ def test_app_starts_from_a_clean_copy_using_only_the_bundle(tmp_path):
     health = data["health"]
     assert health["ensemble"] is True and health["ensemble_alpha"] == 0.5
     assert health["thresholds_found"] and health["platt_found"] and health["platt_b_found"] and health["platt_ensemble_found"]
-    assert str(clone) in health["resolved_model"]                       # usa el bundle, no otra carpeta
+    assert health["resolved_model"] == "models/resnet34_v1.pt"          # usa el bundle (ruta relativa al repo), no otra carpeta
+    assert str(clone) not in json.dumps(health)                         # y /health no revela dónde está en disco
     assert data["metrics"] is True and data["exp"] is True and data["models"] == 2
     assert not (clone / "saved").exists() or not any((clone / "saved").iterdir())
 

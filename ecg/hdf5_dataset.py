@@ -40,6 +40,7 @@ class HDF5ECGDataset(Dataset):
         self.h5_path = str(util.resolve_path(h5_path))
         self.augment_cfg = dict(augment_cfg) if augment_cfg else None
         self._aug_rng = np.random.default_rng(self.augment_cfg.get("aug_seed")) if self.augment_cfg else None
+        self._aug_worker = None
         if not os.path.exists(self.h5_path):
             raise FileNotFoundError(f"No se encontró HDF5: {self.h5_path}")
 
@@ -106,8 +107,18 @@ class HDF5ECGDataset(Dataset):
                 y = np.zeros(NUM_CLASSES, dtype=np.float32)
         if self.augment_cfg is not None:
             from ecg import augment
+            self._reseed_for_worker()
             x = augment.augment_signal(x, rng=self._aug_rng, cfg=self.augment_cfg)
         return torch.from_numpy(x), torch.from_numpy(y)
+
+    def _reseed_for_worker(self) -> None:
+        """Cada worker del DataLoader recibe una COPIA del dataset con el mismo generador: sin esto todos aplicaban
+        exactamente la misma aumentación (con señales iguales, ítems de workers distintos salían idénticos)."""
+        info = torch.utils.data.get_worker_info()
+        if info is not None and self._aug_worker != info.id:
+            seed = self.augment_cfg.get("aug_seed")
+            self._aug_rng = np.random.default_rng([int(seed), info.id] if seed is not None else info.seed)
+            self._aug_worker = info.id
 
     def __del__(self):
         try:
