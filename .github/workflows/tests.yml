@@ -1,0 +1,32 @@
+name: tests
+
+# La suite (≈ 450 pruebas, ≈ 6 min) solo corría si alguien se acordaba: las PR #16-#18 llegaron a main con 0 comprobaciones.
+# Corre en Linux con la rueda CPU de PyTorch; las pruebas de los scripts de Windows (deploy/*.ps1) y las que necesitan
+# datos locales (dataset2020/, runs/) se omiten solas. La versión de torch es la de requirements.txt (2.14.0).
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Instalar dependencias (torch CPU)
+        run: pip install -r requirements-dev.txt --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: Comandos de los .md
+        run: python tools/check_docs_commands.py
+      - name: Pruebas
+        run: python -m pytest -q -W ignore
