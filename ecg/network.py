@@ -259,9 +259,3 @@ def params_from_config(config: dict) -> dict:
         "conv_dropout": float(config.get("conv_dropout", config.get("drop_rate", 0.2))),
         "is_regular_conv": bool(config.get("is_regular_conv", False)),
     }
-
-
-def ECG_model(config) -> ECGClassifier:
-    """Compatibilidad con scripts previos que pasan un objeto de configuración."""
-    params = vars(config).copy() if hasattr(config, "__dict__") else dict(config)
-    return build_network(**params)
