@@ -49,21 +49,6 @@ import wfdb
 PROJECT_ROOT = Path(__file__).resolve().parents[1]      # raíz del repositorio (este script vive en tools/)
 DATASET_DIR = PROJECT_ROOT / "dataset2020"
 
-STANDARD_LEADS = [
-    "I",
-    "II",
-    "III",
-    "aVR",
-    "aVL",
-    "aVF",
-    "V1",
-    "V2",
-    "V3",
-    "V4",
-    "V5",
-    "V6",
-]
-
 DEFAULT_SAMPLE_PER_DB = 20
 
 
