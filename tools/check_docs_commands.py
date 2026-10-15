@@ -27,7 +27,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 FENCE = re.compile(r"^```[^\n]*\n(.*?)^```", re.S | re.M)
 INLINE = re.compile(r"`([^`\n]+)`")
-GENERATED_ROOTS = ("runs/", "saved/", "data/", "dataset2020/", "dataset2017/", "webapp/uploads/", "webapp/results/")
+GENERATED_ROOTS = ("runs/", "saved/", "data/", "dataset2020/", "webapp/uploads/", "webapp/results/")
 CHECKED_ROOTS = ("ecg/", "examples/", "tools/", "webapp/", "tests/", "deploy/", "docs/", "tasks/", "models/")
 CHECKED_SUFFIXES = (".py", ".json", ".ps1", ".sh", ".env", ".md", ".txt")
 PLACEHOLDER = re.compile(r"[<>*$…{}]|\.\.\.")
