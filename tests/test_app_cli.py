@@ -52,6 +52,9 @@ def test_alpha_and_fallback_are_validated_and_forwarded(cli):
     assert os.environ["ECG_ALPHA"] == "0.3" and os.environ["ECG_NORMAL_FALLBACK_MIN_PROB"] == "0.4"
     with pytest.raises(SystemExit):
         app_module.main(["--alpha", "1.5"])                               # fuera de [0, 1]: lo rechaza el analizador
+    for value in ("2", "-0.1", "nan"):                                    # igual el fallback: error de uso de una línea, no un traceback
+        with pytest.raises(SystemExit):
+            app_module.main(["--normal-fallback-min-prob", value])
 
 
 def test_every_cli_path_option_is_documented_as_an_environment_variable():
@@ -88,4 +91,23 @@ def test_a_wrong_environment_does_not_break_the_command_line_entry_point():
 def test_an_alpha_outside_0_1_in_the_environment_stops_the_start(monkeypatch, alpha):
     monkeypatch.setenv("ECG_ALPHA", alpha)
     with pytest.raises(RuntimeError, match="ECG_ALPHA"):
+        app_module.create_app()
+
+
+def test_an_alpha_with_a_decimal_comma_stops_the_start_and_names_the_variable(monkeypatch):
+    monkeypatch.setenv("ECG_ALPHA", "0,5")
+    with pytest.raises(ValueError, match="ECG_ALPHA"):
+        app_module.create_app()
+
+
+@pytest.mark.parametrize("value", ["1.5", "-0.2", "nan"])
+def test_a_fallback_probability_outside_0_1_in_the_environment_stops_the_start(monkeypatch, value):
+    monkeypatch.setenv("ECG_NORMAL_FALLBACK_MIN_PROB", value)
+    with pytest.raises(RuntimeError, match="ECG_NORMAL_FALLBACK_MIN_PROB"):
+        app_module.create_app()
+
+
+def test_a_fallback_probability_that_is_not_a_number_stops_the_start_and_names_the_variable(monkeypatch):
+    monkeypatch.setenv("ECG_NORMAL_FALLBACK_MIN_PROB", "0,4")
+    with pytest.raises(ValueError, match="ECG_NORMAL_FALLBACK_MIN_PROB"):
         app_module.create_app()

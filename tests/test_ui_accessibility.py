@@ -214,6 +214,11 @@ def test_css_gives_touch_targets_44px_and_hover_states():
     assert ".seg-group .seg:hover" in CSS and ".icon-btn:hover" in CSS
 
 
+def test_history_links_are_at_least_24px_tall():
+    """WCAG 2.2 AA (2.5.8): los enlaces PDF y CSV del historial medían 24 × 21 px y están juntos."""
+    assert re.search(r"\.history-item \.h-links a\s*\{[^}]*min-height:\s*24px", CSS)
+
+
 def test_long_file_names_can_wrap():
     assert re.search(r"\.file-list\s*\{[^}]*min-width:\s*0", CSS)
     assert re.search(r"\.fname\s*\{[^}]*overflow-wrap:\s*anywhere", CSS)

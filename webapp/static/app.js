@@ -128,6 +128,7 @@ const I18N = {
     "footer.disclaimer": "Herramienta de investigación — no reemplaza la lectura de un cardiólogo. Trabajo académico · UNSA.",
     "status.select": "Selecciona un CSV o el par .hea + .mat.",
     "status.ready": "listo para analizar",
+    "status.files": "archivo(s)",
     "status.loading": "Analizando la señal y ejecutando inferencia…",
     "status.done": "Análisis completado.",
     "status.error": "No se pudo analizar: ",
@@ -340,6 +341,7 @@ const I18N = {
     "footer.disclaimer": "Research tool — it does not replace a cardiologist's reading. Academic work · UNSA.",
     "status.select": "Select a CSV or the .hea + .mat pair.",
     "status.ready": "ready to analyze",
+    "status.files": "file(s)",
     "status.loading": "Analyzing the signal and running inference…",
     "status.done": "Analysis completed.",
     "status.error": "Could not analyze: ",
@@ -709,7 +711,7 @@ function refreshFileCard() {
   const validationHtml = validation ? `<div class="hint error-text">${escapeHtml(validation)}</div>` : "";
   fileCard.innerHTML = `
     <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-file"/></svg>
-    <div class="file-list">${names}<div class="hint muted">${currentFiles.length} archivo(s) · ${size} · ${tr("status.ready")}</div>${validationHtml}</div>`;
+    <div class="file-list">${names}<div class="hint muted">${currentFiles.length} ${tr("status.files")} · ${size}${validation ? "" : " · " + tr("status.ready")}</div>${validationHtml}</div>`;
 }
 
 function handleFiles(files) {

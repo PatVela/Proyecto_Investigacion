@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import html
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
 
+
+logger = logging.getLogger(__name__)
 
 TITLE = "Informe de análisis automatizado de ECG de 12 derivaciones"
 SUBTITLE = "Clasificación multilabel con red neuronal convolucional profunda (PhysioNet/CinC Challenge 2020)"
@@ -41,6 +44,7 @@ def build_pdf_report(prediction: dict, output_path: str | Path) -> str:
     try:
         return _build_reportlab_pdf(prediction, output_path)
     except Exception:
+        logger.exception("El informe completo falló; se escribe el PDF mínimo")      # sin esto nadie sabría por qué salió el reducido
         return _build_minimal_pdf(prediction, output_path)
 
 

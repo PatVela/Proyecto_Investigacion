@@ -232,6 +232,26 @@ def test_int_env_rejects_text_that_is_not_an_integer(monkeypatch, text):
         int_env("ECG_TEST_INT", 7)
 
 
+def test_float_env_reads_decimals_and_uses_the_default_when_absent_or_empty(monkeypatch):
+    from webapp.limits import float_env
+
+    monkeypatch.delenv("ECG_TEST_FLOAT", raising=False)
+    assert float_env("ECG_TEST_FLOAT", 0.5) == 0.5
+    monkeypatch.setenv("ECG_TEST_FLOAT", "  ")
+    assert float_env("ECG_TEST_FLOAT", 0.5) == 0.5
+    monkeypatch.setenv("ECG_TEST_FLOAT", " 0.3 ")
+    assert float_env("ECG_TEST_FLOAT", 0.5) == 0.3
+
+
+@pytest.mark.parametrize("text", ["0,5", "medio", "50%"])
+def test_float_env_rejects_text_that_is_not_a_number_and_names_the_variable(monkeypatch, text):
+    from webapp.limits import float_env
+
+    monkeypatch.setenv("ECG_TEST_FLOAT", text)
+    with pytest.raises(ValueError, match="ECG_TEST_FLOAT"):
+        float_env("ECG_TEST_FLOAT", 0.5)
+
+
 def test_a_mistyped_proxy_count_stops_the_start_instead_of_sharing_one_quota(monkeypatch):
     monkeypatch.setenv("ECG_TRUST_PROXY", "uno")
     with pytest.raises(ValueError, match="ECG_TRUST_PROXY"):

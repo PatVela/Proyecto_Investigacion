@@ -1,8 +1,11 @@
 """Contenido y UX: control de umbral honesto, nota del modelo, ayuda de desarrollo oculta, tipografía y confirmaciones."""
 
 import io
+import json
 import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -180,3 +183,25 @@ def test_converted_csv_button_warns_when_it_holds_one_of_several_windows():
     js = (REPO_ROOT / "webapp" / "static" / "app.js").read_text(encoding="utf-8")
     assert len(re.findall(r'"btn\.csv\.windows":', js)) == 2                      # ES y EN
     assert 'btnCsv.title = result.num_windows > 1' in js
+
+
+def test_the_file_card_says_ready_only_when_the_files_are_valid():
+    """Con un .txt la tarjeta mostraba el error y a la vez «listo para analizar»."""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node no disponible")
+    function = re.search(r"function refreshFileCard\(\) \{.*?\n\}", JS, flags=re.S).group(0)
+    script = (
+        "const escapeHtml = (s) => String(s); const tr = (k) => k; const examplesList = []; const selectedExample = null;\n"
+        "const fileCard = {hidden: true, innerHTML: ''}; let currentFiles = [{name: 'a.txt', size: 2048}];\n"
+        "const validateFiles = (files) => files[0].name.endsWith('.csv') ? '' : 'archivo no válido';\n"
+        + function + "\nconst out = [];\nrefreshFileCard(); out.push(fileCard.innerHTML);\n"
+        "currentFiles = [{name: 'a.csv', size: 2048}]; refreshFileCard(); out.push(fileCard.innerHTML);\n"
+        "console.log(JSON.stringify(out));"
+    )
+    invalid, valid = json.loads(subprocess.run([node, "-e", script], capture_output=True, text=True, check=True, encoding="utf-8").stdout)
+    assert "archivo no válido" in invalid and "status.ready" not in invalid
+    assert "status.ready" in valid and "archivo no válido" not in valid
+    assert "status.files" in valid and "archivo(s)" not in function                  # el recuento se traduce como el resto
+    assert len(re.findall(r'"status\.files":', JS)) == 2                             # ES y EN
+
