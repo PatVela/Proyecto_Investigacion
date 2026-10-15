@@ -152,6 +152,11 @@ def f1_with_and_without_overlap(predictions_csv: Path, overlapped: set[str], ori
     """F1 de los registros de test de un origen con y sin paciente en train/val, y diferencia con IC95 bootstrap (macro)."""
     with Path(predictions_csv).open(newline="", encoding="utf-8") as handle:
         rows = [r for r in csv.DictReader(handle) if r["record_name"] in origin_records]
+    if not rows:
+        if not origin_records:                      # el origen no tiene registros de test conocidos: nada que comparar
+            return {"n_con_solape": 0, "n_sin_solape": 0}
+        raise ValueError(f"{predictions_csv} no trae ninguno de los {len(origin_records)} registros de test de este origen; "
+                         "¿es el predictions_test.csv de esta partición?")
     classes = [c[5:] for c in rows[0] if c.startswith("true_")]
     true = np.array([[int(r[f"true_{c}"]) for c in classes] for r in rows])
     pred = np.array([[int(r[f"pred_{c}"]) for c in classes] for r in rows])
@@ -209,7 +214,11 @@ def main(argv: list[str] | None = None) -> int:
         result["f1"] = {}
         for origin in ORIGINS:
             known, seen = overlapped_test_records(assignments, patient_of, origin)
-            result["f1"][origin] = f1_with_and_without_overlap(args.predictions, seen, known)
+            try:
+                result["f1"][origin] = f1_with_and_without_overlap(args.predictions, seen, known)
+            except ValueError as exc:
+                print(f"{origin}: {exc}", file=sys.stderr)
+                return 1
             print(origin, json.dumps(result["f1"][origin], ensure_ascii=False))
     if args.output:
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)

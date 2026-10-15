@@ -1,8 +1,9 @@
 name: tests
 
-# La suite (≈ 500 pruebas, ≈ 6 min) solo corría si alguien se acordaba: las PR #16-#18 llegaron a main con 0 comprobaciones.
-# Corre en Linux con la rueda CPU de PyTorch; las pruebas de los scripts de Windows (deploy/*.ps1) y las que necesitan
-# datos locales (dataset2020/, runs/) se omiten solas. La versión de torch es la de requirements.txt (2.14.0) y las demás las fija constraints.txt.
+# La suite (≈ 600 pruebas, ≈ 6 min) solo corría si alguien se acordaba: las PR #16-#18 llegaron a main con 0 comprobaciones.
+# Corre en Linux con la rueda CPU de PyTorch. Solo se omiten las 3 pruebas de los scripts de Windows (deploy/*.ps1); ninguna
+# necesita datos locales (dataset2020/, runs/) porque el bundle models/ + deploy/ está en git. La versión de torch es la de
+# requirements.txt (2.14.0) y las demás las fija constraints.txt.
 on:
   pull_request:
   push:
