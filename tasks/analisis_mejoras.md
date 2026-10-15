@@ -346,7 +346,7 @@ No entran en la prioridad de la sección 5 porque no mueven las métricas del cl
 | S5 | Media | Los servidores de desarrollo escuchan en `0.0.0.0` por defecto | `webapp/app.py:787,842`; `webapp/wsgi.py:117,146`. `[VERIFICADO-REV]` |
 | S6 | Baja | Self-XSS por atributo: `escapeHtml` no escapa `"` y `record_name` sale del primer token del `.hea` subido | `static/app.js:906`, `:493`; `ecg/signal.py:55`. No probado en navegador. `[VERIFICADO-REV]` |
 | S7 | Baja | Sin CSP ni `X-Frame-Options`; rutas absolutas en el JSON de `/predict` y `/health` | `webapp/app.py:531-544`. `[VERIFICADO-REV]` |
-| S8 | Baja | Retención: la purga solo corre al arrancar y en cada `POST /predict`; los PDF con nombre de paciente pueden pasar la hora que promete la interfaz; `webapp/uploads/A04000_Completo.csv` queda fuera | `webapp/app.py:497,509`. `[VERIFICADO-REV]` |
+| S8 | Baja | Retención: la purga solo corre al arrancar y en cada `POST /predict`; los PDF con nombre de paciente pueden pasar la hora que promete la interfaz | `webapp/app.py:497,509`. `[VERIFICADO-REV]` |
 | S9 | Baja | `patient_name` sin límite: con 480 000 caracteres reportlab tarda 9.5 s y cae al PDF mínimo | `webapp/app.py:680`; `webapp/report_pdf.py:41-44`. `[VERIFICADO-REV]` |
 | S10 | Info | Dependencias con versiones exactas y sin hashes; Pillow sin fijar; `pip-audit` no ejecutado. `torch` 2.14.0 instalado vs `torch==2.8.0` en `requirements.txt:4` | `[VERIFICADO-REV]` |
 

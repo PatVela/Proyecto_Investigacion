@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SKIP_DIRS = {"data", "runs", "dataset2017", "dataset2020", "saved", ".git"}
+SKIP_DIRS = {"data", "runs", "dataset2020", "saved", ".git"}
 # módulo -> distribución en requirements
 DIST = {"sklearn": "scikit-learn", "iterstrat": "iterative-stratification", "flask": "flask", "h5py": "h5py"}
 # paquetes que llegan como dependencia directa de uno declarado (matplotlib -> pillow)
