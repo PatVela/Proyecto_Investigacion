@@ -8,7 +8,7 @@
 |---|---|---|
 | `schema.py` | 12 clases SNOMED, constantes de normalización, `codes_to_vector` | — |
 | `signal.py` | Lectura WFDB/CSV, filtro, remuestreo a 500 Hz, ventanas de 5000; en inferencia rechaza lo que no es un ECG (`require_usable_signal`: < 2 s o más de 6 derivaciones planas) | `schema` |
-| `datasets.py` | Escaneo, splits estratificados, construcción HDF5 (CLI) | `schema`, `signal` |
+| `datasets.py` | Escaneo, splits estratificados, construcción HDF5 (CLI); `tests/test_dataset_build.py` lo prueba con un mini-Challenge sintético | `schema`, `signal` |
 | `load.py` | **Fachada** que reexporta schema/signal/datasets (compatibilidad) | los tres anteriores |
 | `augment.py` | Aumentación solo de train, preserva etiquetas | — |
 | `hdf5_dataset.py` | `HDF5ECGDataset` único (train, evaluación, ensemble): valida el HDF5 antes de precargarlo | `util`, `schema`, `signal`, `augment` |
@@ -23,7 +23,7 @@
 - **`schema.py` (clases, normalización):** única fuente de verdad (`CLASS_GROUPS_12` → `CLASS_NAMES`, `NUM_CLASSES`, `codes_to_vector`). Si cambia el significado de las salidas, subir `LABEL_SCHEMA`. Invalida HDF5 (`build_datasets.py`) y checkpoints; hay que reconstruir y reentrenar. Además:
   - `examples/cinc2020/config*.json` fijan `label_schema`/`num_classes`; `train.py` aborta si no coinciden con `NUM_CLASSES`, y `predict.py` rechaza checkpoints con otro número de clases.
   - **Valores duplicados a mano** (no se actualizan solos): alias v2→v1 (`AxisDev→LAD`, `BBB→RBBB`) en `webapp/labels.py` (dos veces: `V2_TO_V1_CLASS` y el inverso dentro de `split_reference_label_text`) y en `examples/cinc2020/_archive/{diagnose,debug_record}_prediction.py`; el texto "27 diagnósticos … 12 clases" en `webapp/report_pdf.py`; `EXPECTED_CLASSES = 12` en `tools/check_dataset2020.py`; el 12 en `tests/` (`test_network`, `test_schema`, `test_robustness`, `test_make_figures`, `test_tools_check`).
-  - Evaluación: `challenge_score.py` mapea los 27 códigos oficiales a grupos y puntúa 24 clases (fusiona las parejas equivalentes); `audit_dx_codes.py` marca códigos puntuados sin clase.
+  - Cobertura de etiquetas: `audit_dx_codes.py` marca códigos puntuados sin clase.
   - Salidas generadas (`runs/`) y el bundle de despliegue (`models/`, `deploy/`, `webapp/examples/`) quedan obsoletos hasta regenerarlos (`tools/export_inference_bundle.py`, `tools/build_examples.py`).
 - **`signal.py` (preproceso):** debe ser idéntico en entrenamiento e inferencia (causa histórica del bug en `docs/fix_prediccion_cinc2020.md`); revisar `predict.py`, `webapp/prediction.py`, `tools/audit_signal_scaling.py`. `load_mat_signal` rechaza un `.mat` que declare más de `MAX_MAT_ELEMENTS` (25 M) elementos antes de leerlo (la subida web usa su propio tope, `WEB_MAX_MAT_ELEMENTS` = 6 M en `webapp/prediction.py`, vía `max_elements`) y convierte una `val` que no es numérica en `ValueError`; `resample_signal` solo acepta frecuencias de 50 a 10 000 Hz (`MIN/MAX_SAMPLING_RATE_HZ`); `preprocessing_for_schema` avisa si el checkpoint no declara esquema y falla si es desconocido.
 - **`train.py` (configuración):** una clave nueva que lea el código va en `KNOWN_CONFIG_KEYS`; el resto se ignora con un `AVISO` al empezar (`tests/test_train_monitor.py` lo exige).

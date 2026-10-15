@@ -85,7 +85,6 @@ Implementación: `examples/cinc2020/evaluate.py`.
 - especificidad;
 - F1;
 - matrices de confusión 2x2;
-- métrica Challenge de 24 clases (`challenge_score.py`; las parejas equivalentes se fusionan como en el evaluador oficial);
 - F1 por origen y diagnóstico de las celdas origen×clase sin anotar (`error_analysis.py`): hay orígenes que nunca etiquetan algunas clases y esas celdas se entrenan como negativas.
 
 ## Calibración, umbrales y ensemble

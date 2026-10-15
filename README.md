@@ -138,7 +138,6 @@ Nombres usados en la guía:
 | `runs/reports` | `model_comparison.csv` (v1 vs v2) + `robustness.csv` |
 | `runs/eval/ensemble` | Ensemble ResNet v1 + v2 |
 | `runs/reports/comparacion_ensemble.csv` | Ensemble vs mejor individual |
-| `runs/eval/metrica-challenge` | Métrica oficial estilo Challenge |
 | `runs/reports/errores_origen.csv` | Errores por hospital |
 | `runs/models/resnet12.onnx` | Modelo exportado |
 
@@ -289,13 +288,12 @@ python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $res
 python examples/cinc2020/ensemble_evaluate.py examples/cinc2020/config.json $resnet $resnet2 --output-dir runs/eval/ensemble-f1-platt --alpha 0.5 --threshold-beta 1.0 --platt-a runs/eval/eval-resnet/platt_validation.csv --platt-b runs/eval/eval-resnet-v2/platt_validation.csv --recalibrate-ensemble
 python examples/cinc2020/compare_models.py --eval-a "$evalMejor" --eval-b runs/eval/ensemble --label-a "ResNet mejor" --label-b "Ensemble" --output runs/reports/comparacion_ensemble.csv
 python examples/cinc2020/robustness.py $mejor data/cinc2020_12/test.h5 --thresholds "$evalMejor/thresholds_validation.csv" --temperatures "$evalMejor/temperatures_validation.csv" --output runs/reports/robustness.csv
-python examples/cinc2020/challenge_score.py --predictions runs/eval/ensemble-f1-platt/predictions_test.csv --test-h5 data/cinc2020_12/test.h5 --output-dir runs/eval/metrica-challenge/ensemble-f1-platt
 python examples/cinc2020/error_analysis.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --train-h5 data/cinc2020_12/train.h5 --output runs/reports/errores_origen.csv
 python examples/cinc2020/make_figures.py --eval-dir "$evalMejor" --outdir runs/figs/figs_eval --robustness runs/reports/robustness.csv
 python examples/cinc2020/bootstrap_ci.py --predictions "$evalMejor/predictions_test.csv" --predictions-baseline runs/eval/eval-resnet/predictions_test.csv --output runs/reports/bootstrap_v2-v1.json --n-bootstrap 1000
 ```
 
-Son puntos de operación del mismo ensemble: `runs/eval/ensemble` (umbrales F0.5, mayor precisión), `runs/eval/ensemble-f1` (umbrales F1, calibración por temperatura) y `runs/eval/ensemble-f1-platt` (umbrales F1, calibración afín por modelo y del promedio; recomendado para screening y el que se empaqueta para la demo). `challenge_score.py --predictions` puntúa las decisiones guardadas de cualquiera de ellos (24 clases, equivalentes fusionadas como el evaluador oficial); `error_analysis.py --train-h5` añade el diagnóstico de celdas origen×clase sin anotar (solo diagnóstico: el F1 sin enmascarar es el titular). `robustness.py` acepta `--platt` en lugar de `--temperatures`. Sin `--nsr-exclusive-min-prob`: esa regla resultó perjudicial.
+Son puntos de operación del mismo ensemble: `runs/eval/ensemble` (umbrales F0.5, mayor precisión), `runs/eval/ensemble-f1` (umbrales F1, calibración por temperatura) y `runs/eval/ensemble-f1-platt` (umbrales F1, calibración afín por modelo y del promedio; recomendado para screening y el que se empaqueta para la demo). `error_analysis.py --train-h5` añade el diagnóstico de celdas origen×clase sin anotar (solo diagnóstico: el F1 sin enmascarar es el titular). `robustness.py` acepta `--platt` en lugar de `--temperatures`. Sin `--nsr-exclusive-min-prob`: esa regla resultó perjudicial.
 
 ### Paso 8 — Diagnóstico de registros ejemplo
 
@@ -395,7 +393,7 @@ Notas:
 │   └── util.py             # checkpoints, parámetros y seeds
 ├── examples/cinc2020/      # pipeline: datos, evaluación y experimentos
 │   ├── build_datasets.py / evaluate.py / compare_models.py
-│   ├── robustness.py / challenge_score.py
+│   ├── robustness.py
 │   ├── calibrate.py / ensemble_evaluate.py
 │   ├── error_analysis.py / export_onnx.py
 │   ├── _archive/ (diagnose_prediction.py, debug_record_prediction.py, _record_diag.py)
@@ -403,7 +401,7 @@ Notas:
 │   ├── make_figures.py / bootstrap_ci.py   # figuras empíricas e IC bootstrap
 │   ├── sex_breakdown.py / benchmark_latency.py  # auditorías: sexo y latencia
 │   ├── config*.json        # configs ResNet, ResNet v2, regular y sintético
-│   └── official/           # scripts y tablas oficiales (vendored, no modificar)
+│   └── official/           # tabla oficial de códigos del Challenge (vendored, no modificar)
 ├── tools/                  # descarga/verificación CINC2020, auditorías, bundle de despliegue, prueba de humo y verificador de comandos de los .md
 ├── webapp/                 # dashboard Flask + informe PDF
 │   ├── app.py / prediction.py / report_pdf.py / wsgi.py
@@ -450,7 +448,6 @@ La demo corre en la propia PC, sin servidor ni nube. El bundle (pesos de inferen
 * **Ensemble**: promedio ponderado de dos checkpoints con calibración por modelo (`ensemble_evaluate.py`).
 * **Comparación de evaluaciones**: dos runs (p. ej. ResNet v1 vs v2) con idéntico dataset, split y métricas (`compare_models.py`).
 * **Robustez controlada**: ruido gaussiano, baseline wander, escalado de amplitud y apagado de derivaciones (`robustness.py`).
-* **Métrica oficial estilo Challenge 2020** sobre 24 clases (equivalentes fusionadas como el evaluador oficial), desde decisiones guardadas o un checkpoint (`challenge_score.py`).
 * **Errores por origen**: exact-match y F1 por hospital, y diagnóstico de las celdas origen×clase sin anotar (`error_analysis.py --train-h5`).
 * **Diagnóstico por registro**: inspección de casos individuales (`_archive/diagnose_prediction.py`, `_archive/debug_record_prediction.py`).
 * **Figuras empíricas e IC bootstrap**: curvas ROC/PR con punto de operación, barras de robustez e intervalos por bootstrap (`make_figures.py`, `bootstrap_ci.py`).
@@ -484,6 +481,11 @@ Los tests de los scripts de Windows (`deploy/*.ps1`) se omiten en otros sistemas
 3. Las etiquetas se definen con SNOMED-CT agrupado en 12 clases.
 4. El problema se conserva multilabel; no se fuerza una clase única.
 5. La evaluación usa métricas por clase y matrices 2×2 independientes.
+6. **No hay comparación con cardiólogos.** Hannun et al. comparan el modelo con seis cardiólogos certificados sobre un conjunto de prueba con estándar de oro de un comité; aquí las etiquetas son las del dataset (varias fuentes y criterios) y no se midió el acuerdo entre humanos. Los resultados no permiten hablar de nivel cardiólogo.
+7. **El reparto es por registro, no por paciente.** Se midió el solape: 18.6 % de los registros de test de PTB-XL y 62.6 % de los de PTB comparten paciente con train (PTB-XL no muestra inflación detectable del F1; PTB, con 99 registros, sí una diferencia grande; ver el hallazgo 10 de [docs/resultados_finales.md](docs/resultados_finales.md)). CPSC, CPSC-extra, Georgia e INCART no traen identificador de paciente.
+8. El dataset es más pequeño (43 101 registros frente a ≈ 91 000 ECG de ≈ 53 500 pacientes) y se usa solo para entrenar y evaluar este modelo: **no se compara con los resultados del PhysioNet/CinC Challenge**.
+
+Limitaciones conocidas: una sola corrida por receta (semillas 42 y 43), sin medir la variabilidad entre semillas, y sin validación externa en un dataset ajeno al Challenge.
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 

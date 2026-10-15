@@ -6,7 +6,7 @@ version: "3.1"
 date-released: "2026-10-15"
 license: GPL-3.0-only
 repository-code: "https://github.com/PatVela/Proyecto_Investigacion"
-abstract: "Réplica académica de Hannun et al. (Nature Medicine, 2019): clasificador multilabel de ECG de 12 derivaciones (12 clases SNOMED agrupadas) con un ensemble de dos ResNet-34 1D, calibración afín por clase y umbrales por clase, evaluado con el PhysioNet/CinC Challenge 2020. Incluye una demo web local."
+abstract: "Réplica académica de Hannun et al. (Nature Medicine, 2019): clasificador multilabel de ECG de 12 derivaciones (12 clases SNOMED agrupadas) con un ensemble de dos ResNet-34 1D, calibración afín por clase y umbrales por clase, entrenado y evaluado sobre el conjunto de datos público del PhysioNet/CinC Challenge 2020. Incluye una demo web local."
 keywords:
   - ECG
   - electrocardiograma

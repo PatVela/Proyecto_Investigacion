@@ -49,7 +49,7 @@
 
 ## Sobre este módulo
 
-Esta carpeta contiene el pipeline experimental completo del proyecto: desde la descarga de CINC2020 hasta la métrica oficial del Challenge. Los comandos se ejecutan desde la **raíz del repositorio**.
+Esta carpeta contiene el pipeline experimental completo del proyecto: desde la descarga de CINC2020 hasta el análisis de los resultados. Los comandos se ejecutan desde la **raíz del repositorio**.
 
 | Script | Propósito |
 |---|---|
@@ -57,7 +57,6 @@ Esta carpeta contiene el pipeline experimental completo del proyecto: desde la d
 | `evaluate.py` | Métricas multilabel + umbrales calibrados en validación |
 | `compare_models.py` | Compara dos evaluaciones con el mismo `threshold_beta` (p. ej. ResNet v1 vs v2) |
 | `robustness.py` | Robustez ante perturbaciones controladas de la señal |
-| `challenge_score.py` | Métrica oficial estilo Challenge 2020 (24 clases, equivalentes fusionadas) desde decisiones guardadas o un checkpoint |
 | `_archive/diagnose_prediction.py` | Diagnóstico detallado de un registro |
 | `_archive/debug_record_prediction.py` | Compara señal webapp vs señal HDF5 por registro |
 | `calibrate.py` | Calibración por clase (temperatura o afín `--method platt`) + reporte ECE/Brier |
@@ -72,7 +71,7 @@ Esta carpeta contiene el pipeline experimental completo del proyecto: desde la d
 | `tune_optuna.py` | Búsqueda de hiperparámetros con Optuna (escribe `config_resnet_v3.json`; ese config no está versionado) |
 | `make_synthetic.py` | Dataset sintético para smoke tests |
 | `config*.json` | Configs de ResNet, ResNet v2, regular y sintético |
-| `official/` | Scripts y tablas oficiales (vendored, no modificar) |
+| `official/` | Tabla oficial de códigos del Challenge (vendored, no modificar) |
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
@@ -117,7 +116,7 @@ python -m ecg.train examples/cinc2020/config.json -e cinc2020_resnet
 python -m ecg.train examples/cinc2020/config_resnet_v2.json -e cinc2020_resnet_v2
 ```
 
-Receta con aumentación de señal, label smoothing, más épocas y selección por F1-macro (ver §12).
+Receta con aumentación de señal, label smoothing, más épocas y selección por F1-macro (ver §11).
 
 ### 4. Evaluar
 
@@ -125,7 +124,7 @@ Receta con aumentación de señal, label smoothing, más épocas y selección po
 python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet --temperatures runs/eval/eval-resnet/temperatures_validation.csv --threshold-beta 0.5
 ```
 
-Genera umbrales por clase, métricas por clase y globales, predicciones, matrices de confusión 2×2 y curvas ROC/PR por clase. Para v2 use su config, checkpoint y carpeta (`runs/eval/eval-resnet-v2`). `--temperatures` y `--platt` (calibración afín, §9) son alternativos; `--threshold-beta 1.0` da el punto F1 (valor por defecto) y `0.5` el de menos falsos positivos. Para cuantificar el fallback normal en todo el conjunto:
+Genera umbrales por clase, métricas por clase y globales, predicciones, matrices de confusión 2×2 y curvas ROC/PR por clase. Para v2 use su config, checkpoint y carpeta (`runs/eval/eval-resnet-v2`). `--temperatures` y `--platt` (calibración afín, §8) son alternativos; `--threshold-beta 1.0` da el punto F1 (valor por defecto) y `0.5` el de menos falsos positivos. Para cuantificar el fallback normal en todo el conjunto:
 
 ```powershell
 python examples/cinc2020/evaluate.py examples/cinc2020/config.json $resnet --output-dir runs/eval/eval-resnet-fallback --normal-fallback-min-prob 0.40
@@ -161,15 +160,7 @@ $mat1 = [System.IO.Path]::ChangeExtension($hea1, '.mat')
 python examples/cinc2020/_archive/diagnose_prediction.py --checkpoint $mejor --config examples/cinc2020/config.json --thresholds "$evalMejor/thresholds_validation.csv" --record E00001 --hea $hea1 --mat $mat1
 ```
 
-### 8. Métrica oficial estilo Challenge 2020 (24 clases)
-
-```powershell
-python examples/cinc2020/challenge_score.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --output-dir runs/eval/metrica-challenge/mejor
-```
-
-Puntúa las decisiones ya guardadas de una evaluación (también las de un ensemble). Las clases equivalentes del evaluador oficial (CRBBB/RBBB, PAC/SVPB, PVC/VPB) se fusionan, así que se puntúan 24 clases (`--no-merge-equivalent` conserva las 27 columnas). Desde un checkpoint (`--checkpoint`) hay que pasar además `--temperatures` con las temperaturas con las que se ajustaron los umbrales; sin ellas los umbrales se aplican a probabilidades crudas y la métrica sale subestimada (así se obtuvo el antiguo 0.2348). El esquema de 12 grupos no puede llegar a 1: un clasificador perfecto de grupos puntúa 0.496.
-
-### 9. Calibrar probabilidades (temperatura o calibración afín)
+### 8. Calibrar probabilidades (temperatura o calibración afín)
 
 ```powershell
 python examples/cinc2020/calibrate.py --checkpoint $resnet --val-h5 data/cinc2020_12/val.h5 --output-dir runs/eval/eval-resnet
@@ -178,7 +169,7 @@ python examples/cinc2020/calibrate.py --method platt --checkpoint $resnet --val-
 
 La primera ajusta una temperatura por clase sobre validación y guarda `temperatures_validation.csv` + `calibration_report.json` (ECE/Brier). Aplíquela en evaluación con `--temperatures`. La segunda ajusta `sigmoid(a·logit + b)` por clase sobre los logits crudos del checkpoint y guarda `platt_validation.csv` + `calibration_report_platt.json` (no pisa los de la temperatura); se aplica con `--platt`. Entrenar con `pos_weight = neg/pos` y label smoothing sube la probabilidad base de todos los registros (un desplazamiento que una temperatura no corrige): el ECE de v2 pasa de 0.114 a 0.014. La calibración afín conserva el orden de las puntuaciones (a > 0), así que F1, AUROC y AUPRC no cambian; sí cambia la escala de los umbrales, que se reoptimizan. `--predictions predictions_validation.csv` también sirve, pero solo trae probabilidades y el ajuste es menos preciso (avisa). La webapp detecta cualquiera de las dos.
 
-### 10. Exportar a ONNX
+### 9. Exportar a ONNX
 
 ```powershell
 python examples/cinc2020/export_onnx.py --checkpoint $mejor --output runs/models/resnet12.onnx
@@ -186,7 +177,7 @@ python examples/cinc2020/export_onnx.py --checkpoint $mejor --output runs/models
 
 Usa `onnx`/`onnxruntime` de `requirements-dev.txt`. Verifica el grafo y compara numéricamente contra PyTorch.
 
-### 11. Análisis de errores por origen
+### 10. Análisis de errores por origen
 
 ```powershell
 python examples/cinc2020/error_analysis.py --predictions "$evalMejor/predictions_test.csv" --test-h5 data/cinc2020_12/test.h5 --train-h5 data/cinc2020_12/train.h5 --output runs/reports/errores_origen.csv
@@ -194,7 +185,7 @@ python examples/cinc2020/error_analysis.py --predictions "$evalMejor/predictions
 
 Reporta exact-match y F1 macro/micro por cada subconjunto de origen (hospital/fuente). Con `--train-h5` añade `f1_macro_annotated` (F1 medio solo sobre las clases que el origen anota; en `f1_macro` una clase ausente cuenta 0, y por eso CPSC aparece en ≈ 0.45 aunque sus 7 clases anotadas dan ≈ 0.77) y escribe `<salida>.masked.json` con el F1 global con y sin enmascarar las celdas origen×clase sin positivos en train y cuántos falsos positivos caen en ellas. El enmascarado es un **diagnóstico**: solo elimina falsos positivos, así que siempre sube; el titular es el F1 sin enmascarar. `--min-train-prevalence 0.005` también enmascara las celdas casi sin anotar.
 
-### 12. Máxima accuracy: F-beta y ensemble
+### 11. Máxima accuracy: F-beta y ensemble
 
 Umbrales orientados a precisión (menos falsos positivos) con F0.5:
 
@@ -217,7 +208,7 @@ Para re-entrenar la ResNet con receta anti-sobreajuste (más épocas, más regul
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
-### 13. Auditoría de códigos Dx
+### 12. Auditoría de códigos Dx
 
 ```powershell
 python examples/cinc2020/audit_dx_codes.py --data-dir dataset2020 --output runs/reports/dx_code_audit.csv
@@ -227,7 +218,7 @@ Recorre los `.hea`, cuenta en cuántos registros aparece cada código Dx y lo cr
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
-### 14. Figuras empíricas del informe
+### 13. Figuras empíricas del informe
 
 ```powershell
 python examples/cinc2020/make_figures.py --eval-dir $evalMejor --outdir runs/figs/figs_eval --robustness runs/reports/robustness.csv
@@ -235,7 +226,7 @@ python examples/cinc2020/make_figures.py --eval-dir $evalMejor --outdir runs/fig
 
 Traza curvas ROC/PR empíricas por clase con punto de operación (idéntico a la tabla F1 por construcción), clases destacadas y barras de robustez. Agregue `--history-v1`/`--history-v2` con los `history.csv` de cada run para la figura de aprendizaje.
 
-### 15. Intervalos bootstrap (IC 95 %)
+### 14. Intervalos bootstrap (IC 95 %)
 
 ```powershell
 python examples/cinc2020/bootstrap_ci.py --predictions $evalMejor/predictions_test.csv --predictions-baseline runs/eval/eval-resnet/predictions_test.csv --output runs/reports/bootstrap_v2-v1.json --n-bootstrap 1000
@@ -243,7 +234,7 @@ python examples/cinc2020/bootstrap_ci.py --predictions $evalMejor/predictions_te
 
 Remuestrea registros del test (sistema fijo): IC de F1-macro, por clase y de la diferencia pareada entre modelos. Sin `--predictions-baseline` reporta solo el modelo.
 
-### 16. Auditorías: sexo, latencia y baseline
+### 15. Auditorías: sexo, latencia y baseline
 
 ```powershell
 python examples/cinc2020/sex_breakdown.py --predictions $evalMejor/predictions_test.csv --test-h5 data/cinc2020_12/test.h5 --output runs/reports/sex_breakdown.json
@@ -267,7 +258,6 @@ El diseño experimental completo está en [docs/experimentos_cinc2020.md](../../
 
 - [x] Evaluación multilabel con umbrales calibrados
 - [x] Comparación de evaluaciones + robustez controlada
-- [x] Métrica oficial del Challenge sobre 24 clases (equivalentes fusionadas)
 - [x] Curvas ROC/PR por clase exportadas a CSV
 - [x] Análisis de errores por subconjunto de origen
 - [x] Calibración (temperature scaling y calibración afín por clase) + reporte ECE/Brier

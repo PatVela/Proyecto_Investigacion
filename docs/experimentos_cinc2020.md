@@ -90,7 +90,6 @@ Calibración `sigmoid(a·logit + b)` por clase, ajustada solo en validación sob
 - F1 macro/micro;
 - matrices de confusión 2x2 por clase;
 - ECE y Brier (con la calibración usada);
-- métrica Challenge de 24 clases (`challenge_score.py`);
 - F1 por origen, con y sin enmascarar las celdas sin anotar (`error_analysis.py --train-h5`);
 - número de parámetros;
 - tiempo total de entrenamiento.

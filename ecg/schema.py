@@ -160,8 +160,7 @@ CLASS_GROUPS_12_V1_LEGACY = [
 LEGACY_CLASS_NAMES = [g["name"] for g in CLASS_GROUPS_12_V1_LEGACY]
 
 # Las 27 clases puntuadas oficiales del Challenge 2020 (dx_mapping_scored.csv).
-# Cada entrada: (código SNOMED, abreviatura). Útil para mapear grupos -> códigos
-# oficiales en examples/cinc2020/challenge_score.py.
+# Cada entrada: (código SNOMED, abreviatura). tests/test_signal_schema_core.py comprueba que cada una tenga clase o motivo de exclusión.
 SCORED_27_CODES = [
     ("270492004", "IAVB"), ("164889003", "AF"), ("164890007", "AFL"),
     ("426627000", "Brady"), ("713427006", "CRBBB"), ("713426002", "IRBBB"),
