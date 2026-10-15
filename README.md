@@ -149,7 +149,7 @@ git clone https://github.com/PatVela/Proyecto_Investigacion.git
 cd Proyecto_Investigacion
 pip install -r requirements-cuda.txt
 pip install -r requirements.txt
-pip install -r requirements-dev.txt   # para correr pytest y los scripts de investigación: Optuna, ONNX, wfdb (incluye requirements.txt)
+pip install -r requirements-dev.txt -c constraints.txt   # para correr pytest y los scripts de investigación: Optuna, ONNX, wfdb (incluye requirements.txt; constraints.txt fija las transitivas con las que pasó el CI)
 ```
 
 Verifique GPU **antes de seguir**:
@@ -407,6 +407,7 @@ Notas:
 ├── tools/                  # descarga/verificación CINC2020, auditorías, bundle de despliegue, prueba de humo y verificador de comandos de los .md
 ├── webapp/                 # dashboard Flask + informe PDF
 │   ├── app.py / prediction.py / report_pdf.py / wsgi.py
+│   ├── labels.py / plotting.py          # comparación con etiquetas reales; trazado en papel milimetrado
 │   ├── limits.py / example_records.py   # límites públicos y registros de ejemplo
 │   ├── pdf_image.py / compression.py   # PNG de paleta en el PDF sin reconvertir; gzip de las respuestas de texto
 │   ├── examples/           # 7 registros de test (CC BY 4.0)
@@ -414,12 +415,12 @@ Notas:
 │   └── templates/ + static/
 ├── models/ + deploy/       # bundle de inferencia versionado (pesos, umbrales, métricas) y scripts de Windows para ejecutarlo
 ├── tests/                  # suite pytest
-├── .github/workflows/      # CI: pytest y verificador de comandos en cada PR y push a main
+├── .github/workflows/      # CI: pytest y verificador de comandos en cada PR y push a main; auditoría semanal de vulnerabilidades (pip-audit)
 ├── docs/                   # informe técnico y guías de experimentos
 ├── tasks/                  # plan y tareas de la demo local; auditoría de mejoras (analisis_mejoras.md)
 ├── images/                 # logo y capturas para documentación
 ├── runs/ saved/ data/      # producto generado (git-ignored)
-├── requirements.txt / requirements-cuda.txt / requirements-dev.txt
+├── requirements.txt / requirements-cuda.txt / requirements-dev.txt / constraints.txt   # constraints.txt: versiones exactas de las transitivas (las del CI verde)
 ├── descargar_datos_2020.sh / setup.sh   # descarga de datos / instalación rápida con verificación de CUDA
 ├── CLAUDE.md / CONTEXT.md  # contrato del repo y definición del pipeline (ICM)
 └── README.md

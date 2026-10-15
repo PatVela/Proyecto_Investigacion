@@ -10,6 +10,7 @@ import torch
 pytest.importorskip("flask")
 
 from ecg import load, network
+from webapp import plotting
 from webapp import prediction as pred
 
 
@@ -130,7 +131,7 @@ def test_plots_from_concurrent_threads_are_all_valid(tmp_path):
 
     def worker(i):
         try:
-            paths[i] = pred.plot_ecg_array(signal, tmp_path, f"rec{i}")
+            paths[i] = plotting.plot_ecg_array(signal, tmp_path, f"rec{i}")
         except Exception as exc:                                      # pragma: no cover
             errors.append(exc)
 

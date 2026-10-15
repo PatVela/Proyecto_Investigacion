@@ -11,6 +11,7 @@ from sklearn.metrics import fbeta_score
 from ecg import load
 from ecg.calibration import apply_temperature
 from examples.cinc2020 import ensemble_evaluate, evaluate
+from webapp import labels
 from webapp import prediction as pred
 
 NAMES = load.CLASS_NAMES
@@ -83,7 +84,7 @@ def test_normal_fallback_adds_nsr_only_when_nothing_else_is_positive():
 
 def test_label_comparison_counts_tp_fp_fn():
     rows = _row_set({"AF": 0.9, "MI": 0.9, "TAb": 0.9})
-    cmp_ = pred.build_label_comparison(["AF", "NSR"], rows, "manual")
+    cmp_ = labels.build_label_comparison(["AF", "NSR"], rows, "manual")
     assert cmp_["true_positive"] == ["AF"]
     assert set(cmp_["false_positive"]) == {"MI", "TAb"}
     assert cmp_["false_negative"] == ["NSR"]

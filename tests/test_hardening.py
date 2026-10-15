@@ -144,9 +144,8 @@ def test_use_model_works_when_enabled(client, monkeypatch):
 # --------------------------------------------------------------------------- #
 def test_development_servers_default_to_loopback():
     from webapp import app as app_module
-    from webapp import wsgi
 
-    assert app_module.DEFAULT_HOST == "127.0.0.1" and wsgi.DEFAULT_HOST == "127.0.0.1"
+    assert app_module.DEFAULT_HOST == "127.0.0.1"
     for rel in ("webapp/app.py", "webapp/wsgi.py"):
         text = (REPO_ROOT / rel).read_text(encoding="utf-8")
         assert 'default="0.0.0.0"' not in text, rel
@@ -182,3 +181,24 @@ def test_escape_html_escapes_quotes_without_needing_the_dom():
     script = source + '\nconsole.log(JSON.stringify([escapeHtml(\'x" onload="alert(1)\'), escapeHtml("<b>&\'"), escapeHtml(null)]));'
     out = subprocess.run([node, "-e", script], capture_output=True, text=True, check=True).stdout
     assert json.loads(out) == ['x&quot; onload=&quot;alert(1)', "&lt;b&gt;&amp;&#39;", ""]
+
+
+# --------------------------------------------------------------------------- #
+# La demo no se puede incrustar en la página de otro sitio (clickjacking)
+# --------------------------------------------------------------------------- #
+def test_every_response_forbids_being_framed(client, tmp_path):
+    results = tmp_path / "res" / "0123456789ab"
+    results.mkdir(parents=True)
+    (results / "informe.pdf").write_bytes(b"%PDF-1.4 x")
+    for path in ("/", "/health", "/models", "/results/0123456789ab/informe.pdf", "/no_existe"):
+        headers = client.get(path).headers
+        assert headers["Content-Security-Policy"] == "frame-ancestors 'none'", path
+        assert headers["X-Frame-Options"] == "DENY", path
+
+
+def test_the_interface_never_frames_anything_itself():
+    """Si algún día se incrusta el PDF o el trazado en un <iframe>, el encabezado de arriba lo rompería: avisar aquí."""
+    page = (REPO_ROOT / "webapp" / "templates" / "index.html").read_text(encoding="utf-8")
+    script = (REPO_ROOT / "webapp" / "static" / "app.js").read_text(encoding="utf-8")
+    for tag in ("<iframe", "<embed", "<object"):
+        assert tag not in page and tag not in script, tag

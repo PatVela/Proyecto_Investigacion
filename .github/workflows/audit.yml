@@ -1,0 +1,35 @@
+name: audit
+
+# Busca vulnerabilidades conocidas (pip-audit, base OSV/PyPI) en el entorno YA instalado: incluye las dependencias
+# transitivas (Pillow, Jinja2…), que requirements.txt no fija. Complementa las alertas de Dependabot del repositorio: revisa lo
+# que realmente se instala en el CI (con constraints.txt). Cada semana, a mano y cuando cambian las dependencias.
+# En una PR solo informa (continue-on-error); el fallo que importa es el de la ejecución semanal en main.
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "requirements*.txt"
+      - "constraints.txt"
+      - ".github/workflows/audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Instalar dependencias (torch CPU)
+        run: pip install -r requirements-dev.txt -c constraints.txt --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: Buscar vulnerabilidades conocidas
+        run: |
+          pip install pip-audit
+          pip-audit --progress-spinner off
