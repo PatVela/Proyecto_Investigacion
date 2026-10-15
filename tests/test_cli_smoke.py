@@ -14,7 +14,6 @@ HELP_CASES = [
     ("examples/bootstrap_ci", ["examples/cinc2020/bootstrap_ci.py"]),
     ("examples/build_datasets", ["examples/cinc2020/build_datasets.py"]),
     ("examples/calibrate", ["examples/cinc2020/calibrate.py"]),
-    ("examples/challenge_score", ["examples/cinc2020/challenge_score.py"]),
     ("examples/compare_models", ["examples/cinc2020/compare_models.py"]),
     ("examples/debug_record_prediction", ["examples/cinc2020/_archive/debug_record_prediction.py"]),
     ("examples/diagnose_prediction", ["examples/cinc2020/_archive/diagnose_prediction.py"]),
@@ -53,7 +52,6 @@ def test_lib_modules_compile():
 
     for rel in (
         "examples/cinc2020/_archive/_record_diag.py",
-        "examples/cinc2020/official/evaluate_12ECG_score.py",
         "tools/check_dataset2020.py",
     ):
         py_compile.compile(REPO_ROOT / rel, doraise=True)

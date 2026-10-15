@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 def _tracked_python_files():
     out = subprocess.run(["git", "ls-files", "*.py"], cwd=REPO_ROOT, capture_output=True, text=True)
     return [REPO_ROOT / name for name in out.stdout.split()
-            if not name.startswith("tests/") and "/official/" not in name]
+            if not name.startswith("tests/")]
 
 
 def _unencodable_prints(path: Path):
