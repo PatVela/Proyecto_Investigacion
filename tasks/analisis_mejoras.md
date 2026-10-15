@@ -1,6 +1,7 @@
 # Análisis de mejoras — ECG CinC2020-12 (auditoría de solo lectura de `main`)
 
 - Fecha: 2026-10-13. Rama `main`, HEAD `f6b10a225b379a72f2d5d4399625e83c1c34d9ef` (Merge PR #15). Árbol limpio salvo `.claude/`.
+- T11 ejecutada el 2026-10-15: resultado en `docs/resultados_finales.md` (hallazgo 11). Se cumple la condición de la tarea (≥ 5 % en un origen con n ≥ 500: PTB-XL 18.6 %), pero el F1 de PTB-XL no cambia con y sin solape; el reparto agrupado por paciente queda como decisión del autor.
 - Estado posterior: M1 (T1–T4) y M2 (T7) se ejecutaron en la rama `feat/protocolo-comun-y-calibracion-afin`; sus resultados medidos están en `docs/resultados_finales.md`. M3 en adelante no se han ejecutado. Las cifras de este informe son las de la auditoría (solo lectura), salvo las correcciones señaladas en 2.3 y la sección 8.
 - Alcance: etapas 01–08 de `CONTEXT.md`. No se entrenó, no se evaluó con los scripts del pipeline y no se escribió nada en `runs/`, `saved/`, `data/`, `models/` ni `deploy/`. Este es el único archivo escrito.
 - Rutas en texto plano o `code`, sin enlaces relativos (`tests/test_docs_links.py` valida los `.md` versionados).
