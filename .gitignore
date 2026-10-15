@@ -1,11 +1,5 @@
 # Datos y descargas (se regeneran con descargar_datos_2020.sh / build_datasets.py)
-dataset/
-dataset2017/
-dataset2020/
-dataset2020_procesado/
-dataset2020_prueba/
-training2017/
-training2017.zip
+/dataset*/
 ECG-env/
 resultados/
 results/
