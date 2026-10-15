@@ -7,9 +7,9 @@ No confundir con [`constraints.txt`](constraints.txt) de la raíz: son los pins 
 
 | Dimensión | Umbral | Comando de verificación | Dónde se aplica | Valor medido hoy (2026-10-15) |
 |---|---|---|---|---|
-| 1. CI en verde | `tests` en verde en cada PR y en cada push a `main` | `gh run list --workflow tests --limit 3` | CI: [`tests.yml`](.github/workflows/tests.yml) | 3 de 3 `success`; último push a `main` (5e74662): 4 min 20 s |
-| 2. Pruebas omitidas | Solo los motivos de la lista de abajo; ninguna por dependencia faltante | `python -m pytest -q -rs -p no:cacheprovider` (las líneas `SKIPPED` solo pueden traer esos motivos) | CI (`python -m pytest -q -W ignore`) y manual | Windows, local: 590 pasadas, 0 omitidas, 7 min 58 s. CI Linux: 587 pasadas, 3 omitidas (las 3 `@windows_only`) |
-| 3. `pip-audit` limpio | 0 vulnerabilidades conocidas: el job de `audit` termina en `success` | `gh run view $(gh run list --workflow audit --limit 1 --json databaseId -q '.[0].databaseId') --json jobs -q '.jobs[].conclusion'` | CI: [`audit.yml`](.github/workflows/audit.yml), lunes 06:00 UTC en `main`, a mano y en PR que toquen dependencias | Aún sin ejecución semanal (la primera: 2026-10-19). Última, en la PR de Werkzeug y pypdf: job `success` |
+| 1. CI en verde | `tests` en verde en cada PR y en cada push a `main` (una ejecución `cancelled` por un push posterior no cuenta como fallo) | `gh run list --workflow tests --limit 3` | CI: [`tests.yml`](.github/workflows/tests.yml) | 2 `success` y 1 `cancelled` (un push a `main` sustituido por el siguiente); último push a `main` (23fc0cf): `success`, 6 min 49 s |
+| 2. Pruebas omitidas | Solo los motivos de la lista de abajo; ninguna por dependencia faltante | `python -m pytest -q -rs -p no:cacheprovider` (las líneas `SKIPPED` solo pueden traer esos motivos) | CI (`python -m pytest -q -W ignore`) y manual | Windows, local: 601 pasadas, 0 omitidas, 6 min 48 s. CI Linux (23fc0cf): 596 pasadas y 3 omitidas (las 3 `@windows_only`) |
+| 3. `pip-audit` limpio | 0 vulnerabilidades conocidas: el job de `audit` termina en `success` | `gh run view $(gh run list --workflow audit --limit 1 --json databaseId -q '.[0].databaseId') --json jobs -q '.jobs[].conclusion'` | CI: [`audit.yml`](.github/workflows/audit.yml), lunes 06:00 UTC en `main`, a mano y en PR que toquen dependencias | Ejecución manual sobre `main` (8534048, 2026-10-15): job `success`. La primera semanal: 2026-10-19 |
 | 4. Documentación sin problemas | 0 problemas y todas las pruebas de enlaces y comandos pasan | `python tools/check_docs_commands.py` y `python -m pytest tests/test_docs_links.py tests/test_docs_commands.py -q -p no:cacheprovider` | CI (primer paso y suite) | 127 comandos, 0 problemas; 15 pruebas pasan |
 | 5. Cobertura | Solo informativa, sin umbral | propuesta pendiente de aprobación (abajo) | ninguno | no se mide |
 
@@ -35,7 +35,7 @@ Cambio exacto, solo informativo (sin `--cov-fail-under`):
 
 ## Medido, sin umbral
 
-Pruebas recolectadas: 590 (en el CI, 587 pasadas y 3 omitidas). No debe bajar sin explicar qué se quitó y por qué.
+Pruebas recolectadas: 601 en local (en el último CI de `main`, 599: 596 pasadas y 3 omitidas). No debe bajar sin explicar qué se quitó y por qué.
 
 ## Regla anti-degradación
 
