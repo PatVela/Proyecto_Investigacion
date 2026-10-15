@@ -548,6 +548,10 @@ def load_wfdb_record_windows(
     return windows, meta
 
 
+# «# Sampling Rate: 250 Hz», «# Sampling Rate 250» o «# Sampling Rate: 250,,,,» (así exporta Excel una celda con comentario)
+_SAMPLING_RATE_COMMENT = re.compile(r"sampling\s*rate\s*:?\s*([0-9]+(?:\.[0-9]+)?)", re.IGNORECASE)
+
+
 def read_csv_ecg(csv_path: str | Path) -> tuple[np.ndarray, float, list[str], dict]:
     """Lee CSV para inferencia.
 
@@ -564,19 +568,26 @@ def read_csv_ecg(csv_path: str | Path) -> tuple[np.ndarray, float, list[str], di
     sampling_rate: float = TARGET_FS
     skiprows = 0
     comment_lines: list[str] = []
-    with csv_path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            text = line.strip()
-            if not text.startswith("#"):
-                break
-            skiprows += 1
-            comment_lines.append(text)
-            lower = text.lower()
-            if "sampling rate" in lower:
-                try:
-                    sampling_rate = float(text.split(":", 1)[1].strip().split()[0])
-                except Exception:
-                    sampling_rate = TARGET_FS
+    header = ""
+    try:
+        with csv_path.open("r", encoding="utf-8-sig") as handle:       # utf-8-sig: el «CSV UTF-8» de Excel antepone una marca BOM
+            for line in handle:
+                text = line.strip()
+                if not text.startswith("#"):
+                    header = text
+                    break
+                skiprows += 1
+                comment_lines.append(text)
+                if "sampling rate" in text.lower():
+                    match = _SAMPLING_RATE_COMMENT.search(text)
+                    if match is None:                                 # antes caía en silencio a 500 Hz y remuestreaba mal
+                        raise ValueError(f"No se entiende la frecuencia de muestreo de la línea {text[:60]!r}; "
+                                         "use «# Sampling Rate: 500 Hz».")
+                    sampling_rate = float(match.group(1))
+        excel_es = {"sep": ";", "decimal": ","} if ";" in header and "," not in header else {}     # Excel en español
+        df = pd.read_csv(csv_path, skiprows=skiprows, encoding="utf-8-sig", **excel_es)
+    except UnicodeDecodeError as exc:
+        raise ValueError("El CSV debe estar guardado en UTF-8 (en Excel: «CSV UTF-8»).") from exc
 
     preprocessed_mode: str | None = None
     for text in comment_lines:
@@ -585,7 +596,6 @@ def read_csv_ecg(csv_path: str | Path) -> tuple[np.ndarray, float, list[str], di
             # Formato "physical, bandpass=true, units=mV" -> modo es primer token.
             preprocessed_mode = preprocessed_mode.split(",")[0].strip().split()[0]
 
-    df = pd.read_csv(csv_path, skiprows=skiprows)
     csv_meta = {
         "sampling_rate": float(sampling_rate),
         "preprocessed_mode": preprocessed_mode,

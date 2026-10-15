@@ -149,7 +149,7 @@ Las 12 derivaciones estándar como columnas:
 I,II,III,aVR,aVL,aVF,V1,V2,V3,V4,V5,V6
 ```
 
-Opcionalmente puede empezar con `# Sampling Rate: 500 Hz`; si no se indica, se asume 500 Hz. La frecuencia debe estar entre 50 y 10 000 Hz (fuera de ese rango se rechaza el archivo). Solo se aceptan `.csv`, `.hea` y `.mat`, hasta 2 archivos por solicitud y 5 MB en total. Para comparar contra etiquetas reales, use el campo opcional de la interfaz:
+Opcionalmente puede empezar con `# Sampling Rate: 500 Hz`; si no se indica, se asume 500 Hz, pero si la línea existe y no trae un número se rechaza el archivo (no se asume 500 Hz). La frecuencia debe estar entre 50 y 10 000 Hz (fuera de ese rango se rechaza el archivo). Debe estar en UTF-8 (con o sin BOM, como el «CSV UTF-8» de Excel); también se lee el CSV de Excel en español (separador `;` y coma decimal). Solo se aceptan `.csv`, `.hea` y `.mat`, hasta 2 archivos por solicitud y 5 MB en total. Para comparar contra etiquetas reales, use el campo opcional de la interfaz:
 
 ```text
 NSR, AF
@@ -276,9 +276,11 @@ El exportador se niega (`ValueError`, sin escribir nada) si `--eval-dir` no corr
 
 ### Variables de entorno
 
+Las variables enteras (`ECG_MAX_UPLOAD_MB`, `ECG_RATE_LIMIT_*`, `ECG_TRUST_PROXY`, `ECG_RESULT_TTL_SECONDS`) rechazan al arrancar un texto que no sea un número entero; no se sustituye por el valor por defecto.
+
 | Variable | Defecto | Efecto |
 |---|---|---|
-| `ECG_MODEL`, `ECG_MODEL_B`, `ECG_ALPHA` | del `.env` | Modelos del ensemble y peso del A. Una ruta inexistente **impide arrancar** (no se sustituye por otro modelo) |
+| `ECG_MODEL`, `ECG_MODEL_B`, `ECG_ALPHA` | del `.env` | Modelos del ensemble y peso del A (`ECG_ALPHA` en [0, 1]). Una ruta inexistente o un `ECG_ALPHA` fuera de rango **impiden arrancar** (no se sustituye por otro modelo) |
 | `ECG_PLATT`, `ECG_PLATT_B`, `ECG_PLATT_ENSEMBLE` | del `.env` | Calibración afín (`class,a,b`) del modelo A, del B y del promedio del ensemble. Gana a la temperatura del mismo modelo |
 | `ECG_TEMPERATURES`, `ECG_TEMPERATURES_B`, `ECG_THRESHOLDS`, `ECG_EVAL_DIR`, `ECG_EXP_DIR` | del `.env` | Calibración por temperatura, umbrales y resultados que muestra la interfaz |
 | `ECG_SAVED` | `saved/` (el bundle usa `models/`) | Carpeta de checkpoints; `/use_model` solo acepta archivos de aquí |
