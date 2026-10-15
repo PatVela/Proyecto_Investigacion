@@ -122,3 +122,4 @@ La búsqueda con Optuna (`runs/models/optuna_cinc2020.db`) hizo 3 trials: dos co
 - `runs/reports/bootstrap_*.json`: IC. `runs/reports/errores_origen*.csv` y `*.masked.json`: errores por origen y diagnóstico de celdas sin anotar. `runs/reports/robustness.csv`, `runs/reports/sex_breakdown.json`.
 - `runs/eval/metrica-challenge/<modelo>/`: métrica Challenge de 24 clases (`runs/eval/metrica-challenge-legacy27/` conserva la salida antigua de 27 columnas sin temperaturas, que no debe citarse).
 - `runs/figs/figs_eval_v2/`: figuras empíricas (generadas con la tabla de F0.5; no se regeneraron con las evaluaciones nuevas).
+- `runs/figs/figs_eval_final/`: las mismas figuras regeneradas con el sistema final (ensemble con calibración afín, F1) a partir de la copia versionada de su evaluación: `python examples/cinc2020/make_figures.py --eval-dir deploy/results/ensemble-f1-platt --outdir runs/figs/figs_eval_final`.
