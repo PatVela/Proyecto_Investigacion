@@ -380,11 +380,11 @@ def preprocess_ecg_array(
     if lead_names is not None:
         # Reordena gains/baselines junto con la señal si vienen en orden del header.
         names = [normalize_lead_name(n) for n in lead_names]
+        data = reorder_leads(data, lead_names)             # antes que names.index: avisa con claridad si falta una derivación
         if adc_gains is not None and adc_baselines is not None and len(names) == len(list(adc_gains)):
             order = [names.index(lead) for lead in STANDARD_LEAD_ORDER]
             adc_gains = [list(adc_gains)[k] for k in order]
             adc_baselines = [list(adc_baselines)[k] for k in order]
-        data = reorder_leads(data, lead_names)
     elif data.shape[1] != NUM_LEADS:
         raise ValueError(f"Se requieren {NUM_LEADS} derivaciones; shape={data.shape}")
 
@@ -458,17 +458,26 @@ _MAT_UNREADABLE = ("El .mat está dañado o incompleto, o es MATLAB v7.3 (no sop
 _MAT_ERRORS = (ValueError, NotImplementedError, MatReadError, EOFError, OSError, zlib.error)
 
 
-def load_mat_signal(mat_path: str | Path, num_leads: int = NUM_LEADS) -> np.ndarray:
+def load_mat_signal(mat_path: str | Path, num_leads: int = NUM_LEADS, max_elements: int | None = None) -> np.ndarray:
+    """Señal ``(muestras, derivaciones)`` de la variable ``val`` de un .mat; ``max_elements`` (por defecto ``MAX_MAT_ELEMENTS``) es el tope."""
+    cap = MAX_MAT_ELEMENTS if max_elements is None else max_elements
     try:
-        declared = {name: shape for name, shape, _ in whosmat(mat_path)}      # solo cabeceras: no descomprime los datos
+        declared = {name: (shape, kind) for name, shape, kind in whosmat(mat_path)}      # solo cabeceras: no descomprime los datos
     except _MAT_ERRORS as exc:
         raise ValueError(_MAT_UNREADABLE) from exc
     if "val" not in declared:
         raise ValueError("El .mat no tiene la variable 'val' (los registros WFDB del Challenge la llaman así).")
-    elements = int(np.prod(declared["val"], dtype=np.float64))
-    if elements > MAX_MAT_ELEMENTS:
-        raise ValueError(f"El .mat declara {elements:,} elementos en 'val' (forma {tuple(declared['val'])}): "
-                         f"demasiado grande, el máximo es {MAX_MAT_ELEMENTS:,}.")
+    shape, kind = declared["val"]
+    try:
+        numeric = np.issubdtype(np.dtype(kind), np.number)
+    except TypeError:                                  # 'cell', 'struct', 'sparse', 'char', 'logical': np.dtype no los conoce
+        numeric = False
+    if not numeric:                                    # antes de leer: una celda o estructura esconde sus elementos y evita el tope
+        raise ValueError("La variable 'val' del .mat no es una matriz numérica.")
+    elements = int(np.prod(shape, dtype=np.float64))
+    if elements > cap:
+        raise ValueError(f"El .mat declara {elements:,} elementos en 'val' (forma {tuple(shape)}): "
+                         f"demasiado grande, el máximo es {cap:,}.")
     try:
         mat = loadmat(mat_path, variable_names=["val"])                       # ignora cualquier otra variable del archivo
     except _MAT_ERRORS as exc:
@@ -520,6 +529,7 @@ def load_wfdb_record_windows(
     windows_max: int = 4,
     norm_mode: str = DEFAULT_NORM_MODE,
     bandpass: bool = True,
+    max_elements: int | None = None,
 ) -> tuple[np.ndarray, dict]:
     """Carga un registro WFDB y devuelve ``(ventanas, meta)``.
 
@@ -529,7 +539,7 @@ def load_wfdb_record_windows(
     mat_path = Path(mat_path)
     hea_path = Path(hea_path) if hea_path is not None else mat_path.with_suffix(".hea")
     meta = parse_header(hea_path)
-    raw = load_mat_signal(mat_path, meta["num_leads"])
+    raw = load_mat_signal(mat_path, meta["num_leads"], max_elements=max_elements)
     windows, starts = preprocess_to_windows(
         raw,
         sampling_rate=meta["sampling_freq"],
@@ -588,6 +598,8 @@ def read_csv_ecg(csv_path: str | Path) -> tuple[np.ndarray, float, list[str], di
         df = pd.read_csv(csv_path, skiprows=skiprows, encoding="utf-8-sig", **excel_es)
     except UnicodeDecodeError as exc:
         raise ValueError("El CSV debe estar guardado en UTF-8 (en Excel: «CSV UTF-8»).") from exc
+    except pd.errors.EmptyDataError as exc:                # vacío o solo líneas «#»: pandas decía «No columns to parse from file»
+        raise ValueError("El CSV no tiene encabezado ni filas de datos.") from exc
 
     preprocessed_mode: str | None = None
     for text in comment_lines:

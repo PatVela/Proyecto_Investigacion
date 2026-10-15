@@ -81,6 +81,47 @@ def test_load_mat_signal_rejects_a_mat_without_the_val_variable(tmp_path):
         signal.load_mat_signal(path)
 
 
+def test_load_mat_signal_takes_a_smaller_cap_for_one_call(tmp_path):
+    path = tmp_path / "x.mat"
+    scipy.io.savemat(path, {"val": np.zeros((12, 1000), dtype=np.int16)})
+    assert signal.load_mat_signal(path).shape == (1000, 12)
+    with pytest.raises(ValueError, match="el máximo es 5,000"):
+        signal.load_mat_signal(path, max_elements=5_000)
+
+
+def test_the_web_cap_is_below_the_training_cap_and_admits_the_longest_real_record():
+    assert 12 * 462_600 <= prediction.WEB_MAX_MAT_ELEMENTS < signal.MAX_MAT_ELEMENTS      # INCART: 30 min a 257 Hz
+
+
+def test_an_uploaded_mat_above_the_web_cap_is_refused_before_it_is_read(tmp_path, monkeypatch):
+    """Un .mat de 49 KB con 25 M de ceros usaba 1 GB de RAM al preprocesarse; la subida web tiene su propio tope."""
+    leads = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
+    header = "a 12 500 5000\n" + "".join(f"a.mat 16 1000/mV 16 0 0 0 0 {n}\n" for n in leads)
+    (tmp_path / "a.hea").write_text(header, encoding="utf-8")
+    scipy.io.savemat(tmp_path / "a.mat", {"val": np.zeros((12, 5000), dtype=np.int16)}, do_compression=True)
+    monkeypatch.setattr(prediction, "WEB_MAX_MAT_ELEMENTS", 10_000)
+    monkeypatch.setattr(signal, "loadmat", lambda *a, **k: pytest.fail("no debe leerse el contenido"))
+    with pytest.raises(ValueError, match="demasiado grande"):
+        prediction.prepare_saved_input([tmp_path / "a.hea", tmp_path / "a.mat"], tmp_path / "out")
+
+
+@pytest.mark.parametrize("kind", ["estructura", "dispersa", "texto", "celda_grande"])
+def test_a_mat_whose_val_is_not_a_numeric_matrix_is_refused_before_it_is_read(tmp_path, monkeypatch, kind):
+    """Antes: TypeError al convertir a float32 (500 en la webapp). Una celda o estructura declara 1 elemento y esquivaba el tope:
+    un .mat de 467 KB con 60 M de ceros dentro usaba 898 MB antes de rechazarse."""
+    import scipy.sparse
+
+    cell = np.empty((1, 1), dtype=object)
+    cell[0, 0] = np.zeros((12, 200_000))
+    val = {"estructura": {"a": 1, "b": np.arange(3)}, "dispersa": scipy.sparse.csc_matrix(np.eye(12)),
+           "texto": np.array(["abc"]), "celda_grande": cell}[kind]
+    path = tmp_path / "x.mat"
+    scipy.io.savemat(path, {"val": val}, do_compression=True)
+    monkeypatch.setattr(signal, "loadmat", lambda *a, **k: pytest.fail("no debe leerse el contenido"))
+    with pytest.raises(ValueError, match="no es una matriz numérica"):
+        signal.load_mat_signal(path)
+
+
 def _valid_mat_bytes(tmp_path):
     path = tmp_path / "ok.mat"
     scipy.io.savemat(path, {"val": (np.random.default_rng(0).normal(size=(12, 5000)) * 1000).astype(np.int16)})
