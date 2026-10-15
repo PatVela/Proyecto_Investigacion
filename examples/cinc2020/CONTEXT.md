@@ -8,7 +8,7 @@
 |---|---|
 | 01 Datos | `build_datasets.py`, `audit_dx_codes.py`, `make_synthetic.py` |
 | 03 Calibrar | `calibrate.py` |
-| 04 Evaluar | `evaluate.py`, `ensemble_evaluate.py`, `challenge_score.py` |
+| 04 Evaluar | `evaluate.py`, `ensemble_evaluate.py` |
 | 05 Comparar | `compare_models.py`, `bootstrap_ci.py` |
 | 06 Robustez y sesgo | `robustness.py`, `sex_breakdown.py`, `error_analysis.py` |
 | 07 Figuras | `make_figures.py` |
@@ -18,7 +18,7 @@
 
 ## Factory aquí
 
-`config.json` (ResNet v1), `config_resnet_v2.json`, `config_regular_cnn.json`, `config_synthetic.json`; `official/` (métrica oficial, **no modificar**).
+`config.json` (ResNet v1), `config_resnet_v2.json`, `config_regular_cnn.json`, `config_synthetic.json`; `official/` (tabla oficial de códigos, **no modificar**).
 
 ## Salidas
 

@@ -43,12 +43,8 @@ def write_split(path: Path, n: int, seed: int):
         if i % 11 == 0:
             labels[i, :] = 0  # algunos all-zero
 
-    # Dx sintéticos: primer código puntuado de cada grupo activo (para challenge_score).
-    scored = {c for c, _ in load.SCORED_27_CODES}
-    rep_codes = []
-    for group in load.CLASS_GROUPS_12:
-        hit = next((c for c in group["codes"] if c in scored), group["codes"][0])
-        rep_codes.append(hit)
+    # Dx sintéticos: el primer código SNOMED de cada grupo activo.
+    rep_codes = [group["codes"][0] for group in load.CLASS_GROUPS_12]
     dx_list, matched_list = [], []
     for i in range(n):
         active = [j for j in range(load.NUM_CLASSES) if labels[i, j] > 0]

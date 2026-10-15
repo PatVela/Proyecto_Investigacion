@@ -7,7 +7,7 @@ Réplica académica de Hannun et al. (Nat Med 2019): clasificador multilabel de 
 | Carpeta | Qué es | Contrato |
 |---|---|---|
 | `ecg/` | Librería: esquema, señal, datasets, red, entrenamiento, calibración, inferencia | `ecg/CONTEXT.md` |
-| `examples/cinc2020/` | Scripts del pipeline experimental + configs (`config*.json`) + `official/` (vendored, no tocar) | `examples/cinc2020/CONTEXT.md` |
+| `examples/cinc2020/` | Scripts del pipeline experimental + configs (`config*.json`) + `official/` (tabla oficial de códigos, vendored, no tocar) | `examples/cinc2020/CONTEXT.md` |
 | `webapp/` | Demo Flask de inferencia + informe PDF + ejemplos incluidos | `webapp/CONTEXT.md` |
 | `tools/` | Chequeos y descarga de datos CINC2020, bundle de despliegue, prueba de humo | `tools/CONTEXT.md` |
 | `tests/` | Suite pytest | `tests/CONTEXT.md` |
@@ -35,7 +35,7 @@ Todo lo que produce el pipeline vive bajo `runs/` y es la columna "Salida" de `C
 - Comandos desde la raíz del repo. Documentación y mensajes en español.
 - Compara modelos solo con el mismo `threshold_beta` y la misma calibración (`compare_models.py` lo exige). El F1 sin enmascarar es el titular; el enmascarado por origen es un diagnóstico.
 - Al cambiar un comando o un flag, actualiza los `.md` que lo citan: `python tools/check_docs_commands.py` (y `tests/test_docs_commands.py`) detectan scripts y flags inexistentes.
-- `examples/cinc2020/official/` es código oficial vendored: no modificar.
+- `examples/cinc2020/official/` guarda la tabla oficial de códigos del Challenge (vendored): no modificar. Del Challenge solo se usa su base de datos: no se calcula su métrica ni se compara con sus resultados.
 - Las rutas bajo `runs/` están hardcodeadas en README, docs y defaults de scripts; no renombrarlas sin actualizar todos los referentes.
 - `examples/cinc2020/_archive/` guarda scripts de depuración fuera de la secuencia; no los uses como referencia del pipeline.
 - Si cambia el significado de las salidas del modelo, regenerar el bundle (`models/`, `deploy/`) además de reentrenar; `tests/test_inference_bundle.py` y `tests/test_deploy_config.py` comprueban que el bundle sea coherente.

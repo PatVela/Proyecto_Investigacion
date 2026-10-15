@@ -7,7 +7,7 @@ Secuencia que se repite por cada modelo/receta. Detalle de comandos: `examples/c
 | 01 | Datos | `descargar_datos_2020.sh`, `tools/check_dataset2020.py` (sin argumentos: valida los HDF5), `examples/cinc2020/build_datasets.py`, `audit_dx_codes.py` | `dataset2020/` (WFDB) | `data/cinc2020_12/{train,val,test}.h5` + CSV de distribución, `runs/reports/dx_code_audit.csv` | Distribución de clases, sin registros faltantes y sin códigos puntuados sin clase |
 | 02 | Entrenar | `python -m ecg.train <config> -e <nombre>` | `config*.json`, HDF5 | `saved/cinc2020/<nombre>/*/best.pt` | Curva de val sin sobreajuste |
 | 03 | Calibrar | `calibrate.py` (`--method temperature` o `platt`) | checkpoint, val.h5 | `temperatures_validation.csv` o `platt_validation.csv`, reporte ECE/Brier | ECE razonable (< 0.02 con la afín) |
-| 04 | Evaluar | `evaluate.py`, `ensemble_evaluate.py`, `challenge_score.py` | checkpoint, calibración (`--temperatures` o `--platt`) | `runs/eval/eval-*/` (métricas, umbrales, curvas, predicciones), `runs/eval/ensemble*/` (`ensemble-f1-platt/` es el que se empaqueta), `runs/eval/metrica-challenge/<modelo>/` (de `challenge_score.py`) | F1-macro vs. `docs/resultados_finales.md` |
+| 04 | Evaluar | `evaluate.py`, `ensemble_evaluate.py` | checkpoint, calibración (`--temperatures` o `--platt`) | `runs/eval/eval-*/` (métricas, umbrales, curvas, predicciones), `runs/eval/ensemble*/` (`ensemble-f1-platt/` es el que se empaqueta) | F1-macro vs. `docs/resultados_finales.md` |
 | 05 | Comparar | `compare_models.py`, `bootstrap_ci.py` | dos `runs/eval/eval-*/` con el mismo `threshold_beta` | `runs/reports/model_comparison*.csv`, `runs/reports/comparacion_*.csv`, `runs/reports/bootstrap_*.json` | IC 95 % de la diferencia |
 | 06 | Robustez y sesgo | `robustness.py`, `sex_breakdown.py`, `error_analysis.py`, `tools/check_patient_overlap.py` | checkpoint, test.h5 (el solape de pacientes usa además `data/externo/`) | `runs/reports/solape_pacientes.json`, `runs/reports/robustness.csv`, `runs/reports/sex_breakdown.json`, `runs/reports/errores_origen*.csv` y `*.masked.json` | Degradación aceptable por perturbación y sexo |
 | 07 | Figuras | `make_figures.py` | `runs/eval/eval-*/`, `runs/reports/` | `runs/figs/figs_eval_v1/`, `runs/figs/figs_eval_v2/`, `runs/figs/figs_eval_final/` | Figuras legibles para la tesis |
@@ -17,7 +17,7 @@ Opcional, fuera de la secuencia: `tools/check_docs_commands.py` (valida los coma
 
 ## Factory (estable entre corridas)
 
-`ecg/` (librería), `examples/cinc2020/config*.json` (recetas), `examples/cinc2020/official/` (métrica oficial, vendored), `requirements*.txt`, `constraints.txt` (versiones exactas de las transitivas), `tests/`. El bundle de despliegue (`models/`, `deploy/`, `webapp/examples/`) también va en git, pero se regenera cuando cambia el modelo final.
+`ecg/` (librería), `examples/cinc2020/config*.json` (recetas), `examples/cinc2020/official/` (tabla oficial de códigos, vendored), `requirements*.txt`, `constraints.txt` (versiones exactas de las transitivas), `tests/`. El bundle de despliegue (`models/`, `deploy/`, `webapp/examples/`) también va en git, pero se regenera cuando cambia el modelo final.
 
 ## Product (nuevo en cada corrida, git-ignored)
 
