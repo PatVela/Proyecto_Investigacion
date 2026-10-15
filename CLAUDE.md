@@ -13,23 +13,14 @@ Réplica académica de Hannun et al. (Nat Med 2019): clasificador multilabel de 
 | `tests/` | Suite pytest | `tests/CONTEXT.md` |
 | `.github/workflows/` | CI (`tests.yml`): pytest y `check_docs_commands.py` en cada PR y push a `main`; `audit.yml`: `pip-audit` semanal (complementa las alertas de Dependabot, el escaneo de secretos y la protección de envío de GitHub) | `tests/CONTEXT.md` |
 | `docs/` | Informe técnico, experimentos, resultados, fix histórico | `docs/CONTEXT.md` |
-| `models/`, `deploy/` | **Versionados.** Bundle de inferencia (pesos `models/*.pt`, `deploy/ensemble.env`, umbrales, métricas, lanzador de Windows `deploy/start_local.ps1`) con el que la webapp corre sin `saved/` ni `runs/`. Se regenera con `tools/export_inference_bundle.py`; no editar a mano | `webapp/README.md` (Ejecución local) |
-| `tasks/` | Plan y lista de tareas para ejecutar la demo en esta PC (`plan.md`, `todo.md`) y la auditoría de mejoras (`analisis_mejoras.md`) | — |
+| `models/`, `deploy/` | **Versionados.** Bundle de inferencia (pesos `models/*.pt`, `deploy/ensemble.env`, umbrales, métricas, lanzador de Windows `deploy/start_local.ps1`) con el que la webapp corre sin `saved/` ni `runs/`. Se regenera con `tools/export_inference_bundle.py`; no editar a mano (salvo `deploy/CONTEXT.md` y `start_local.ps1`) | `deploy/CONTEXT.md` |
+| `tasks/` | Plan y lista de tareas para ejecutar la demo en esta PC (`plan.md`, `todo.md`) y la auditoría de mejoras (`analisis_mejoras.md`) | `tasks/plan.md` |
 
 La definición del pipeline (etapas 01–08, entradas, salidas, chequeos humanos) está en `CONTEXT.md`.
 
 ## Producto generado (git-ignored, solo existe en disco local)
 
-Todo lo que produce el pipeline vive bajo `runs/` (ignorado por git). No editar a mano; se regenera con el pipeline.
-
-| Ruta | Contenido |
-|---|---|
-| `runs/eval/` | `eval-*/`, `ensemble*/` (incluye `ensemble-f1-platt/`, el que se empaqueta), `runs/eval/metrica-challenge/<modelo>/` (salidas de `evaluate.py`, `ensemble_evaluate.py`, `challenge_score.py`) |
-| `runs/figs/` | `runs/figs/figs_eval_v1/`, `runs/figs/figs_eval_v2/` |
-| `runs/reports/` | `model_comparison*.csv`, `comparacion_*.csv`, `robustness.csv`, `bootstrap_*.json`, `runs/reports/sex_breakdown.json`, `errores_origen*.csv` y `*.masked.json` |
-| `runs/models/` | `runs/models/resnet12.onnx`, `runs/models/optuna_cinc2020.db` |
-
-Fuera de `runs/` (también ignorado): `data/` (HDF5), `dataset2017/`, `dataset2020/` (crudos), `saved/` (checkpoints completos), `webapp/uploads/` y `webapp/results/` (temporales de la webapp).
+Todo lo que produce el pipeline vive bajo `runs/` y es la columna "Salida" de `CONTEXT.md`. No se edita a mano; se regenera con el pipeline. Fuera de `runs/`, también ignorados: `data/` (HDF5), `dataset2020/` (crudos), `saved/` (checkpoints completos), `webapp/uploads/` y `webapp/results/` (temporales de la webapp).
 
 ## Enrutamiento por tarea
 
