@@ -19,10 +19,15 @@ JOB_DIR_RE = re.compile(r"^[0-9a-f]{12}$")
 
 
 def int_env(name: str, default: int) -> int:
-    try:
-        return int(os.environ.get(name, default))
-    except ValueError:
+    """Entero de la variable ``name``; ausente o vacía = ``default``. Un texto que no es entero es un error de configuración:
+    antes valía ``default`` en silencio (``ECG_TRUST_PROXY=uno`` quedaba en 0 y todo un túnel compartía un solo cupo)."""
+    value = os.environ.get(name, "").strip()
+    if not value:
         return default
+    try:
+        return int(value)
+    except ValueError:
+        raise ValueError(f"{name} debe ser un número entero; recibido {value!r}") from None
 
 
 class SlidingWindowLimiter:

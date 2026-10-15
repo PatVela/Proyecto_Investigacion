@@ -99,3 +99,10 @@ def test_model_b_uses_its_own_env_var(env, tmp_path):
     va, _ = app_mod._load_temperatures_for_app(str(ckpt), str(tmp_path))
     vb, sb = app_mod._load_temperatures_for_app(str(ckpt), str(tmp_path), env_var="ECG_TEMPERATURES_B")
     assert va[NAMES[0]] == pytest.approx(1.0) and vb[NAMES[0]] == pytest.approx(2.0) and sb == str(b.resolve())
+
+
+def test_the_parameter_count_excludes_the_batchnorm_buffers(env, tmp_path):
+    ckpt = _checkpoint(tmp_path)
+    model = network.build_network(num_leads=12, num_classes=12)
+    info = app_mod._checkpoint_info(str(ckpt), str(tmp_path))
+    assert info["num_parameters"] == {"total": sum(p.numel() for p in model.parameters())}
