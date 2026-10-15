@@ -16,7 +16,7 @@ PROJECT_INFO = {
     "autor_email": "",
     "asesor": "",
     "asesor_cargo": "",
-    "version": "3.0",
+    "version": "3.1",
     "descripcion_corta": (
         "Asistente académico para analizar ECG de 12 derivaciones con una "
         "red 1D tipo Hannun adaptada a PhysioNet/Computing in Cardiology "
