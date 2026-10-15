@@ -135,11 +135,7 @@ El fallback normal está **apagado por defecto**: las métricas que muestra la w
 python webapp/app.py --saved saved --normal-fallback-min-prob 0.40
 ```
 
-Opcionalmente, entrada WSGI:
-
-```powershell
-python webapp/wsgi.py --saved saved
-```
+Opcionalmente, entrada WSGI para un servidor de producción (waitress; es lo que usa `deploy\start_local.ps1`): `python -m waitress webapp.wsgi:app`. Se configura con variables de entorno (tabla más abajo); las opciones de línea de comandos solo existen en `python webapp/app.py`.
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
@@ -316,7 +312,9 @@ sin datos propios.
 ```text
 webapp/
 ├── app.py            # Flask + rutas + carga de métricas/experimentos
-├── prediction.py     # inferencia con caché de modelos, conversión WFDB→CSV y gráficos
+├── prediction.py     # inferencia con caché de modelos, calibración y conversión WFDB→CSV
+├── labels.py         # etiquetas reales (clases v1/v2, texto manual) y comparación con la predicción
+├── plotting.py       # trazado de las 12 derivaciones en papel milimetrado (PNG de paleta)
 ├── limits.py         # límite de solicitudes por IP, limpieza de informes, enteros de entorno
 ├── example_records.py  # carga y validación de los registros de ejemplo (no se llama examples.py: taparía el paquete examples/ de la raíz)
 ├── examples/         # 7 registros .hea/.mat + examples.json (ver su README)

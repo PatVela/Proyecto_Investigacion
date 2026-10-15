@@ -37,10 +37,8 @@ from examples.cinc2020._archive._record_diag import (
     read_thresholds,
     rows_from_probabilities,
 )
-from webapp.prediction import (
-    build_label_comparison,
-    threshold_values_for_class_names,
-)
+from webapp.labels import build_label_comparison
+from webapp.prediction import threshold_values_for_class_names
 
 
 def main(argv=None):

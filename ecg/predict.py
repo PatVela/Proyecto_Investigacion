@@ -36,10 +36,6 @@ get_device = util.get_device
 model_params_from_config = network.params_from_config
 
 
-def _loader_kwargs(batch_size: int, num_workers: int, pin_memory: bool, prefetch_factor: int = 4) -> dict:
-    return util.dataloader_kwargs(batch_size, num_workers, pin_memory, prefetch_factor)
-
-
 def load_model(checkpoint_path: str | Path, device: torch.device | None = None, strict_classes: bool = False):
     """Carga checkpoint y devuelve ``(model, checkpoint, class_names)``.
 
@@ -250,7 +246,7 @@ def predict_hdf5(
     model, checkpoint, class_names = load_model(checkpoint_path, torch_device)
     dataset = HDF5PredictionDataset(h5_path, preload=preload, max_preload_gb=max_preload_gb)
     _check_hdf5_checkpoint_compat(h5_path, checkpoint)
-    loader = DataLoader(dataset, **_loader_kwargs(
+    loader = DataLoader(dataset, **util.dataloader_kwargs(
         batch_size, num_workers, pin_memory=(torch_device.type == "cuda"),
         prefetch_factor=prefetch_factor))
 

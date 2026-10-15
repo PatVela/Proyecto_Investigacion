@@ -42,7 +42,6 @@ def test_dataloader_kwargs_only_adds_worker_options_with_workers():
     workers = util.dataloader_kwargs("8", "3", False, prefetch_factor=5)
     assert workers["persistent_workers"] is True and workers["prefetch_factor"] == 5 and workers["num_workers"] == 3
     assert train._loader_kwargs({"batch": 4, "num_workers": 0}, shuffle=False)["batch_size"] == 4
-    assert predict._loader_kwargs(32, 0, True) == util.dataloader_kwargs(32, 0, True)
 
 
 def test_params_from_config_defaults_and_legacy_names():

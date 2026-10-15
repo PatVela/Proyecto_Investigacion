@@ -124,6 +124,11 @@ def load_thresholds_csv(path: str | Path, class_names: list[str]) -> np.ndarray:
     return np.asarray([values[c] for c in class_names], dtype=np.float32)
 
 
+def thresholds_or_default(path: str | Path | None, class_names: list[str], default: float = 0.5) -> np.ndarray:
+    """Umbrales por clase de ``path`` (:func:`load_thresholds_csv`); sin archivo, ``default`` para todas."""
+    return load_thresholds_csv(path, class_names) if path else np.full(len(class_names), default, dtype=np.float32)
+
+
 def save_temperatures_csv(path: str | Path, class_names: list[str], temperatures) -> None:
     """Guarda vector (C,) como CSV ``class,temperature``."""
     temps = np.asarray(list(temperatures), dtype=np.float64).reshape(-1)

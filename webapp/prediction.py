@@ -1,4 +1,5 @@
-"""Servicio de inferencia, conversión WFDB->CSV y gráficos para la webapp.
+"""Servicio de inferencia y conversión WFDB->CSV para la webapp (el trazado está en ``plotting.py`` y la comparación
+con etiquetas reales en ``labels.py``).
 
 Entradas soportadas por la app:
     - CSV de 12 derivaciones.
@@ -10,28 +11,15 @@ Si se sube .hea + .mat, la señal se lee, se preprocesa a 500 Hz / 5000 muestras
 
 from __future__ import annotations
 
-import io
 import os
 import re
 import shutil
-import tempfile
 import threading
 import uuid
 from collections import OrderedDict
 from pathlib import Path
 from typing import Iterable
 
-# matplotlib necesita un directorio de configuración; en contenedores mínimos puede no
-# existir un "home" y la importación fallaría (RuntimeError) antes de arrancar la app.
-if not os.environ.get("MPLCONFIGDIR"):
-    try:
-        Path.home()
-    except RuntimeError:
-        os.environ["MPLCONFIGDIR"] = str(Path(tempfile.gettempdir()) / "ecg-mplconfig")
-
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from werkzeug.utils import secure_filename
@@ -39,13 +27,13 @@ from werkzeug.utils import secure_filename
 from ecg import load, util
 from ecg.calibration import apply_platt, apply_temperature, ensemble_probabilities
 from ecg.predict import load_model, predict_array, predict_windows, prepare_csv_windows, preprocessing_for_checkpoint
+from webapp.labels import build_label_comparison, group_for_class, split_reference_label_text, translate_classes_to_checkpoint
+from webapp.plotting import plot_ecg_array
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LEADS = load.STANDARD_LEAD_ORDER
 
-# Traducción de nombres v2 -> v1 para comparar contra checkpoints legacy.
-V2_TO_V1_CLASS = {"AxisDev": "LAD", "BBB": "RBBB"}
 # Texto mostrado cuando el checkpoint no declara esquema (no se presenta como si lo declarara).
 UNDECLARED_SCHEMA_TEXT = "sin esquema declarado (se asumió el actual)"
 # Un CSV no declara sus unidades: se infieren (ecg.signal.infer_csv_units) y se muestran para que se pueda ver si se acertó.
@@ -58,29 +46,11 @@ SLIDING_WINDOWS_MAX = 4
 SLIDING_AGGREGATE = "mean"
 
 
-def _group_for_class(name: str) -> dict:
-    for group in load.CLASS_GROUPS_12:
-        if group["name"] == name:
-            return group
-    for group in load.CLASS_GROUPS_12_V1_LEGACY:
-        if group["name"] == name:
-            return {"name": name, "display_name": name, "description": "", "codes": group["codes"]}
-    return {"name": name, "display_name": name, "description": "", "codes": []}
-
-
-def translate_classes_to_checkpoint(names: Iterable[str], class_names: list[str]) -> list[str]:
-    """Traduce clases v2 a nombres v1 si el checkpoint es legacy."""
-    names = list(names)
-    if "AxisDev" in class_names or "BBB" in class_names or "LAD" not in class_names:
-        return names
-    return [V2_TO_V1_CLASS.get(n, n) for n in names]
-
-
 # ---------------------------------------------------------------------------
 # Rutas / modelo
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
-# Modelos en memoria, concurrencia y matplotlib
+# Modelos en memoria y concurrencia
 # ---------------------------------------------------------------------------
 # Cada petición recargaba los checkpoints desde disco. Ahora se cargan una vez y se
 # reutilizan (se invalidan si el archivo cambia); se descartan los pesos duplicados
@@ -92,8 +62,6 @@ _HEAVY_CHECKPOINT_KEYS = ("model_state_dict", "optimizer_state_dict", "scheduler
 
 # Máximo de inferencias simultáneas (acota CPU y memoria; el resto espera su turno).
 _INFERENCE_SLOTS = threading.BoundedSemaphore(max(1, int(os.environ.get("ECG_MAX_CONCURRENT_INFERENCE", "2"))))
-# pyplot mantiene estado global y no es seguro entre hilos (waitress usa varios).
-_PLOT_LOCK = threading.Lock()
 
 
 SERVING_DEVICES = ("auto", "cpu", "cuda")
@@ -345,234 +313,6 @@ def prepare_saved_input(
     )
 
 
-# ---------------------------------------------------------------------------
-# Etiquetas reales / comparación multilabel
-# ---------------------------------------------------------------------------
-def split_reference_label_text(value: str | Iterable[str] | None) -> tuple[list[str], list[str]]:
-    """``(clases, no_reconocidos)`` de un texto manual con clases o SNOMED (nombres del esquema de 12 clases).
-
-    Lo que no se reconoce se devuelve en vez de descartarse: con ``AFF`` por ``AF`` la comparación seguía como si el
-    registro no tuviera etiqueta, el AF acertado salía como falso positivo y el F1 como 0.0, sin ningún aviso.
-    """
-    if value is None:
-        return [], []
-    if isinstance(value, str):
-        parts = re.split(r"[,;\n]+", value)
-    else:
-        parts = list(value)
-
-    upper_to_name = {name.upper(): name for name in load.CLASS_NAMES}
-    upper_to_name.update({"LAD": "AxisDev", "RBBB": "BBB"})  # alias legacy v1
-    display_to_name = {group["display_name"].upper(): group["name"] for group in load.CLASS_GROUPS_12}
-    found: list[str] = []
-    unrecognized: list[str] = []
-    seen = set()
-    for part in parts:
-        raw = str(part).strip()
-        if not raw:
-            continue
-        code = load.normalize_snomed_code(raw)
-        name = None
-        if code in load.CODE_TO_CLASS_INDEX:
-            name = load.CLASS_NAMES[load.CODE_TO_CLASS_INDEX[code]]
-        else:
-            key = raw.upper().replace(" ", "_")
-            name = upper_to_name.get(key) or display_to_name.get(raw.upper())
-        if not name:
-            if raw not in unrecognized:
-                unrecognized.append(raw)
-        elif name not in seen:
-            found.append(name)
-            seen.add(name)
-    return found, unrecognized
-
-
-def _class_order(names: Iterable[str]) -> list[str]:
-    order = {name: i for i, name in enumerate(load.CLASS_NAMES)}
-    return sorted(set(names), key=lambda n: order.get(n, 10_000))
-
-
-def build_label_comparison(
-    true_classes: Iterable[str] | None,
-    predicted_rows: list[dict],
-    source: str | None,
-    dx_codes: Iterable[str] | None = None,
-    manual_raw: str | None = None,
-) -> dict:
-    """Compara predicciones finales positivas vs etiquetas reales dentro del esquema."""
-    predicted = _class_order(row["class"] for row in predicted_rows if int(row.get("prediction", 0)) == 1)
-    true = _class_order(true_classes or [])
-    has_truth = source is not None
-    if not has_truth:
-        return {
-            "available": False,
-            "source": None,
-            "reason": "No hay etiquetas reales disponibles. En .hea se leen desde el campo Dx; para CSV puede escribir clases o SNOMED manualmente.",
-            "true_classes": [],
-            "predicted_classes": predicted,
-        }
-
-    true_set = set(true)
-    pred_set = set(predicted)
-    tp = _class_order(true_set & pred_set)
-    fp = _class_order(pred_set - true_set)
-    fn = _class_order(true_set - pred_set)
-    union = true_set | pred_set
-
-    if not true_set and not pred_set:
-        precision = recall = f1 = jaccard = 1.0
-    elif not pred_set:
-        precision = 0.0
-        recall = 0.0 if true_set else 1.0
-        f1 = 0.0
-        jaccard = 0.0 if union else 1.0
-    elif not true_set:
-        precision = 0.0
-        recall = 0.0
-        f1 = 0.0
-        jaccard = 0.0
-    else:
-        precision = len(tp) / len(pred_set)
-        recall = len(tp) / len(true_set)
-        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
-        jaccard = len(tp) / len(union) if union else 1.0
-
-    return {
-        "available": True,
-        "source": source,
-        "manual_raw": manual_raw or "",
-        "dx_codes": list(dx_codes or []),
-        "true_classes": true,
-        "predicted_classes": predicted,
-        "true_positive": tp,
-        "false_positive": fp,
-        "false_negative": fn,
-        "exact_match": pred_set == true_set,
-        "precision": float(precision),
-        "recall": float(recall),
-        "f1": float(f1),
-        "jaccard": float(jaccard),
-    }
-
-
-# ---------------------------------------------------------------------------
-# Gráficos / resultados
-# ---------------------------------------------------------------------------
-def _robust_ylim(values: np.ndarray) -> tuple[float, float]:
-    lo, hi = np.nanpercentile(values, [1, 99])
-    if not np.isfinite(lo) or not np.isfinite(hi) or np.isclose(lo, hi):
-        lo, hi = -2.5, 2.5
-    pad = max(0.5, 0.12 * float(hi - lo))
-    lo = float(np.floor((lo - pad) * 2) / 2)
-    hi = float(np.ceil((hi + pad) * 2) / 2)
-    return lo, hi
-
-
-_MINOR_GRID_ZORDER = 1.6
-
-
-def _grid_positions(lo: float, hi: float, step: float, major: float | None = None) -> np.ndarray:
-    """Múltiplos de ``step`` dentro de [lo, hi] (equivale a MultipleLocator).
-
-    Con ``major`` se omiten los que caen sobre una línea mayor, igual que hace
-    Matplotlib con los ticks menores que coinciden con los mayores.
-    """
-    first = int(np.ceil(lo / step - 1e-9))
-    last = int(np.floor(hi / step + 1e-9))
-    idx = np.arange(first, last + 1)
-    if major is not None:
-        ratio = round(major / step)
-        idx = idx[idx % ratio != 0]
-    return idx * step
-
-
-def plot_ecg_array(signal: np.ndarray, output_dir: str | Path, stem: str) -> Path:
-    """Grafica las 12 derivaciones con estilo de papel milimetrado ECG."""
-    signal = np.asarray(signal, dtype=np.float32)
-    if signal.shape != (load.WINDOW_LENGTH, load.NUM_LEADS):
-        raise ValueError(f"Shape inválida para gráfico ECG: {signal.shape}")
-
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    t = np.arange(signal.shape[0]) / load.TARGET_FS
-
-    with _PLOT_LOCK:
-        return _plot_ecg_figure(signal, t, stem, output_dir)
-
-
-def _plot_ecg_figure(signal: np.ndarray, t: np.ndarray, stem: str, output_dir: Path) -> Path:
-    from matplotlib.ticker import MultipleLocator
-
-    fig, axes = plt.subplots(6, 2, figsize=(16, 11.5), sharex=True)
-    fig.patch.set_facecolor("#fffafa")
-    fig.suptitle(
-        f"ECG de 12 derivaciones — {stem} · papel milimetrado",
-        fontsize=15,
-        fontweight="bold",
-        color="#7f1d1d",
-    )
-
-    for i, ax in enumerate(axes.flat):
-        ax.set_facecolor("#fffafa")
-        ax.plot(t, signal[:, i], linewidth=0.75, color="#111827", zorder=3)
-        ax.set_title(LEADS[i], fontsize=10, loc="left", color="#7f1d1d", fontweight="bold")
-        ax.set_xlim(0, load.WINDOW_SECONDS)
-        y0, y1 = _robust_ylim(signal[:, i])
-        ax.set_ylim(y0, y1)
-        ax.xaxis.set_major_locator(MultipleLocator(0.20))
-        ax.yaxis.set_major_locator(MultipleLocator(0.50))
-        ax.grid(which="major", color="#e48b8b", linewidth=0.75)
-        # Cuadrícula fina como líneas directas: 250 ticks menores por eje hacían
-        # que la figura tardara ~5 s; así es el mismo dibujo en una fracción.
-        ax.vlines(_grid_positions(0.0, load.WINDOW_SECONDS, 0.04, major=0.20), y0, y1,
-                  colors="#f7c8c8", linewidths=0.35, zorder=_MINOR_GRID_ZORDER)
-        ax.hlines(_grid_positions(y0, y1, 0.10, major=0.50), 0.0, load.WINDOW_SECONDS,
-                  colors="#f7c8c8", linewidths=0.35, zorder=_MINOR_GRID_ZORDER)
-        ax.tick_params(axis="both", which="major", labelsize=7, colors="#7f1d1d", length=0)
-        for spine in ax.spines.values():
-            spine.set_color("#e48b8b")
-            spine.set_linewidth(0.6)
-        ax.set_ylabel("z", fontsize=8, color="#7f1d1d")
-    axes[-1, 0].set_xlabel("Tiempo (s)", fontsize=9, color="#7f1d1d")
-    axes[-1, 1].set_xlabel("Tiempo (s)", fontsize=9, color="#7f1d1d")
-    fig.text(
-        0.5,
-        0.008,
-        "Cuadrícula ECG: 0.04 s por cuadro pequeño y 0.20 s por cuadro grande en el eje temporal. Amplitud mostrada normalizada por derivación.",
-        ha="center",
-        fontsize=8,
-        color="#7f1d1d",
-    )
-    fig.tight_layout(rect=[0, 0.02, 1, 0.96])
-
-    out_path = output_dir / f"{secure_filename(stem)}_ecg_papel_milimetrado.png"
-    _save_figure_png(fig, out_path)
-    plt.close(fig)
-    return out_path
-
-
-PLOT_DPI = 160
-PNG_PALETTE_COLORS = 256
-
-
-def _save_figure_png(fig, path: Path) -> None:
-    """Guarda la figura como PNG de paleta (≤ 256 colores) sin canal alfa.
-
-    El trazado solo tiene cuadrícula rosa, texto y un trazo negro con suavizado; con 256 colores el error máximo
-    es 14/255 en < 0,01 % de los píxeles (PSNR ≈ 59 dB) y el archivo pasa de ≈ 762 KB a ≈ 306 KB, que es lo
-    que se descarga y lo que se incrusta en el PDF. La resolución (2545 × 1824) no cambia.
-    """
-    from PIL import Image
-
-    buffer = io.BytesIO()
-    fig.savefig(buffer, format="png", dpi=PLOT_DPI, bbox_inches="tight", facecolor=fig.get_facecolor())
-    buffer.seek(0)
-    with Image.open(buffer) as raw:
-        rgb = raw.convert("RGB")                       # el fondo es opaco: el canal alfa solo estorba
-    palette = rgb.quantize(colors=PNG_PALETTE_COLORS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
-    palette.save(path, format="PNG", optimize=True, compress_level=9, dpi=(PLOT_DPI, PLOT_DPI))
-
-
 def threshold_values_for_class_names(
     class_names: list[str],
     threshold: float = 0.5,
@@ -638,7 +378,7 @@ def platt_for_class_names(
 def _prediction_rows(probabilities: np.ndarray, class_names: list[str], thresholds: np.ndarray) -> list[dict]:
     rows = []
     for i, prob in enumerate(probabilities):
-        group = _group_for_class(class_names[i])
+        group = group_for_class(class_names[i])
         thr = float(thresholds[i])
         prob_f = float(prob)
         rows.append({

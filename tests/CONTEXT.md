@@ -1,6 +1,6 @@
 # tests/ — suite pytest
 
-**Trabajo:** red de seguridad (requiere `pip install -r requirements-dev.txt`). Fixtures compartidas en `conftest.py`. Ejecutar: `pytest` desde la raíz (≈ 7 min). `.github/workflows/tests.yml` la corre en cada PR y en cada push a `main` (Linux, torch CPU). Algunos tests se saltan solos si faltan datos locales (bundle, `runs/`).
+**Trabajo:** red de seguridad (requiere `pip install -r requirements-dev.txt`). Fixtures compartidas en `conftest.py`. Ejecutar: `pytest` desde la raíz (≈ 7 min). `.github/workflows/tests.yml` la corre en cada PR y en cada push a `main` (Linux, torch CPU, con `constraints.txt`); `audit.yml` busca vulnerabilidades conocidas cada semana. Algunos tests se saltan solos si faltan datos locales (bundle, `runs/`).
 
 | Área | Tests |
 |---|---|
@@ -10,6 +10,6 @@
 | `webapp/` (lógica) | `test_webapp`, `test_webapp_ensemble`, `test_webapp_loaders`, `test_webapp_security`, `test_report`, `test_plot_grid`, `test_model_resolution`, `test_model_cache`, `test_error_handling`, `test_payload_size` (PNG, PDF y gzip: más pequeños sin cambiar el contenido), `test_webapp_platt`, `test_manual_labels` (etiquetas reales escritas a mano: lo no reconocido se rechaza), `test_window_aggregation` (media de las ventanas calibradas), `test_webapp_paths` (la web no muestra rutas del servidor), `test_hardening` (ReDoS, tope del `.mat`, `/use_model`, host, cuerpo en waitress, escape de comillas) |
 | Ejecución local | `test_dev_server` (`python webapp/app.py` con el ensemble), `test_deploy_config`, `test_deploy_entrypoint` (scripts de Windows; se omiten fuera de Windows), `test_serving_device`, `test_public_limits`, `test_docs_env_vars` |
 | Interfaz | `test_ui_accessibility`, `test_ui_loading_theming`, `test_ui_content` (comprobaciones estáticas sobre HTML/CSS/JS; el comportamiento real se verifica además en un navegador) |
-| Higiene del repo | `test_no_stale_paths` (rutas `results/` obsoletas), `test_requirements` (dependencias declaradas), `test_docs_links` (enlaces de los .md y repo/rama vigentes), `test_docs_commands` (scripts y flags citados en los .md existen), `test_static_analysis` (pyflakes), `test_console_encoding` (ningún `print` fuera de cp1252) |
+| Higiene del repo | `test_no_stale_paths` (rutas `results/` obsoletas), `test_requirements` (dependencias declaradas, `constraints.txt` coherente con ellas y flujos de GitHub), `test_docs_links` (enlaces de los .md y repo/rama vigentes), `test_docs_commands` (scripts y flags citados en los .md existen), `test_static_analysis` (pyflakes), `test_console_encoding` (ningún `print` fuera de cp1252) |
 
 Chequeo humano: todo verde antes de mover o renombrar cualquier ruta del pipeline; si un cambio toca seguridad (subidas, rutas, carga de checkpoints), añadir primero el test que falla con el código viejo.

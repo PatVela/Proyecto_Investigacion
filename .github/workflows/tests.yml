@@ -2,7 +2,7 @@ name: tests
 
 # La suite (≈ 500 pruebas, ≈ 6 min) solo corría si alguien se acordaba: las PR #16-#18 llegaron a main con 0 comprobaciones.
 # Corre en Linux con la rueda CPU de PyTorch; las pruebas de los scripts de Windows (deploy/*.ps1) y las que necesitan
-# datos locales (dataset2020/, runs/) se omiten solas. La versión de torch es la de requirements.txt (2.14.0).
+# datos locales (dataset2020/, runs/) se omiten solas. La versión de torch es la de requirements.txt (2.14.0) y las demás las fija constraints.txt.
 on:
   pull_request:
   push:
@@ -27,9 +27,11 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: requirements*.txt
+          cache-dependency-path: |
+            requirements*.txt
+            constraints.txt
       - name: Instalar dependencias (torch CPU)
-        run: pip install -r requirements-dev.txt --extra-index-url https://download.pytorch.org/whl/cpu
+        run: pip install -r requirements-dev.txt -c constraints.txt --extra-index-url https://download.pytorch.org/whl/cpu
       - name: Comandos de los .md
         run: python tools/check_docs_commands.py
       - name: Pruebas

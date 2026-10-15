@@ -17,7 +17,7 @@ Opcional, fuera de la secuencia: `tools/check_docs_commands.py` (valida los coma
 
 ## Factory (estable entre corridas)
 
-`ecg/` (librería), `examples/cinc2020/config*.json` (recetas), `examples/cinc2020/official/` (métrica oficial, vendored), `requirements*.txt`, `tests/`. El bundle de despliegue (`models/`, `deploy/`, `webapp/examples/`) también va en git, pero se regenera cuando cambia el modelo final.
+`ecg/` (librería), `examples/cinc2020/config*.json` (recetas), `examples/cinc2020/official/` (métrica oficial, vendored), `requirements*.txt`, `constraints.txt` (versiones exactas de las transitivas), `tests/`. El bundle de despliegue (`models/`, `deploy/`, `webapp/examples/`) también va en git, pero se regenera cuando cambia el modelo final.
 
 ## Product (nuevo en cada corrida, git-ignored)
 

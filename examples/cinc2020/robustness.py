@@ -21,7 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from ecg import predict, util
-from ecg.calibration import apply_platt_logits, apply_temperature, load_platt_csv, load_temperatures_csv, load_thresholds_csv
+from ecg.calibration import apply_platt_logits, apply_temperature, load_platt_csv, load_temperatures_csv, thresholds_or_default
 
 
 def apply_perturbation(x, kind, level, rng):
@@ -57,7 +57,7 @@ def evaluate_under_perturbation(model, dataset, thresholds, device, kind, level,
     if max_samples is not None and max_samples < len(dataset):
         indices = rng.choice(len(dataset), size=max_samples, replace=False)
         dataset = Subset(dataset, indices.tolist())
-    loader = DataLoader(dataset, **predict._loader_kwargs(batch_size, num_workers, pin_memory=(device.type == "cuda")))
+    loader = DataLoader(dataset, **util.dataloader_kwargs(batch_size, num_workers, pin_memory=(device.type == "cuda")))
     probs, logits, labels = [], [], []
     for x, y in tqdm(loader, desc=f"{kind}:{level}", leave=False):
         x = x.to(device, non_blocking=True)
@@ -84,11 +84,6 @@ def evaluate_under_perturbation(model, dataset, thresholds, device, kind, level,
     }
 
 
-def load_thresholds(path, class_names):
-    """Umbrales por clase de ``thresholds_validation.csv``; sin archivo, 0.5 global."""
-    return load_thresholds_csv(path, class_names) if path else np.full(len(class_names), 0.5, dtype=np.float32)
-
-
 def main():
     parser = argparse.ArgumentParser(description="Robustez controlada CINC2020-12")
     parser.add_argument("checkpoint")
@@ -112,7 +107,7 @@ def main():
     device = predict.get_device(args.device)
     model, _checkpoint, class_names = predict.load_model(args.checkpoint, device=device)
     dataset = predict.HDF5PredictionDataset(args.test_h5, preload=not args.no_preload)
-    thresholds = load_thresholds(args.thresholds, class_names)
+    thresholds = thresholds_or_default(args.thresholds, class_names)
     temp_vec = load_temperatures_csv(args.temperatures, class_names) if args.temperatures else None
     platt_ab = load_platt_csv(args.platt, class_names) if args.platt else None
     if temp_vec is not None:

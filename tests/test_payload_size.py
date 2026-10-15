@@ -16,6 +16,7 @@ import pytest
 pytest.importorskip("flask")
 from PIL import Image
 
+from webapp import plotting
 from webapp import prediction as pred
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -36,17 +37,17 @@ def real_signal(tmp_path_factory):
 # --------------------------------------------------------------------------- #
 def _reference_png(signal, tmp_path):
     """Lo que se escribía antes: ``savefig`` directo, sin optimizar."""
-    original = pred._save_figure_png
-    pred._save_figure_png = lambda fig, path: fig.savefig(path, dpi=pred.PLOT_DPI, bbox_inches="tight", facecolor=fig.get_facecolor())
+    original = plotting._save_figure_png
+    plotting._save_figure_png = lambda fig, path: fig.savefig(path, dpi=plotting.PLOT_DPI, bbox_inches="tight", facecolor=fig.get_facecolor())
     try:
-        return pred.plot_ecg_array(signal, tmp_path / "ref", "rec")
+        return plotting.plot_ecg_array(signal, tmp_path / "ref", "rec")
     finally:
-        pred._save_figure_png = original
+        plotting._save_figure_png = original
 
 
 def test_ecg_png_is_much_smaller_and_still_the_same_picture(real_signal, tmp_path):
     reference = _reference_png(real_signal, tmp_path)
-    optimized = pred.plot_ecg_array(real_signal, tmp_path / "opt", "rec")
+    optimized = plotting.plot_ecg_array(real_signal, tmp_path / "opt", "rec")
     assert optimized.stat().st_size <= 0.5 * reference.stat().st_size            # antes ≈ 762 KB, ahora ≈ 306 KB
 
     with Image.open(reference) as a, Image.open(optimized) as b:
@@ -62,10 +63,10 @@ def test_ecg_png_is_much_smaller_and_still_the_same_picture(real_signal, tmp_pat
 
 
 def test_png_is_written_without_an_alpha_channel_and_with_dpi(real_signal, tmp_path):
-    path = pred.plot_ecg_array(real_signal, tmp_path, "rec")
+    path = plotting.plot_ecg_array(real_signal, tmp_path, "rec")
     with Image.open(path) as image:
         assert "A" not in image.getbands() and "transparency" not in image.info     # el fondo es opaco: no hace falta alfa
-        assert round(image.info.get("dpi", (0, 0))[0]) == pred.PLOT_DPI
+        assert round(image.info.get("dpi", (0, 0))[0]) == plotting.PLOT_DPI
 
 
 # --------------------------------------------------------------------------- #
