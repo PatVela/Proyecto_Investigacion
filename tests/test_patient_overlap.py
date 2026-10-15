@@ -102,6 +102,17 @@ def test_f1_is_computed_separately_for_records_with_and_without_overlap(data):
     assert len(result["f1_macro_sin_menos_con_ic95"]) == 2
 
 
+def test_predictions_without_the_test_records_of_an_origin_are_an_error_not_an_index_error(data, capsys):
+    path = data["tmp"] / "otra_particion.csv"
+    path.write_text("record_name,true_A,prob_A,pred_A\nHR99999,1,0.5,1\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="predictions_test.csv"):
+        cpo.f1_with_and_without_overlap(path, overlapped=set(), origin_records={"HR00002"})
+    assert cpo.f1_with_and_without_overlap(path, overlapped=set(), origin_records=set()) == {"n_con_solape": 0, "n_sin_solape": 0}
+    code = cpo.main(["--ptbxl-database", str(data["database"]), "--ptb-records", str(data["records"]), "--split-csv", str(data["split"]),
+                     "--challenge-dir", str(data["challenge"]), "--predictions", str(path)])
+    assert code == 1 and "predictions_test.csv" in capsys.readouterr().err
+
+
 def test_f1_helper_ignores_classes_without_positives():
     true = np.array([[1, 0], [0, 0]])
     pred = np.array([[1, 1], [0, 0]])

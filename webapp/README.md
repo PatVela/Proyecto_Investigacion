@@ -280,13 +280,13 @@ Las variables enteras (`ECG_MAX_UPLOAD_MB`, `ECG_RATE_LIMIT_*`, `ECG_TRUST_PROXY
 
 | Variable | Defecto | Efecto |
 |---|---|---|
-| `ECG_MODEL`, `ECG_MODEL_B`, `ECG_ALPHA` | del `.env` | Modelos del ensemble y peso del A (`ECG_ALPHA` en [0, 1]). Una ruta inexistente o un `ECG_ALPHA` fuera de rango **impiden arrancar** (no se sustituye por otro modelo) |
+| `ECG_MODEL`, `ECG_MODEL_B`, `ECG_ALPHA` | del `.env` | Modelos del ensemble y peso del A (`ECG_ALPHA` en [0, 1]). Una ruta inexistente o un `ECG_ALPHA` fuera de rango o que no sea un número (`0,5` con coma) **impiden arrancar** (no se sustituye por otro modelo) |
 | `ECG_PLATT`, `ECG_PLATT_B`, `ECG_PLATT_ENSEMBLE` | del `.env` | Calibración afín (`class,a,b`) del modelo A, del B y del promedio del ensemble. Gana a la temperatura del mismo modelo |
 | `ECG_TEMPERATURES`, `ECG_TEMPERATURES_B`, `ECG_THRESHOLDS`, `ECG_EVAL_DIR`, `ECG_EXP_DIR` | del `.env` | Calibración por temperatura, umbrales y resultados que muestra la interfaz |
 | `ECG_SAVED` | `saved/` (el bundle usa `models/`) | Carpeta de checkpoints; `/use_model` solo acepta archivos de aquí |
 | `ECG_UPLOADS`, `ECG_RESULTS` | `webapp/uploads`, `webapp/results` | Carpetas temporales de subidas e informes |
 | `ECG_EXAMPLES_DIR` | `webapp/examples` | Registros de ejemplo y su `examples.json` |
-| `ECG_NORMAL_FALLBACK_MIN_PROB` | 0 | Si ninguna clase supera su umbral, añade NSR cuando P(NSR) ≥ este valor (`0` = apagado; el NSR de la web ya tiene su propio umbral, 0.47 en el bundle) |
+| `ECG_NORMAL_FALLBACK_MIN_PROB` | 0 | Si ninguna clase supera su umbral, añade NSR cuando P(NSR) ≥ este valor (`0` = apagado, valores en [0, 1]; el NSR de la web ya tiene su propio umbral, 0.47 en el bundle) |
 | `ECG_REFERENCE` | — | Referencia opcional que se muestra en la interfaz |
 | `ECG_MAX_UPLOAD_MB` | 5 | Tamaño máximo por solicitud (413 en JSON). `deploy\start_local.ps1` limita además el cuerpo en waitress a este valor + 1 MB (413 antes de llegar a Flask) |
 | `ECG_ENABLE_USE_MODEL` | — | `1` activa `POST /use_model`; apagado por defecto |

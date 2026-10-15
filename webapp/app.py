@@ -29,7 +29,7 @@ from ecg import load, util
 from webapp import example_records as example_store
 from webapp.compression import compress_response
 from webapp import project_info as proj
-from webapp.limits import SlidingWindowLimiter, cleanup_old_jobs, int_env
+from webapp.limits import SlidingWindowLimiter, cleanup_old_jobs, float_env, int_env
 from webapp.prediction import clean_field_text, clean_path_text, resolve_existing_path, resolve_model_path, run_prediction_from_uploads, serving_device
 from webapp.report_pdf import build_pdf_report
 
@@ -549,7 +549,7 @@ def create_app() -> Flask:
     for key in ("ECG_MODEL", "ECG_MODEL_B"):                 # falla al arrancar, no en la primera predicción
         if app.config.get(key) and not resolve_existing_path(app.config[key]).exists():
             raise RuntimeError(f"{key} apunta a un checkpoint que no existe: {app.config[key]}")
-    alpha = float(os.environ.get("ECG_ALPHA", "0.5"))
+    alpha = float_env("ECG_ALPHA", 0.5)
     if not 0.0 <= alpha <= 1.0:                              # falla al arrancar: si no, cada /predict del ensemble daría 400
         raise RuntimeError(f"ECG_ALPHA debe estar en [0, 1]; recibido {os.environ.get('ECG_ALPHA')!r}")
     app.config["ECG_ALPHA"] = alpha
@@ -560,7 +560,10 @@ def create_app() -> Flask:
     app.config["ECG_EXAMPLES_DIR"] = str(Path(clean_path_text(os.environ.get("ECG_EXAMPLES_DIR", "")) or DEFAULT_EXAMPLES))
     examples_manifest = example_store.load_manifest(app.config["ECG_EXAMPLES_DIR"])
     app.config["ECG_THRESHOLDS"] = clean_path_text(os.environ.get("ECG_THRESHOLDS", ""))
-    app.config["ECG_NORMAL_FALLBACK_MIN_PROB"] = float(os.environ.get("ECG_NORMAL_FALLBACK_MIN_PROB", "0"))      # 0 = apagado: las métricas publicadas se calcularon sin esta regla
+    fallback_min_prob = float_env("ECG_NORMAL_FALLBACK_MIN_PROB", 0.0)      # 0 = apagado: las métricas publicadas se calcularon sin esta regla
+    if not 0.0 <= fallback_min_prob <= 1.0:
+        raise RuntimeError(f"ECG_NORMAL_FALLBACK_MIN_PROB debe estar en [0, 1]; recibido {os.environ.get('ECG_NORMAL_FALLBACK_MIN_PROB')!r}")
+    app.config["ECG_NORMAL_FALLBACK_MIN_PROB"] = fallback_min_prob
 
     def _purge_old_jobs() -> None:
         for key in ("ECG_RESULTS_DIR", "ECG_UPLOADS_DIR"):
@@ -786,7 +789,8 @@ def create_app() -> Flask:
             return jsonify({"ok": False, "status": "error", "error": str(exc)}), 400
         except Exception as exc:                            # fallo interno: detalle solo en el registro del servidor
             app.logger.exception("Fallo interno en /predict")
-            detail = str(exc) if os.environ.get("ECG_DEBUG_ERRORS") == "1" else                 "Error interno al procesar el ECG. Inténtelo de nuevo o pruebe con un ejemplo."
+            detail = (str(exc) if os.environ.get("ECG_DEBUG_ERRORS") == "1"
+                      else "Error interno al procesar el ECG. Inténtelo de nuevo o pruebe con un ejemplo.")
             return jsonify({"ok": False, "status": "error", "error": detail}), 500
 
     @app.get("/results/<path:filename>")
@@ -887,6 +891,8 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.alpha is not None and not 0.0 <= float(args.alpha) <= 1.0:
         parser.error("--alpha debe estar en [0, 1]")
+    if args.normal_fallback_min_prob is not None and not 0.0 <= args.normal_fallback_min_prob <= 1.0:
+        parser.error("--normal-fallback-min-prob debe estar en [0, 1]")
     for option, variable in CLI_TO_ENV_PATHS.items():             # cada opción de ruta equivale a su variable de entorno
         value = getattr(args, option)
         if value is not None:

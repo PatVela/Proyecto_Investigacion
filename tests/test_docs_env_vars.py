@@ -4,9 +4,9 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-# lecturas reales del entorno: os.environ.get("X"), os.environ["X"], setdefault/pop("X"), int_env("X"), _resolve_dir_env("X") y env_var="X"
+# lecturas reales del entorno: os.environ.get("X"), os.environ["X"], setdefault/pop("X"), int_env("X"), float_env("X"), _resolve_dir_env("X") y env_var="X"
 # (el nombre que app.py pasa a los cargadores de archivos de calibración, que hacen os.environ.get(env_var))
-READ = re.compile(r"""(?:environ(?:\.get|\.setdefault|\.pop)?[\(\[]|int_env\(|_resolve_dir_env\(|env_var(?::\s*str)?\s*=)\s*["'](ECG_[A-Z0-9_]+)["']""")
+READ = re.compile(r"""(?:environ(?:\.get|\.setdefault|\.pop)?[\(\[]|(?:int|float)_env\(|_resolve_dir_env\(|env_var(?::\s*str)?\s*=)\s*["'](ECG_[A-Z0-9_]+)["']""")
 
 
 def _used_in_code() -> set[str]:
@@ -18,7 +18,7 @@ def _used_in_code() -> set[str]:
 
 def test_the_scanner_finds_the_variables_it_should():
     names = _used_in_code()
-    assert {"ECG_MODEL", "ECG_MODEL_B", "ECG_RATE_LIMIT_MAX", "ECG_ENV_FILE", "ECG_DEBUG_ERRORS"} <= names
+    assert {"ECG_MODEL", "ECG_MODEL_B", "ECG_RATE_LIMIT_MAX", "ECG_ENV_FILE", "ECG_DEBUG_ERRORS", "ECG_ALPHA", "ECG_NORMAL_FALLBACK_MIN_PROB"} <= names
     assert "ECG_SAVED_DIR" not in names                      # clave de app.config, no variable de entorno
 
 

@@ -30,6 +30,18 @@ def int_env(name: str, default: int) -> int:
         raise ValueError(f"{name} debe ser un número entero; recibido {value!r}") from None
 
 
+def float_env(name: str, default: float) -> float:
+    """Decimal de la variable ``name``; ausente o vacía = ``default``. Un texto que no es número (``0,5`` con coma) es un error
+    de configuración que nombra la variable, no el ``could not convert string to float`` de ``float()``."""
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        raise ValueError(f"{name} debe ser un número; recibido {value!r}") from None
+
+
 class SlidingWindowLimiter:
     """Permite ``max_requests`` por ``window_seconds`` para cada clave (p. ej. una IP).
 

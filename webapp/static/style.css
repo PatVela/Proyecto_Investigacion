@@ -311,6 +311,7 @@ button:disabled { opacity: .55; cursor: not-allowed; transform: none; filter: no
 .history-item { display: flex; flex-wrap: wrap; gap: .3rem .8rem; align-items: baseline; border: 1px solid var(--border); border-radius: .5rem; padding: .45rem .7rem; font-size: .85rem; }
 .history-item time { color: var(--muted); font-size: .75rem; }
 .history-item .h-links { margin-left: auto; display: inline-flex; gap: .6rem; }
+.history-item .h-links a { display: inline-flex; align-items: center; min-height: 24px; padding-inline: .25rem; }     /* WCAG 2.2 AA (2.5.8): objetivo de al menos 24 px */
 
 @media (max-width: 900px) {
   .plot-grid { grid-template-columns: 1fr; }

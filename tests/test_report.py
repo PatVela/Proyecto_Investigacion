@@ -58,3 +58,17 @@ def test_pdf_builds_empty_predictions(tmp_path):
     out = tmp_path / "vacio.pdf"
     build_pdf_report(prediction, out)
     assert out.exists() and out.stat().st_size > 1000
+
+
+def test_a_failure_of_the_full_report_is_logged_and_falls_back_to_the_minimal_pdf(tmp_path, monkeypatch, caplog):
+    from webapp import report_pdf
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("reportlab roto")
+
+    monkeypatch.setattr(report_pdf, "_build_reportlab_pdf", boom)
+    out = tmp_path / "minimo.pdf"
+    with caplog.at_level("ERROR", logger="webapp.report_pdf"):
+        path = report_pdf.build_pdf_report(_prediction(), out)
+    assert out.read_bytes().startswith(b"%PDF-1.4") and path == str(out)
+    assert any("PDF mínimo" in r.getMessage() and r.exc_info for r in caplog.records)      # queda constancia y el traceback

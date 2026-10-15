@@ -73,3 +73,18 @@ def test_a_csv_that_is_not_utf8_says_so(tmp_path, encoding):
     text = _csv(comment="# Paciente: Peña")
     with pytest.raises(ValueError, match="UTF-8"):
         load.read_csv_ecg(_write(tmp_path, text, encoding=encoding))
+
+
+@pytest.mark.parametrize("text", ["", "# Sampling Rate: 500 Hz\n"])
+def test_a_csv_without_header_or_data_says_so(tmp_path, text):
+    """Antes: «No columns to parse from file» (mensaje de pandas, en inglés)."""
+    with pytest.raises(ValueError, match="no tiene encabezado ni filas de datos"):
+        load.read_csv_ecg(_write(tmp_path, text))
+
+
+@pytest.mark.parametrize("names", [[], [f"X{i}" for i in range(12)]])
+def test_leads_that_are_not_the_standard_twelve_give_the_clear_message(names):
+    """Antes: «'I' is not in list» (de ``names.index``) cuando el encabezado traía 0 derivaciones o nombres desconocidos."""
+    gains = [1000.0] * len(names)
+    with pytest.raises(ValueError, match="Faltan derivaciones estándar"):
+        signal.preprocess_ecg_array(SIGNAL, 500, lead_names=names, adc_gains=gains, adc_baselines=[0.0] * len(names))

@@ -39,6 +39,9 @@ UNDECLARED_SCHEMA_TEXT = "sin esquema declarado (se asumió el actual)"
 # Un CSV no declara sus unidades: se infieren (ecg.signal.infer_csv_units) y se muestran para que se pueda ver si se acertó.
 CSV_UNITS_TEXT = {"mv": " · unidades del CSV asumidas: mV", "digital": " · unidades del CSV asumidas: cuentas ADC (÷ 1000)"}
 SLIDING_WINDOWS_MAX = 4
+# Tope de elementos de un .mat subido: un .mat de 49 KB que declaraba 25 M llegó a usar 1 GB al preprocesarse (hasta 4 a la vez).
+# 6 M cubre el registro real más largo del Challenge (INCART, 12 x 462 600 = 5,55 M); el entrenamiento conserva MAX_MAT_ELEMENTS.
+WEB_MAX_MAT_ELEMENTS = 6_000_000
 # Registro de más de ~20 s: se analizan hasta 4 ventanas y la probabilidad final es la MEDIA de las calibradas.
 # Los umbrales y la calibración se ajustaron con una sola ventana; el máximo de varias ventanas correlacionadas
 # queda sesgado hacia arriba y en 1019 registros largos de test añadía 85 falsos positivos (426 -> 511, +20 %)
@@ -279,7 +282,7 @@ def prepare_saved_input(
             )
         windows, meta = load.load_wfdb_record_windows(
             mat_path, hea_path, windows_max=SLIDING_WINDOWS_MAX,
-            norm_mode=norm_mode, bandpass=bandpass,
+            norm_mode=norm_mode, bandpass=bandpass, max_elements=WEB_MAX_MAT_ELEMENTS,
         )
         record_name = meta.get("record_name") or hea_path.stem or mat_path.stem
         center = windows.shape[0] // 2
