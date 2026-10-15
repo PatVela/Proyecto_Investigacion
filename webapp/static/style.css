@@ -217,8 +217,9 @@ button:disabled { opacity: .55; cursor: not-allowed; transform: none; filter: no
 .gt-warn { background: var(--warn-bg); color: var(--warn-fg); border: 1px solid var(--warn-bd); }
 .gt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .45rem; margin: .6rem 0; }
 .gt-grid div { background: rgba(255,255,255,.35); border: 1px solid rgba(0,0,0,.05); border-radius: 8px; padding: .45rem .55rem; }
+[data-theme="dark"] .gt-grid div { background: rgba(255,255,255,.06); }     /* sobre el recuadro oscuro, .35 dejaba el texto a 2,6-2,9:1 */
 .gt-interpretation { margin: .55rem 0 .45rem; }
-.gt-grid span { display: inline; font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; opacity: .78; font-weight: 750; }
+.gt-grid span { display: inline; font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 750; }
 .gt-grid b { display: inline; overflow-wrap: anywhere; margin-left: .25rem; }
 .paper-note { color: var(--muted); font-size: .88rem; margin: .2rem 0 .6rem; }
 
