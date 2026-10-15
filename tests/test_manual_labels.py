@@ -14,6 +14,7 @@ import torch
 pytest.importorskip("flask")
 
 from ecg import load, network
+from webapp import labels
 from webapp import prediction as pred
 from webapp.app import create_app
 
@@ -38,11 +39,11 @@ LEADS = load.STANDARD_LEAD_ORDER
     ("", [], []), ("  ,  ;\n", [], []), (None, [], []),
 ], ids=lambda v: repr(v)[:22])
 def test_split_reference_label_text(text, found, unknown):
-    assert pred.split_reference_label_text(text) == (found, unknown)
+    assert labels.split_reference_label_text(text) == (found, unknown)
 
 
 def test_a_list_of_labels_is_also_checked():
-    assert pred.split_reference_label_text(["AF", "AFF"]) == (["AF"], ["AFF"])
+    assert labels.split_reference_label_text(["AF", "AFF"]) == (["AF"], ["AFF"])
 
 
 def test_the_prediction_rejects_unrecognized_labels_before_loading_any_model(tmp_path):

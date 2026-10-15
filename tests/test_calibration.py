@@ -156,3 +156,18 @@ def test_thresholds_csv_is_ordered_by_class_and_never_fills_a_missing_class_with
     (tmp_path / "bad.csv").write_text("class,temperature\nA,1\n", encoding="utf-8")
     with pytest.raises(ValueError, match="class,threshold"):
         load_thresholds_csv(tmp_path / "bad.csv", ["A"])
+
+
+def test_thresholds_or_default_uses_the_file_when_given_and_a_flat_default_otherwise(tmp_path):
+    import pytest
+
+    from ecg.calibration import thresholds_or_default
+
+    path = tmp_path / "thresholds_validation.csv"
+    path.write_text("class,threshold\nA,0.30\nB,0.45\n", encoding="utf-8")
+    np.testing.assert_allclose(thresholds_or_default(path, ["B", "A"]), [0.45, 0.30])
+    flat = thresholds_or_default(None, ["A", "B", "C"])
+    assert flat.dtype == np.float32 and flat.tolist() == [0.5, 0.5, 0.5]
+    assert thresholds_or_default(None, ["A"], default=0.4).tolist() == pytest.approx([0.4])
+    with pytest.raises(ValueError, match="faltantes"):                      # un umbral ausente sigue sin rellenarse con 0.5
+        thresholds_or_default(path, ["A", "C"])

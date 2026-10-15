@@ -603,6 +603,8 @@ def create_app() -> Flask:
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["Referrer-Policy"] = "no-referrer"
         resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        resp.headers["Content-Security-Policy"] = "frame-ancestors 'none'"   # nadie puede incrustar la demo (clickjacking); la app no usa marcos
+        resp.headers["X-Frame-Options"] = "DENY"                              # lo mismo para navegadores que no entienden CSP
         if request.path.startswith("/static/"):
             # Estáticos versionados (?v=): caché de un año; sin versión: se revalidan con ETag (304).
             resp.headers["Cache-Control"] = "public, max-age=31536000, immutable" if "v" in request.args else "no-cache"
@@ -854,6 +856,14 @@ def create_app() -> Flask:
 app = create_app()
 
 
+CLI_TO_ENV_PATHS = {
+    "model": "ECG_MODEL", "model_b": "ECG_MODEL_B", "saved": "ECG_SAVED", "uploads": "ECG_UPLOADS", "results": "ECG_RESULTS",
+    "reference": "ECG_REFERENCE", "thresholds": "ECG_THRESHOLDS", "temperatures": "ECG_TEMPERATURES",
+    "temperatures_b": "ECG_TEMPERATURES_B", "platt": "ECG_PLATT", "platt_b": "ECG_PLATT_B", "platt_ensemble": "ECG_PLATT_ENSEMBLE",
+    "eval_dir": "ECG_EVAL_DIR", "exp_dir": "ECG_EXP_DIR",
+}
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Webapp CINC2020-12")
     parser.add_argument("--model", default=None, help="Checkpoint .pt. Si se omite, se busca automáticamente en --saved.")
@@ -876,39 +886,14 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "5002")))
     args = parser.parse_args(argv)
 
-    if args.model is not None:
-        os.environ["ECG_MODEL"] = clean_path_text(args.model)
-    if args.model_b is not None:
-        os.environ["ECG_MODEL_B"] = clean_path_text(args.model_b)
+    if args.alpha is not None and not 0.0 <= float(args.alpha) <= 1.0:
+        parser.error("--alpha debe estar en [0, 1]")
+    for option, variable in CLI_TO_ENV_PATHS.items():             # cada opción de ruta equivale a su variable de entorno
+        value = getattr(args, option)
+        if value is not None:
+            os.environ[variable] = clean_path_text(value)
     if args.alpha is not None:
-        a = float(args.alpha)
-        if not 0.0 <= a <= 1.0:
-            parser.error("--alpha debe estar en [0, 1]")
-        os.environ["ECG_ALPHA"] = str(a)
-    if args.saved is not None:
-        os.environ["ECG_SAVED"] = clean_path_text(args.saved)
-    if args.uploads is not None:
-        os.environ["ECG_UPLOADS"] = clean_path_text(args.uploads)
-    if args.results is not None:
-        os.environ["ECG_RESULTS"] = clean_path_text(args.results)
-    if args.reference is not None:
-        os.environ["ECG_REFERENCE"] = clean_path_text(args.reference)
-    if args.thresholds is not None:
-        os.environ["ECG_THRESHOLDS"] = clean_path_text(args.thresholds)
-    if args.temperatures is not None:
-        os.environ["ECG_TEMPERATURES"] = clean_path_text(args.temperatures)
-    if args.temperatures_b is not None:
-        os.environ["ECG_TEMPERATURES_B"] = clean_path_text(args.temperatures_b)
-    if args.platt is not None:
-        os.environ["ECG_PLATT"] = clean_path_text(args.platt)
-    if args.platt_b is not None:
-        os.environ["ECG_PLATT_B"] = clean_path_text(args.platt_b)
-    if args.platt_ensemble is not None:
-        os.environ["ECG_PLATT_ENSEMBLE"] = clean_path_text(args.platt_ensemble)
-    if args.eval_dir is not None:
-        os.environ["ECG_EVAL_DIR"] = clean_path_text(args.eval_dir)
-    if args.exp_dir is not None:
-        os.environ["ECG_EXP_DIR"] = clean_path_text(args.exp_dir)
+        os.environ["ECG_ALPHA"] = str(float(args.alpha))
     if args.normal_fallback_min_prob is not None:
         os.environ["ECG_NORMAL_FALLBACK_MIN_PROB"] = str(args.normal_fallback_min_prob)
 

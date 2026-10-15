@@ -32,9 +32,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT))
 
 from ecg import load, predict, util  # noqa: E402
+from webapp.labels import build_label_comparison  # noqa: E402
 from webapp.prediction import (  # noqa: E402
     apply_normal_fallback,
-    build_label_comparison,
     threshold_values_for_class_names,
 )
 
