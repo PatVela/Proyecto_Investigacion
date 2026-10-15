@@ -68,3 +68,24 @@ def test_the_fixture_leaves_no_variable_behind(monkeypatch):
 
     variables = [*app_module.CLI_TO_ENV_PATHS.values(), "ECG_ALPHA", "ECG_NORMAL_FALLBACK_MIN_PROB"]
     assert not [name for name in variables if name in os.environ]
+
+
+def test_a_wrong_environment_does_not_break_the_command_line_entry_point():
+    """Importar webapp.app ya no construye una app: con un ECG_MODEL inexistente en el entorno, --help y --model siguen vivos."""
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parent.parent
+    env = {**os.environ, "ECG_MODEL": "models/no_existe.pt", "CUDA_VISIBLE_DEVICES": "-1"}
+    out = subprocess.run([sys.executable, str(repo / "webapp" / "app.py"), "--help"], cwd=repo, env=env,
+                         capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180)
+    assert out.returncode == 0 and "usage" in out.stdout.lower(), out.stderr[-800:]
+
+
+@pytest.mark.parametrize("alpha", ["1.5", "-0.1", "nan"])
+def test_an_alpha_outside_0_1_in_the_environment_stops_the_start(monkeypatch, alpha):
+    monkeypatch.setenv("ECG_ALPHA", alpha)
+    with pytest.raises(RuntimeError, match="ECG_ALPHA"):
+        app_module.create_app()
