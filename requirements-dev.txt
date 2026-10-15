@@ -1,7 +1,7 @@
 # Dependencias para ejecutar la suite de pruebas: pip install -r requirements-dev.txt
 -r requirements.txt
 pytest==9.1.1
-pypdf==6.18.1
+pypdf==6.20.1
 pyflakes==4.0.3
 
 # Scripts de investigación que no hacen falta para entrenar ni para servir la demo:
