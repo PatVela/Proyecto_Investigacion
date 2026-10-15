@@ -205,3 +205,34 @@ def test_privacy_notice_is_in_the_page_and_in_both_languages(make_client):
     js = (REPO_ROOT / "webapp" / "static" / "app.js").read_text(encoding="utf-8")
     assert len(re.findall(r'"upload\.privacy":', js)) == 2
     assert "pacientes reales" in js and "real patient data" in js
+
+
+# --------------------------------------------------------------------------- #
+# Enteros del entorno: un texto que no es un número es un error, no el valor por defecto
+# --------------------------------------------------------------------------- #
+def test_int_env_reads_numbers_and_uses_the_default_when_absent_or_empty(monkeypatch):
+    from webapp.limits import int_env
+
+    monkeypatch.delenv("ECG_TEST_INT", raising=False)
+    assert int_env("ECG_TEST_INT", 7) == 7
+    monkeypatch.setenv("ECG_TEST_INT", "  ")
+    assert int_env("ECG_TEST_INT", 7) == 7
+    monkeypatch.setenv("ECG_TEST_INT", " 3 ")
+    assert int_env("ECG_TEST_INT", 7) == 3
+    monkeypatch.setenv("ECG_TEST_INT", "0")
+    assert int_env("ECG_TEST_INT", 7) == 0
+
+
+@pytest.mark.parametrize("text", ["uno", "1.5", "5MB"])
+def test_int_env_rejects_text_that_is_not_an_integer(monkeypatch, text):
+    from webapp.limits import int_env
+
+    monkeypatch.setenv("ECG_TEST_INT", text)
+    with pytest.raises(ValueError, match="ECG_TEST_INT"):
+        int_env("ECG_TEST_INT", 7)
+
+
+def test_a_mistyped_proxy_count_stops_the_start_instead_of_sharing_one_quota(monkeypatch):
+    monkeypatch.setenv("ECG_TRUST_PROXY", "uno")
+    with pytest.raises(ValueError, match="ECG_TRUST_PROXY"):
+        create_app()

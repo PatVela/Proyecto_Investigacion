@@ -149,6 +149,9 @@ def _list_checkpoints(saved_dir: str | Path) -> list[Path]:
     return sorted(checkpoints, key=score)
 
 
+BATCHNORM_BUFFER_SUFFIXES = (".running_mean", ".running_var", ".num_batches_tracked")
+
+
 def _checkpoint_info(model_path: str | None, saved_dir: str | None) -> dict | None:
     try:
         resolved = resolve_model_path(model_path=model_path, saved_dir=saved_dir)
@@ -171,12 +174,8 @@ def _checkpoint_info(model_path: str | None, saved_dir: str | None) -> dict | No
         state = ckpt.get("model_state_dict") or {}
         n_params = None
         if state:
-            try:
-                n_params = {
-                    "total": int(sum(v.numel() for v in state.values())),
-                    "trainable": int(sum(v.numel() for v in state.values())),
-                    "non_trainable": 0,
-                }
+            try:                                  # parámetros, sin los buffers de BatchNorm (media, varianza y contador)
+                n_params = {"total": int(sum(v.numel() for k, v in state.items() if not k.endswith(BATCHNORM_BUFFER_SUFFIXES)))}
             except Exception:
                 n_params = None
         return {
@@ -550,7 +549,10 @@ def create_app() -> Flask:
     for key in ("ECG_MODEL", "ECG_MODEL_B"):                 # falla al arrancar, no en la primera predicción
         if app.config.get(key) and not resolve_existing_path(app.config[key]).exists():
             raise RuntimeError(f"{key} apunta a un checkpoint que no existe: {app.config[key]}")
-    app.config["ECG_ALPHA"] = float(os.environ.get("ECG_ALPHA", "0.5"))
+    alpha = float(os.environ.get("ECG_ALPHA", "0.5"))
+    if not 0.0 <= alpha <= 1.0:                              # falla al arrancar: si no, cada /predict del ensemble daría 400
+        raise RuntimeError(f"ECG_ALPHA debe estar en [0, 1]; recibido {os.environ.get('ECG_ALPHA')!r}")
+    app.config["ECG_ALPHA"] = alpha
     app.config["ECG_SAVED_DIR"] = str(_resolve_dir_env("ECG_SAVED", DEFAULT_SAVED))
     app.config["ECG_UPLOADS_DIR"] = str(_resolve_dir_env("ECG_UPLOADS", DEFAULT_UPLOADS))
     app.config["ECG_RESULTS_DIR"] = str(_resolve_dir_env("ECG_RESULTS", DEFAULT_RESULTS))
@@ -851,9 +853,6 @@ def create_app() -> Flask:
         })
 
     return app
-
-
-app = create_app()
 
 
 CLI_TO_ENV_PATHS = {
