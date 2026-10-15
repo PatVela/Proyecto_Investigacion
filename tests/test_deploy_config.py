@@ -154,6 +154,6 @@ def test_importing_the_app_works_without_a_home_directory(tmp_path):
     env = {**keep, "PYTHONPATH": str(REPO_ROOT), "CUDA_VISIBLE_DEVICES": "-1"}
     for var in ("HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "MPLCONFIGDIR", "XDG_CONFIG_HOME"):
         env.pop(var, None)
-    out = subprocess.run([sys.executable, "-c", "import webapp.prediction as p; print('ok', p.plt.get_backend())"],
+    out = subprocess.run([sys.executable, "-c", "import webapp.prediction; from webapp.plotting import plt; print('ok', plt.get_backend())"],
                          cwd=tmp_path, env=env, capture_output=True, text=True, encoding="utf-8", timeout=180)
     assert out.returncode == 0 and "ok" in out.stdout.lower(), out.stderr[-800:]

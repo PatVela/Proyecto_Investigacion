@@ -100,3 +100,32 @@ def test_ci_workflow_installs_the_dev_requirements_and_runs_pytest():
         assert needed in workflow, needed
     assert workflow.index("permissions:") < workflow.index("jobs:")           # permisos a nivel de flujo, de solo lectura
     assert "@v4" not in workflow and "@v5" not in workflow                    # acciones en Node 20 (en desuso); las actuales usan Node 24
+
+
+def _pins(fname: str) -> dict[str, str]:
+    pins = {}
+    for line in (REPO_ROOT / fname).read_text(encoding="utf-8").splitlines():
+        match = re.match(r"^([A-Za-z0-9_.-]+)==([^\s#;]+)", line.strip())
+        if match:
+            pins[match.group(1).lower().replace("_", "-")] = match.group(2)
+    return pins
+
+
+def test_constraints_agree_with_every_pinned_requirement():
+    """constraints.txt fija las transitivas con las que pasó el CI; no puede contradecir a requirements*.txt."""
+    constraints = _pins("constraints.txt")
+    assert len(constraints) > 50 and "torch" not in constraints            # torch va solo en requirements.txt
+    for fname in ("requirements.txt", "requirements-dev.txt"):
+        for name, version in _pins(fname).items():
+            if name != "torch":
+                assert constraints.get(name) == version, (fname, name, version, constraints.get(name))
+
+
+def test_workflows_use_the_constraints_and_audit_dependencies_every_week():
+    tests = (REPO_ROOT / ".github" / "workflows" / "tests.yml").read_text(encoding="utf-8").replace("\r\n", "\n")
+    audit = (REPO_ROOT / ".github" / "workflows" / "audit.yml").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert "-c constraints.txt" in tests and "-c constraints.txt" in audit
+    for needed in ("schedule:", "cron:", "pip-audit", "permissions:\n  contents: read", "workflow_dispatch:"):
+        assert needed in audit, needed
+    assert "@v4" not in audit and "@v5" not in audit
+    assert "continue-on-error: ${{ github.event_name == 'pull_request' }}" in audit        # en una PR solo informa

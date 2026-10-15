@@ -52,7 +52,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from ecg import load, predict, util  # noqa: E402
-from ecg.calibration import load_thresholds_csv  # noqa: E402
+from ecg.calibration import thresholds_or_default  # noqa: E402
 
 OFFICIAL_DIR = Path(__file__).resolve().parent / "official"
 _OFFICIAL = None
@@ -281,13 +281,6 @@ def per_code_metrics(y_true: np.ndarray, y_prob: np.ndarray, y_pred: np.ndarray,
     return pd.DataFrame(rows)
 
 
-def load_thresholds_for_classes(path: str | None, class_names: list[str]) -> np.ndarray:
-    """Umbrales por clase de ``thresholds_validation.csv``; sin archivo, 0.5 global."""
-    if not path:
-        return np.full(len(class_names), 0.5, dtype=np.float32)
-    return load_thresholds_csv(util.resolve_path(path), class_names)
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Métrica oficial Challenge 2020 desde 12 grupos")
     parser.add_argument("--predictions", default=None,
@@ -340,7 +333,7 @@ def main() -> None:
         elif args.thresholds:
             print("AVISO: umbrales sin --temperatures: si se ajustaron sobre probabilidades calibradas, "
                   "aquí se aplican a probabilidades crudas y la métrica sale subestimada.")
-        thresholds = load_thresholds_for_classes(args.thresholds, class_names)
+        thresholds = thresholds_or_default(util.resolve_path(args.thresholds) if args.thresholds else None, class_names)
         group_pred = (group_prob >= thresholds[None, :]).astype(np.uint8)
         dx_list = load_dx_list(args.test_h5, group_prob.shape[0])
         source = {"checkpoint": str(args.checkpoint), "thresholds_source": args.thresholds or "global_0.5",

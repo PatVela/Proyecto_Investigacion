@@ -5,7 +5,10 @@ Extraído de ``ecg/load.py`` (split de depuración), incluyendo el CLI
 """
 
 from __future__ import annotations
-from ecg.schema import BANDPASS_HI_HZ, BANDPASS_LO_HZ, CLASS_DISPLAY_NAMES, CLASS_NAMES, DEFAULT_NORM_MODE, EXCLUDED_GROUPS, LABEL_SCHEMA, NUM_CLASSES, PHYSICAL_CLIP_MV, class_codes_as_strings, class_groups_as_records, codes_to_vector, matched_class_names
+from ecg.schema import (
+    BANDPASS_HI_HZ, BANDPASS_LO_HZ, CLASS_DISPLAY_NAMES, CLASS_NAMES, DEFAULT_NORM_MODE, EXCLUDED_GROUPS, LABEL_SCHEMA,
+    NUM_CLASSES, PHYSICAL_CLIP_MV, class_codes_as_strings, class_groups_as_records, codes_to_vector, matched_class_names,
+)
 from ecg.signal import NUM_LEADS, STANDARD_LEAD_ORDER, TARGET_FS, WINDOW_LENGTH, WINDOW_SECONDS, compute_window_starts, load_mat_signal, normalize_lead_name, parse_header, preprocess_ecg_array
 
 import argparse

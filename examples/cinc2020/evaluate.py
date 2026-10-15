@@ -254,7 +254,22 @@ def save_roc_pr_curves(out_dir, y_true, y_prob, class_names, split, max_points=2
     return len(roc_rows), len(pr_rows)
 
 
-def run_evaluation(config, checkpoint, output_dir, batch_size=None, num_workers=None, device="auto", no_amp=False, normal_fallback_min_prob=None, preload=True, temperatures=None, threshold_beta=1.0, nsr_exclusive_min_prob=None, fixed_threshold=None, platt=None):
+def run_evaluation(
+    config,
+    checkpoint,
+    output_dir,
+    batch_size=None,
+    num_workers=None,
+    device="auto",
+    no_amp=False,
+    normal_fallback_min_prob=None,
+    preload=True,
+    temperatures=None,
+    threshold_beta=1.0,
+    nsr_exclusive_min_prob=None,
+    fixed_threshold=None,
+    platt=None,
+):
     if temperatures and platt:
         raise ValueError("Use temperatures o platt, no ambos: son dos calibraciones alternativas de las mismas probabilidades.")
     output_dir = util.resolve_path(output_dir)
