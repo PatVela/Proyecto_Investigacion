@@ -128,6 +128,49 @@ def test_white_text_on_accent_buttons_meets_wcag_aa(theme_name, theme):
         assert _ratio("#ffffff", theme[bg]) >= 4.5, (theme_name, bg)
 
 
+def _css_rule(selector):
+    match = re.search(re.escape(selector) + r"\s*\{([^}]*)\}", CSS)
+    return match.group(1) if match else ""
+
+
+def _chip_layer(theme_name):
+    """(rgb, alfa) del fondo translúcido de `.gt-grid div`; el tema oscuro puede redefinirlo."""
+    rule = _css_rule('[data-theme="dark"] .gt-grid div') if theme_name == "oscuro" else ""
+    rule = rule or _css_rule(".gt-grid div")
+    r, g, b, a = re.search(r"background:\s*rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)", rule).groups()
+    return (int(r), int(g), int(b)), float(a)
+
+
+def _blend(top_hex, alpha, bottom_rgb):
+    top = [int(top_hex.lstrip("#")[i:i + 2], 16) if isinstance(top_hex, str) else top_hex[i // 2] for i in (0, 2, 4)]
+    return tuple(t * alpha + b * (1 - alpha) for t, b in zip(top, bottom_rgb))
+
+
+def _hex(rgb):
+    return "#" + "".join(f"{round(c):02x}" for c in rgb)
+
+
+@pytest.mark.parametrize("theme_name,theme", [("claro", LIGHT), ("oscuro", DARK)])
+def test_label_comparison_chips_meet_wcag_aa(theme_name, theme):
+    """El recuadro «Comparación con etiquetas reales» pone un fondo translúcido sobre ok/bad/warn y atenúa las etiquetas con
+    `opacity`; sus pares planos pasaban en `test_text_colors_meet_wcag_aa` y el resultado real no: 2,58-2,85:1 en oscuro y
+    3,38-3,61:1 en las etiquetas del claro."""
+    (rgb, alpha) = _chip_layer(theme_name)
+    opacity = re.search(r"opacity:\s*([\d.]+)", _css_rule(".gt-grid span"))
+    opacity = float(opacity.group(1)) if opacity else 1.0
+    failures = []
+    for variant in ("ok", "bad", "warn"):
+        panel = [int(theme[f"{variant}-bg"].lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)]
+        chip = tuple(c * alpha + p * (1 - alpha) for c, p in zip(rgb, panel))
+        text = theme[f"{variant}-fg"]
+        label = _blend(text, opacity, chip)
+        for what, color in (("texto", text), ("etiqueta", _hex(label))):
+            ratio = _ratio(color, _hex(chip))
+            if ratio < 4.5:
+                failures.append(f"{variant} {what}: {ratio:.2f}")
+    assert not failures, f"tema {theme_name}: {failures}"
+
+
 def test_accent_is_never_used_as_a_text_color_directly():
     # --accent es para fondos y bordes; el texto usa --accent-text (que cambia por tema para mantener el contraste)
     offenders = re.findall(r"(?<![-\w])color:\s*var\(--accent\)\s*[;}]", CSS)
