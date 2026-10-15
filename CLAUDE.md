@@ -12,6 +12,7 @@ Réplica académica de Hannun et al. (Nat Med 2019): clasificador multilabel de 
 | `tools/` | Chequeos y descarga de datos CINC2020, bundle de despliegue, prueba de humo | `tools/CONTEXT.md` |
 | `tests/` | Suite pytest | `tests/CONTEXT.md` |
 | `.github/workflows/` | CI (`tests.yml`): pytest y `check_docs_commands.py` en cada PR y push a `main`; `audit.yml`: `pip-audit` semanal (complementa las alertas de Dependabot, el escaneo de secretos y la protección de envío de GitHub) | `tests/CONTEXT.md` |
+| `CONSTRAINTS.md` | Nivel de calidad: umbral, comando de verificación y valor medido por dimensión; no se baja para que un cambio pase (`constraints.txt` son los pins de pip) | `CONSTRAINTS.md` |
 | `docs/` | Informe técnico, experimentos, resultados, fix histórico | `docs/CONTEXT.md` |
 | `models/`, `deploy/` | **Versionados.** Bundle de inferencia (pesos `models/*.pt`, `deploy/ensemble.env`, umbrales, métricas, lanzador de Windows `deploy/start_local.ps1`) con el que la webapp corre sin `saved/` ni `runs/`. Se regenera con `tools/export_inference_bundle.py`; no editar a mano (salvo `deploy/CONTEXT.md` y `start_local.ps1`) | `deploy/CONTEXT.md` |
 | `tasks/` | Plan y lista de tareas para ejecutar la demo en esta PC (`plan.md`, `todo.md`) y la auditoría de mejoras (`analisis_mejoras.md`) | `tasks/plan.md` |
