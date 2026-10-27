@@ -526,13 +526,17 @@ Ver los [issues abiertos](https://github.com/PatVela/Proyecto_Investigacion/issu
 
 Distribuido bajo licencia GPL-3.0. Ver `LICENSE` para más información.
 
+Los datos de origen (PhysioNet/Computing in Cardiology Challenge 2020) se distribuyen bajo la licencia Creative Commons Attribution 4.0 International (CC BY 4.0) y no se incluyen en este repositorio. Quien los use debe citar los tres trabajos de la sección siguiente.
+
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
 <!-- ACKNOWLEDGMENTS -->
 ## Agradecimientos
 
 * Hannun AY et al. Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network. *Nature Medicine*. 2019;25(1):65-69. [DOI 10.1038/s41591-018-0268-3](https://doi.org/10.1038/s41591-018-0268-3)
-* PhysioNet/Computing in Cardiology Challenge 2020: Classification of 12-lead ECGs.
+* Perez Alday EA, Gu A, Shah A, Liu C, Sharma A, Seyedi S, Bahrami Rad A, Reyna M, Clifford G. Classification of 12-lead ECGs: The PhysioNet/Computing in Cardiology Challenge 2020 (version 1.0.2). *PhysioNet*. 2022. RRID:SCR_007345. [DOI 10.13026/dvyd-kd57](https://doi.org/10.13026/dvyd-kd57)
+* Perez Alday EA, Gu A, Shah AJ, Robichaux C, Wong AI, Liu C, Liu F, Rad AB, Elola A, Seyedi S, Li Q, Sharma A, Clifford GD, Reyna MA. Classification of 12-lead ECGs: the PhysioNet/Computing in Cardiology Challenge 2020. *Physiological Measurement*. 2020. [DOI 10.1088/1361-6579/abc960](https://doi.org/10.1088/1361-6579/abc960)
+* Pollard T, Moody BE, Lehman L, Gow B, Fernandes C, Xie C, Johnson A, Mark RG, Heldt T. PhysioNet as a global platform for biomedical research. *Nature Health*. 2026. [DOI 10.1038/s44360-026-00096-z](https://doi.org/10.1038/s44360-026-00096-z)
 * Universidad Nacional de San Agustín de Arequipa — Facultad de Ingeniería de Producción y Servicios.
 * Plantilla [Best-README-Template](https://github.com/othneildrew/Best-README-Template) e insignias de [shields.io](https://shields.io).
 
