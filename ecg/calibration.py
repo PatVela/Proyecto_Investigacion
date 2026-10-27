@@ -139,7 +139,7 @@ def save_temperatures_csv(path: str | Path, class_names: list[str], temperatures
 #
 # La temperatura es el caso b = 0, a = 1/T. Entrenar con ``pos_weight = neg/pos`` (y label smoothing) sube la
 # probabilidad base de todos los registros, y eso es un desplazamiento (b), que una temperatura no corrige: con ella el
-# ECE de v2 queda en 0.114 y con a, b en 0.014 (ver tasks/analisis_mejoras.md). a > 0 siempre, así que la calibración
+# ECE de v2 queda en 0.114 y con a, b en 0.014. a > 0 siempre, así que la calibración
 # no cambia el orden de las puntuaciones: AUROC y AUPRC no se tocan y solo se mueve la escala en la que se fijan los
 # umbrales.
 

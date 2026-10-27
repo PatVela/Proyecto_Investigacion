@@ -415,7 +415,6 @@ Notas:
 ├── tests/                  # suite pytest
 ├── .github/workflows/      # CI: pytest y verificador de comandos en cada PR y push a main; auditoría semanal de vulnerabilidades (pip-audit)
 ├── docs/                   # informe técnico y guías de experimentos
-├── tasks/                  # plan y tareas de la demo local; auditoría de mejoras (analisis_mejoras.md)
 ├── images/                 # logo y capturas para documentación
 ├── runs/ saved/ data/      # producto generado (git-ignored)
 ├── requirements.txt / requirements-cuda.txt / requirements-dev.txt / constraints.txt   # constraints.txt: versiones exactas de las transitivas (las del CI verde)
@@ -436,7 +435,7 @@ python webapp/app.py --saved saved        # desarrollo: usa los checkpoints de s
 powershell -ExecutionPolicy Bypass -File deploy\start_local.ps1   # demo en esta PC (Windows 11): waitress + bundle, sin saved/ ni runs/
 ```
 
-La demo corre en la propia PC, sin servidor ni nube. El bundle (pesos de inferencia de 19 MB por modelo, umbrales, métricas y siete ECG de ejemplo) la hace independiente de las carpetas locales; sirve en CPU (≈2,4 s por análisis, ≈0,9 GB de RAM). Por defecto solo es accesible desde la misma PC; la red local y un túnel temporal son opcionales. Detalles de arranque, variables de entorno y endpoints en [webapp/README.md](webapp/README.md); tareas pendientes en [tasks/todo.md](tasks/todo.md).
+La demo corre en la propia PC, sin servidor ni nube. El bundle (pesos de inferencia de 19 MB por modelo, umbrales, métricas y siete ECG de ejemplo) la hace independiente de las carpetas locales; sirve en CPU (≈2,4 s por análisis, ≈0,9 GB de RAM). Por defecto solo es accesible desde la misma PC; la red local y un túnel temporal son opcionales. Detalles de arranque, variables de entorno y endpoints en [webapp/README.md](webapp/README.md).
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
@@ -510,7 +509,7 @@ Limitaciones conocidas: una sola corrida por receta (semillas 42 y 43), sin medi
 - [x] Bundle de inferencia + configuración por entorno + waitress: la webapp corre sin `saved/` ni `runs/`, en esta PC con Windows 11 (CPU, solo accesible localmente por defecto)
 - [x] Endurecimiento de la webapp: ReDoS en el texto pegado, tope de tamaño del `.mat`, `/use_model` apagado por defecto, tope de cuerpo en waitress, escape de comillas
 - [x] Protocolo de reporte común (mismo `threshold_beta`) y verificador de comandos de la documentación
-- [ ] Probar la demo en uso real desde otro dispositivo de la red local (ver [tasks/todo.md](tasks/todo.md))
+- [ ] Probar la demo en uso real desde otro dispositivo de la red local
 - [ ] Entrenamiento distribuido multi-GPU
 - [x] Script de búsqueda de hiperparámetros con Optuna (`tune_optuna.py`)
 - [ ] Tracking de experimentos con MLflow

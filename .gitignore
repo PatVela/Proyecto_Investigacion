@@ -9,6 +9,7 @@ webapp/uploads/
 webapp/results/
 logs/
 modelos/
+tasks/
 
 # Salidas generadas del pipeline (evaluaciones, figuras, reportes, modelos exportados)
 runs/
@@ -36,7 +37,7 @@ __pycache__/
 .coverage
 nohup.out
 
-# Archivos que SÍ se versionan para desplegar la webapp (ver tasks/plan.md)
+# Archivos que SÍ se versionan para desplegar la webapp (ver webapp/README.md)
 !deploy/results/
 !deploy/results/**
 !webapp/examples/**/*.hea
