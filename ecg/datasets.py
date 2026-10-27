@@ -174,6 +174,60 @@ def stratified_multilabel_split(
     }
 
 
+def load_groups_csv(path: str | Path) -> dict[str, str]:
+    """``record_name -> grupo`` (p. ej. el paciente) desde un CSV con columnas ``record_name`` y ``group_id``.
+
+    Los registros que no figuren se tratan como un grupo de un solo registro (paciente desconocido)."""
+    table = pd.read_csv(path, dtype=str)
+    missing = {"record_name", "group_id"} - set(table.columns)
+    if missing:
+        raise ValueError(f"{path}: faltan las columnas {sorted(missing)}")
+    if table["record_name"].duplicated().any():
+        raise ValueError(f"{path}: hay record_name repetidos")
+    return dict(zip(table["record_name"], table["group_id"]))
+
+
+def grouped_origin_split(
+    records: list[dict],
+    groups: dict[str, str] | None = None,
+    holdout_origin: str | None = None,
+    val_frac: float = 0.15,
+    test_frac: float = 0.15,
+    random_state: int = 42,
+) -> dict[str, np.ndarray]:
+    """Reparto por origen, con grupos de paciente y, opcionalmente, un origen completo retenido.
+
+    - Los registros de ``holdout_origin`` van todos a ``test_b``: no intervienen en entrenamiento, validación ni prueba.
+    - En cada uno de los demás orígenes se reparte por **grupo** (un grupo nunca queda en dos particiones) en train/val/test
+      (``test`` es la prueba A) con ``MultilabelStratifiedShuffleSplit`` sobre el vector de etiquetas del grupo (máximo de
+      sus registros). Un registro sin grupo en ``groups`` es su propio grupo.
+    El reparto es determinista para una ``random_state`` dada."""
+    groups = groups or {}
+    origins = sorted({r["source_db"] for r in records})
+    if holdout_origin is not None and holdout_origin not in origins:
+        raise ValueError(f"el origen retenido {holdout_origin!r} no existe; hay {origins}")
+    out: dict[str, list[int]] = {"train": [], "val": [], "test": []}
+    if holdout_origin is not None:
+        out["test_b"] = [i for i, r in enumerate(records) if r["source_db"] == holdout_origin]
+    for origin in origins:
+        if origin == holdout_origin:
+            continue
+        idx = [i for i, r in enumerate(records) if r["source_db"] == origin]
+        group_of = [groups.get(records[i]["record_name"]) or f"__solo__{records[i]['record_name']}" for i in idx]
+        names = sorted(set(group_of))
+        members = {g: [] for g in names}
+        for i, g in zip(idx, group_of):
+            members[g].append(i)
+        group_labels = np.stack([np.max([records[i]["label"] for i in members[g]], axis=0) for g in names])
+        keep = group_labels.sum(axis=0) > 0                       # una columna sin positivos en el origen no sirve para estratificar
+        if keep.sum() == 0:
+            raise ValueError(f"el origen {origin!r} no tiene ninguna etiqueta positiva")
+        parts = stratified_multilabel_split(group_labels[:, keep], val_frac=val_frac, test_frac=test_frac, random_state=random_state)
+        for split_name, group_idx in parts.items():
+            out[split_name] += [i for gi in group_idx for i in members[names[int(gi)]]]
+    return {k: np.asarray(sorted(v), dtype=int) for k, v in out.items()}
+
+
 def split_summary(records: list[dict], splits: dict[str, np.ndarray]) -> pd.DataFrame:
     labels = np.stack([record["label"] for record in records])
     rows = []
@@ -467,6 +521,7 @@ def write_reports(
     norm_mode: str = DEFAULT_NORM_MODE,
     bandpass: bool = True,
     train_windows_max: int = 4,
+    split_method: str = "MultilabelStratifiedShuffleSplit by label vector, not by source",
 ) -> None:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -499,7 +554,7 @@ def write_reports(
             else "per-record global z-score" if norm_mode == "global_zscore"
             else "per-lead z-score (legacy v1)"
         ),
-        "split_method": "MultilabelStratifiedShuffleSplit by label vector, not by source",
+        "split_method": split_method,
         "drop_no_selected_labels": bool(drop_no_selected_labels),
         "scan_counters": counters,
         "splits": {name: int(len(idx)) for name, idx in splits.items()} if splits is not None else None,
@@ -524,8 +579,13 @@ def build_datasets(
     norm_mode: str = DEFAULT_NORM_MODE,
     bandpass: bool = True,
     train_windows_max: int = 4,
+    holdout_origin: str | None = None,
+    groups_csv: str | Path | None = None,
 ) -> dict:
-    """Función programática usada por ``examples/cinc2020/build_datasets.py``."""
+    """Función programática usada por ``examples/cinc2020/build_datasets.py``.
+
+    Con ``holdout_origin`` y/o ``groups_csv`` el reparto es por origen y por grupo de paciente
+    (:func:`grouped_origin_split`) y se escribe además ``test_b.h5`` con el origen retenido."""
     data_dir = Path(data_dir).resolve()
     output_dir = Path(output_dir).resolve()
 
@@ -562,16 +622,23 @@ def build_datasets(
                       norm_mode=norm_mode, bandpass=bandpass, train_windows_max=train_windows_max)
         return {"records": len(records), "counters": counters, "splits": None}
 
-    splits = stratified_multilabel_split(labels, val_frac=val_frac, test_frac=test_frac, random_state=random_state)
+    split_method = "MultilabelStratifiedShuffleSplit by label vector, not by source"
+    if holdout_origin is not None or groups_csv is not None:
+        groups = load_groups_csv(groups_csv) if groups_csv is not None else None
+        splits = grouped_origin_split(records, groups, holdout_origin, val_frac=val_frac, test_frac=test_frac, random_state=random_state)
+        split_method = (f"per source and per patient group (MultilabelStratifiedShuffleSplit on group labels); "
+                        f"holdout source: {holdout_origin}; groups: {groups_csv}")
+    else:
+        splits = stratified_multilabel_split(labels, val_frac=val_frac, test_frac=test_frac, random_state=random_state)
     print("\nSplits:")
     for split_name, idx in splits.items():
-        print(f"  {split_name:<5}: {len(idx):,}")
+        print(f"  {split_name:<6}: {len(idx):,}")
 
     write_reports(output_dir, records, counters, splits=splits, drop_no_selected_labels=drop_no_selected_labels,
-                  norm_mode=norm_mode, bandpass=bandpass, train_windows_max=train_windows_max)
+                  norm_mode=norm_mode, bandpass=bandpass, train_windows_max=train_windows_max, split_method=split_method)
 
     processing = []
-    for split_name in ["train", "val", "test"]:
+    for split_name in [n for n in ("train", "val", "test", "test_b") if n in splits]:
         processing.append(process_split_to_hdf5(
             records=records,
             indices=splits[split_name],
@@ -615,6 +682,10 @@ def main(argv: list[str] | None = None) -> None:
                         help="Desactiva el pasa-banda")
     parser.add_argument("--train-windows-max", type=int, default=4,
                         help="Ventanas de 10 s por registro largo en train (val/test siempre 1 centrada)")
+    parser.add_argument("--holdout-origin", default=None,
+                        help="Origen que se retiene entero como test_b (p. ej. georgia); el reparto pasa a ser por origen")
+    parser.add_argument("--groups-csv", default=None,
+                        help="CSV con record_name y group_id (paciente): un grupo nunca queda en dos particiones")
     args = parser.parse_args(argv)
 
     build_datasets(
@@ -631,6 +702,8 @@ def main(argv: list[str] | None = None) -> None:
         norm_mode=args.norm_mode,
         bandpass=args.bandpass,
         train_windows_max=args.train_windows_max,
+        holdout_origin=args.holdout_origin,
+        groups_csv=args.groups_csv,
     )
 
 

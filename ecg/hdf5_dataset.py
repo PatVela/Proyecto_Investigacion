@@ -34,10 +34,11 @@ class HDF5ECGDataset(Dataset):
 
     def __init__(self, h5_path: str | Path, preload: bool = True, max_preload_gb: float = 16,
                  expected_num_classes: int | None = None, require_labels: bool = False,
-                 augment_cfg: dict | None = None):
+                 augment_cfg: dict | None = None, cell_mask: tuple[list[str], np.ndarray] | None = None):
         import h5py
 
         self.h5_path = str(util.resolve_path(h5_path))
+        self._sample_mask = None
         self.augment_cfg = dict(augment_cfg) if augment_cfg else None
         self._aug_rng = np.random.default_rng(self.augment_cfg.get("aug_seed")) if self.augment_cfg else None
         self._aug_worker = None
@@ -64,6 +65,8 @@ class HDF5ECGDataset(Dataset):
                 self.record_names = [f"record_{i}" for i in range(self.length)]
 
             self._validate(has_labels, expected_num_classes, require_labels)
+            if cell_mask is not None:
+                self._sample_mask = self._build_sample_mask(h5, cell_mask)
 
             nbytes = int(h5["signals"].size * 4 + (h5["labels"].size * 4 if has_labels else 0))
             if preload and nbytes <= max_preload_gb * 1024 ** 3:
@@ -84,6 +87,25 @@ class HDF5ECGDataset(Dataset):
                 f"{self.h5_path} contiene {self.label_shape[1]} clases; se esperaban {expected_num_classes}. "
                 "Regenera los HDF5 con examples/cinc2020/build_datasets.py."
             )
+
+    def _build_sample_mask(self, h5, cell_mask: tuple[list[str], np.ndarray]) -> np.ndarray:
+        """Matriz (N, clases) de 1 (celda anotada) y 0 (celda sin anotar) por registro, según su origen.
+
+        Un origen que no figura en ``cell_mask`` (p. ej. el origen retenido) se trata como anotado en todas las clases."""
+        if "source_dbs" not in h5:
+            raise ValueError(f"{self.h5_path} no trae 'source_dbs': no se puede aplicar la máscara de celdas sin anotar")
+        names, matrix = cell_mask
+        row = {n: i for i, n in enumerate(names)}
+        sources = util.decode_h5_strings(h5["source_dbs"][:])
+        sample_mask = np.ones((len(sources), matrix.shape[1]), dtype=np.float32)
+        for i, source in enumerate(sources):
+            if source in row:
+                sample_mask[i] = matrix[row[source]]
+        return sample_mask
+
+    @property
+    def has_cell_mask(self) -> bool:
+        return self._sample_mask is not None
 
     def _open(self):
         if self.h5 is None:
@@ -109,6 +131,8 @@ class HDF5ECGDataset(Dataset):
             from ecg import augment
             self._reseed_for_worker()
             x = augment.augment_signal(x, rng=self._aug_rng, cfg=self.augment_cfg)
+        if self._sample_mask is not None:
+            return torch.from_numpy(x), torch.from_numpy(y), torch.from_numpy(self._sample_mask[index])
         return torch.from_numpy(x), torch.from_numpy(y)
 
     def _reseed_for_worker(self) -> None:
