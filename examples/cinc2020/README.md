@@ -104,6 +104,19 @@ $evalMejor = "runs/eval/eval-resnet-v2"
 python examples/cinc2020/build_datasets.py --data-dir dataset2020 --output-dir data/cinc2020_12 --workers 8 --norm-mode physical --train-windows-max 4
 ```
 
+Reparto alternativo por origen y por paciente (el defecto no cambia). `tools/make_patient_groups.py` escribe `data/externo/patient_groups.csv`
+con el paciente de cada registro de PTB-XL y PTB (los demás orígenes no traen identificador y cuentan como un grupo por registro);
+`--holdout-origin` retiene un origen entero como `test_b.h5` y el resto se reparte 70/15/15 por origen sin partir a ningún paciente:
+
+```powershell
+python tools/make_patient_groups.py --ptbxl-database data/externo/ptbxl_database.csv --ptb-records data/externo/RECORDS
+python examples/cinc2020/build_datasets.py --data-dir dataset2020 --output-dir data/cinc2020_12_origen --holdout-origin georgia --groups-csv data/externo/patient_groups.csv --workers 8
+```
+
+Con `"mask_unannotated": true` en la configuración (y `"mask_min_positives"`, 1 por defecto), `ecg.train` no calcula la pérdida de las celdas
+origen-clase sin positivos en entrenamiento, que deja de interpretar como negativos confirmados; el peso de positivos se calcula solo sobre
+las celdas anotadas y la máscara se guarda en `cell_mask.csv` del directorio de la corrida. Apagado, el entrenamiento es el de siempre.
+
 ### 2. Entrenar ResNet-34 tipo Hannun
 
 ```powershell

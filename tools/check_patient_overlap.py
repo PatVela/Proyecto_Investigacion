@@ -1,4 +1,4 @@
-"""Mide el solape de pacientes entre train/val y test en PTB-XL y PTB (tarea T11 de tasks/analisis_mejoras.md).
+"""Mide el solape de pacientes entre train/val y test en PTB-XL y PTB.
 
 El reparto de ``data/cinc2020_12`` es por registro, y PTB-XL y PTB tienen varios registros por paciente: un paciente puede quedar
 a ambos lados. Este script cuenta cuántos registros de test comparten paciente con train o val y, con las predicciones guardadas,

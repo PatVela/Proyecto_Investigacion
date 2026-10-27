@@ -36,10 +36,10 @@ class HDF5ECGDataset(hdf5_dataset.HDF5ECGDataset):
 
     def __init__(self, h5_path: str | Path, expected_num_classes: int = load.NUM_CLASSES,
                  preload: bool = True, max_preload_gb: float = 16,
-                 augment_cfg: dict | None = None):
+                 augment_cfg: dict | None = None, cell_mask: tuple[list[str], np.ndarray] | None = None):
         super().__init__(h5_path, preload=preload, max_preload_gb=max_preload_gb,
                          expected_num_classes=expected_num_classes, require_labels=True,
-                         augment_cfg=augment_cfg)
+                         augment_cfg=augment_cfg, cell_mask=cell_mask)
 
 
 # Helpers compartidos con ecg.predict (definidos una sola vez en util/network).
@@ -69,7 +69,7 @@ KNOWN_CONFIG_KEYS = frozenset({
     "early_stopping_metric", "early_stopping_patience", "epochs", "filter_length", "input_length", "is_regular_conv",
     "kernel_size", "label_smoothing", "learning_rate", "lr", "max_epochs", "min_lr", "num_classes", "num_leads",
     "num_workers", "patience", "pin_memory", "prefetch_factor", "reduce_lr_factor", "reduce_lr_patience", "save_dir",
-    "seed", "test", "train", "weight_decay",
+    "seed", "test", "train", "weight_decay", "mask_unannotated", "mask_min_positives",
     "dataset", "label_schema", "problem_type",                    # metadatos: documentan la receta, nada los lee
 })
 
@@ -87,13 +87,40 @@ def load_config(config_path: str | Path) -> dict:
     return params
 
 
-def compute_pos_weight(train_h5: str | Path) -> tuple[torch.Tensor, np.ndarray, np.ndarray]:
+def compute_cell_mask(train_h5: str | Path, min_positives: int = 1) -> tuple[list[str], np.ndarray]:
+    """Celdas (origen, clase) anotadas: ``1`` si el origen tiene al menos ``min_positives`` positivos de la clase en entrenamiento.
+
+    Devuelve ``(orígenes, matriz (orígenes, clases))``. Es la regla inferida que usa ``examples/cinc2020/error_analysis.py``; la
+    cobertura documentada por origen puede contrastarse aparte. Una celda con ``0`` no aporta pérdida: su ausencia de positivos no
+    se interpreta como un negativo confirmado."""
     import h5py
 
     with h5py.File(util.resolve_path(train_h5), "r") as h5:
         labels = np.asarray(h5["labels"][:], dtype=np.float32)
-    positives = labels.sum(axis=0)
-    negatives = labels.shape[0] - positives
+        if "source_dbs" not in h5:
+            raise ValueError(f"{train_h5} no trae 'source_dbs': no se puede calcular la máscara de celdas sin anotar")
+        sources = np.asarray(util.decode_h5_strings(h5["source_dbs"][:]))
+    names = sorted(set(sources.tolist()))
+    matrix = np.stack([(labels[sources == n].sum(axis=0) >= int(min_positives)).astype(np.float32) for n in names])
+    return names, matrix
+
+
+def compute_pos_weight(train_h5: str | Path, cell_mask: tuple[list[str], np.ndarray] | None = None
+                       ) -> tuple[torch.Tensor, np.ndarray, np.ndarray]:
+    import h5py
+
+    with h5py.File(util.resolve_path(train_h5), "r") as h5:
+        labels = np.asarray(h5["labels"][:], dtype=np.float32)
+        sources = util.decode_h5_strings(h5["source_dbs"][:]) if cell_mask is not None else None
+    if cell_mask is None:
+        positives = labels.sum(axis=0)
+        negatives = labels.shape[0] - positives
+    else:                                                  # solo cuentan las celdas anotadas
+        names, matrix = cell_mask
+        row = {n: i for i, n in enumerate(names)}
+        annotated = np.stack([matrix[row[s]] for s in sources])
+        positives = (labels * annotated).sum(axis=0)
+        negatives = annotated.sum(axis=0) - positives
     if np.any(positives <= 0):
         missing = [load.CLASS_NAMES[i] for i in np.where(positives <= 0)[0]]
         raise ValueError("Clases sin positivos en train.h5: " + ", ".join(missing))
@@ -114,8 +141,14 @@ def make_dataloaders(params: dict):
             "aug_seed": params.get("aug_seed", None),
         }
         print(f"Aumentación activada (solo train): {augment_cfg}")
-    train_ds = HDF5ECGDataset(params["train"], expected_num_classes=expected_classes, augment_cfg=augment_cfg)
-    dev_ds = HDF5ECGDataset(params["dev"], expected_num_classes=expected_classes)
+    cell_mask = None
+    if params.get("mask_unannotated", False):
+        cell_mask = compute_cell_mask(params["train"], int(params.get("mask_min_positives", 1)))
+        sin_anotar = [(n, load.CLASS_NAMES[j]) for i, n in enumerate(cell_mask[0]) for j in range(cell_mask[1].shape[1]) if cell_mask[1][i, j] == 0]
+        print(f"Pérdida enmascarada: {len(sin_anotar)} celdas origen-clase sin anotar no aportan pérdida: {sin_anotar}")
+    train_ds = HDF5ECGDataset(params["train"], expected_num_classes=expected_classes, augment_cfg=augment_cfg, cell_mask=cell_mask)
+    dev_ds = HDF5ECGDataset(params["dev"], expected_num_classes=expected_classes, cell_mask=cell_mask)
+    train_ds.cell_mask = cell_mask
     if train_ds.classes != dev_ds.classes:
         raise ValueError("Las clases de train y dev no coinciden")
     for name, ds in (("train", train_ds), ("dev", dev_ds)):
@@ -131,6 +164,27 @@ def make_dataloaders(params: dict):
     return train_loader, dev_loader, train_ds, dev_ds
 
 
+class MaskedBCEWithLogits(nn.Module):
+    """``BCEWithLogitsLoss`` con peso de positivos y una máscara de celdas: promedia solo sobre las celdas con máscara 1.
+
+    Con una máscara de unos equivale a ``nn.BCEWithLogitsLoss(pos_weight=...)`` (promedio sobre todas las celdas)."""
+
+    def __init__(self, pos_weight: torch.Tensor):
+        super().__init__()
+        self.register_buffer("pos_weight", pos_weight)
+
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor, mask: torch.Tensor | None = None) -> torch.Tensor:
+        loss = nn.functional.binary_cross_entropy_with_logits(logits, targets, pos_weight=self.pos_weight, reduction="none")
+        if mask is None:
+            return loss.mean()
+        return (loss * mask).sum() / mask.sum().clamp(min=1.0)
+
+
+def split_batch(batch):
+    """``(x, y)`` o ``(x, y, máscara)`` -> ``(x, y, máscara o None)``."""
+    return (batch[0], batch[1], batch[2]) if len(batch) == 3 else (batch[0], batch[1], None)
+
+
 def smooth_targets(y, smoothing: float):
     """Label smoothing para BCE multilabel: 0→s/2, 1→1-s/2."""
     s = float(smoothing)
@@ -143,16 +197,18 @@ def run_epoch(model, loader, criterion, optimizer, device, scaler=None, label_sm
     model.train()
     total_loss, total = 0.0, 0
     progress = tqdm(loader, desc="train", leave=False)
-    for x, y in progress:
+    for batch in progress:
+        x, y, w = split_batch(batch)
         x = x.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
+        w = w.to(device, non_blocking=True) if w is not None else None
         y = smooth_targets(y, label_smoothing)
         optimizer.zero_grad(set_to_none=True)
 
         if scaler is not None:
             with torch.autocast(device_type="cuda", dtype=torch.float16):
                 logits = model(x)
-                loss_value = criterion(logits, y)
+                loss_value = criterion(logits, y) if w is None else criterion(logits, y, w)
             scaler.scale(loss_value).backward()
             scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float(5.0))
@@ -160,7 +216,7 @@ def run_epoch(model, loader, criterion, optimizer, device, scaler=None, label_sm
             scaler.update()
         else:
             logits = model(x)
-            loss_value = criterion(logits, y)
+            loss_value = criterion(logits, y) if w is None else criterion(logits, y, w)
             loss_value.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=float(5.0))
             optimizer.step()
@@ -175,16 +231,18 @@ def run_epoch(model, loader, criterion, optimizer, device, scaler=None, label_sm
 def evaluate_loss(model, loader, criterion, device, amp: bool = False) -> float:
     model.eval()
     total_loss, total = 0.0, 0
-    for x, y in tqdm(loader, desc="dev", leave=False):
+    for batch in tqdm(loader, desc="dev", leave=False):
+        x, y, w = split_batch(batch)
         x = x.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
+        w = w.to(device, non_blocking=True) if w is not None else None
         if amp and device.type == "cuda":
             with torch.autocast(device_type="cuda", dtype=torch.float16):
                 logits = model(x)
-                loss_value = criterion(logits, y)
+                loss_value = criterion(logits, y) if w is None else criterion(logits, y, w)
         else:
             logits = model(x)
-            loss_value = criterion(logits, y)
+            loss_value = criterion(logits, y) if w is None else criterion(logits, y, w)
         total_loss += float(loss_value.item()) * x.shape[0]
         total += x.shape[0]
     return total_loss / max(total, 1)
@@ -195,8 +253,9 @@ def evaluate_val_f1(model, loader, device, amp: bool = False) -> float:
     """F1-macro en validación con umbral fijo 0.5 (métrica de selección)."""
     from sklearn.metrics import f1_score
     model.eval()
-    all_true, all_pred = [], []
-    for x, y in tqdm(loader, desc="dev-f1", leave=False):
+    all_true, all_pred, all_mask = [], [], []
+    for batch in tqdm(loader, desc="dev-f1", leave=False):
+        x, y, w = split_batch(batch)
         x = x.to(device, non_blocking=True)
         if amp and device.type == "cuda":
             with torch.autocast(device_type="cuda", dtype=torch.float16):
@@ -205,9 +264,14 @@ def evaluate_val_f1(model, loader, device, amp: bool = False) -> float:
             logits = model(x)
         all_true.append(y.detach().cpu())
         all_pred.append((torch.sigmoid(logits).float().cpu() >= 0.5).to(torch.uint8))
+        if w is not None:
+            all_mask.append(w.detach().cpu())
     y_true = torch.cat(all_true, dim=0).numpy()
     y_pred = torch.cat(all_pred, dim=0).numpy()
-    return float(f1_score(y_true, y_pred, average="macro", zero_division=0))
+    if not all_mask:
+        return float(f1_score(y_true, y_pred, average="macro", zero_division=0))
+    keep = torch.cat(all_mask, dim=0).numpy() > 0                   # cada clase se evalúa solo en los registros con su celda anotada
+    return float(np.mean([f1_score(y_true[keep[:, j], j], y_pred[keep[:, j], j], zero_division=0) for j in range(y_true.shape[1])]))
 
 
 def is_monitor_improvement(value: float, best: float, monitor: str) -> bool:
@@ -277,12 +341,21 @@ def train(args, params: dict, epoch_callback=None):
     print(f"Save dir     : {save_dir}")
     print("=" * 72)
 
-    pos_weight, positives, negatives = compute_pos_weight(params["train"])
+    pos_weight, positives, negatives = compute_pos_weight(params["train"], train_ds.cell_mask)
     print("\nPositivos por clase:")
     for i, name in enumerate(class_names):
         print(f"  {i:02d} {name:<20} pos={positives[i]:8.0f} neg={negatives[i]:8.0f} weight={pos_weight[i].item():.4f}")
 
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight.to(device))
+    if train_ds.cell_mask is None:
+        criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight.to(device))
+    else:
+        criterion = MaskedBCEWithLogits(pos_weight.to(device)).to(device)
+        names, matrix = train_ds.cell_mask
+        with (save_dir / "cell_mask.csv").open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.writer(handle, lineterminator="\n")
+            writer.writerow(["source_db", *class_names])
+            for n, row in zip(names, matrix):
+                writer.writerow([n, *[int(v) for v in row]])
     optimizer = torch.optim.Adam(
         model.parameters(),
         lr=float(params.get("learning_rate", params.get("lr", 1e-3))),

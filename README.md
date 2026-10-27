@@ -415,7 +415,6 @@ Notas:
 ├── tests/                  # suite pytest
 ├── .github/workflows/      # CI: pytest y verificador de comandos en cada PR y push a main; auditoría semanal de vulnerabilidades (pip-audit)
 ├── docs/                   # informe técnico y guías de experimentos
-├── tasks/                  # plan y tareas de la demo local; auditoría de mejoras (analisis_mejoras.md)
 ├── images/                 # logo y capturas para documentación
 ├── runs/ saved/ data/      # producto generado (git-ignored)
 ├── requirements.txt / requirements-cuda.txt / requirements-dev.txt / constraints.txt   # constraints.txt: versiones exactas de las transitivas (las del CI verde)
@@ -436,7 +435,7 @@ python webapp/app.py --saved saved        # desarrollo: usa los checkpoints de s
 powershell -ExecutionPolicy Bypass -File deploy\start_local.ps1   # demo en esta PC (Windows 11): waitress + bundle, sin saved/ ni runs/
 ```
 
-La demo corre en la propia PC, sin servidor ni nube. El bundle (pesos de inferencia de 19 MB por modelo, umbrales, métricas y siete ECG de ejemplo) la hace independiente de las carpetas locales; sirve en CPU (≈2,4 s por análisis, ≈0,9 GB de RAM). Por defecto solo es accesible desde la misma PC; la red local y un túnel temporal son opcionales. Detalles de arranque, variables de entorno y endpoints en [webapp/README.md](webapp/README.md); tareas pendientes en [tasks/todo.md](tasks/todo.md).
+La demo corre en la propia PC, sin servidor ni nube. El bundle (pesos de inferencia de 19 MB por modelo, umbrales, métricas y siete ECG de ejemplo) la hace independiente de las carpetas locales; sirve en CPU (≈2,4 s por análisis, ≈0,9 GB de RAM). Por defecto solo es accesible desde la misma PC; la red local y un túnel temporal son opcionales. Detalles de arranque, variables de entorno y endpoints en [webapp/README.md](webapp/README.md).
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
@@ -510,7 +509,7 @@ Limitaciones conocidas: una sola corrida por receta (semillas 42 y 43), sin medi
 - [x] Bundle de inferencia + configuración por entorno + waitress: la webapp corre sin `saved/` ni `runs/`, en esta PC con Windows 11 (CPU, solo accesible localmente por defecto)
 - [x] Endurecimiento de la webapp: ReDoS en el texto pegado, tope de tamaño del `.mat`, `/use_model` apagado por defecto, tope de cuerpo en waitress, escape de comillas
 - [x] Protocolo de reporte común (mismo `threshold_beta`) y verificador de comandos de la documentación
-- [ ] Probar la demo en uso real desde otro dispositivo de la red local (ver [tasks/todo.md](tasks/todo.md))
+- [ ] Probar la demo en uso real desde otro dispositivo de la red local
 - [ ] Entrenamiento distribuido multi-GPU
 - [x] Script de búsqueda de hiperparámetros con Optuna (`tune_optuna.py`)
 - [ ] Tracking de experimentos con MLflow
@@ -527,13 +526,17 @@ Ver los [issues abiertos](https://github.com/PatVela/Proyecto_Investigacion/issu
 
 Distribuido bajo licencia GPL-3.0. Ver `LICENSE` para más información.
 
+Los datos de origen (PhysioNet/Computing in Cardiology Challenge 2020) se distribuyen bajo la licencia Creative Commons Attribution 4.0 International (CC BY 4.0) y no se incluyen en este repositorio. Quien los use debe citar los tres trabajos de la sección siguiente.
+
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
 <!-- ACKNOWLEDGMENTS -->
 ## Agradecimientos
 
 * Hannun AY et al. Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network. *Nature Medicine*. 2019;25(1):65-69. [DOI 10.1038/s41591-018-0268-3](https://doi.org/10.1038/s41591-018-0268-3)
-* PhysioNet/Computing in Cardiology Challenge 2020: Classification of 12-lead ECGs.
+* Perez Alday EA, Gu A, Shah A, Liu C, Sharma A, Seyedi S, Bahrami Rad A, Reyna M, Clifford G. Classification of 12-lead ECGs: The PhysioNet/Computing in Cardiology Challenge 2020 (version 1.0.2). *PhysioNet*. 2022. RRID:SCR_007345. [DOI 10.13026/dvyd-kd57](https://doi.org/10.13026/dvyd-kd57)
+* Perez Alday EA, Gu A, Shah AJ, Robichaux C, Wong AI, Liu C, Liu F, Rad AB, Elola A, Seyedi S, Li Q, Sharma A, Clifford GD, Reyna MA. Classification of 12-lead ECGs: the PhysioNet/Computing in Cardiology Challenge 2020. *Physiological Measurement*. 2020. [DOI 10.1088/1361-6579/abc960](https://doi.org/10.1088/1361-6579/abc960)
+* Pollard T, Moody BE, Lehman L, Gow B, Fernandes C, Xie C, Johnson A, Mark RG, Heldt T. PhysioNet as a global platform for biomedical research. *Nature Health*. 2026. [DOI 10.1038/s44360-026-00096-z](https://doi.org/10.1038/s44360-026-00096-z)
 * Universidad Nacional de San Agustín de Arequipa — Facultad de Ingeniería de Producción y Servicios.
 * Plantilla [Best-README-Template](https://github.com/othneildrew/Best-README-Template) e insignias de [shields.io](https://shields.io).
 
