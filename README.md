@@ -333,6 +333,19 @@ hea1=$(find dataset2020 -name E00001.hea | head -1)
 mat1="${hea1%.hea}.mat"
 ```
 
+### Evaluación externa en otras bases (opcional)
+
+Para medir un sistema ya entrenado en bases que no intervinieron en su diseño, por ejemplo las carpetas `chapman_shaoxing` y `ningbo` de la versión 1.0.3 del Challenge 2021 (base `ecg-arrhythmia`, CC BY 4.0, unos 5.4 GB), se descargan, se comprueba que estén completas y se construye un HDF5 de solo prueba por origen:
+
+```powershell
+bash descargar_challenge2021.sh
+python tools/verificar_challenge2021.py
+python examples/cinc2020/build_external_test.py --data-dir dataset2021/physionet.org/files/challenge-2021/1.0.3 --origin chapman_shaoxing --output data/cinc2021_externo/test_c.h5 --workers 8
+python examples/cinc2020/build_external_test.py --data-dir dataset2021/physionet.org/files/challenge-2021/1.0.3 --origin ningbo --output data/cinc2021_externo/test_d.h5 --workers 8
+```
+
+`descargar_challenge2021.sh` baja las dos carpetas en paralelo y reanuda lo incompleto; en Windows se ejecuta desde Git Bash. `verificar_challenge2021.py` lee cada registro y sale con código 1 si falta algo. El constructor aplica el mismo preprocesamiento que `build_datasets.py`, no reparte y no exige positivos en todas las clases; `--exclude-record` aparta registros por nombre (por ejemplo, duplicados) y los lista en `<salida>.summary.json`. Después se evalúa con `evaluate.py` o `ensemble_evaluate.py`: se copia la configuración del sistema cambiando solo la clave `test` al HDF5 nuevo, y se usan la calibración y los umbrales ya guardados, sin recalibrar ni reentrenar. Una clase con pocos positivos en la base nueva no debería entrar en las métricas agregadas.
+
 ### Si algo falla
 
 * `CUDA out of memory`: baje `batch_size` a 32 en el JSON y reentrene.
@@ -402,7 +415,7 @@ Notas:
 │   ├── sex_breakdown.py / benchmark_latency.py  # auditorías: sexo y latencia
 │   ├── config*.json        # configs ResNet, ResNet v2, regular y sintético
 │   └── official/           # tabla oficial de códigos del Challenge (vendored, no modificar)
-├── tools/                  # descarga/verificación CINC2020, auditorías, bundle de despliegue, prueba de humo y verificador de comandos de los .md
+├── tools/                  # descarga/verificación CINC2020 y de Chapman-Shaoxing y Ningbo, auditorías, bundle de despliegue, prueba de humo y verificador de comandos de los .md
 ├── webapp/                 # dashboard Flask + informe PDF
 │   ├── app.py / prediction.py / report_pdf.py / wsgi.py
 │   ├── labels.py / plotting.py          # comparación con etiquetas reales; trazado en papel milimetrado
@@ -418,7 +431,7 @@ Notas:
 ├── images/                 # logo y capturas para documentación
 ├── runs/ saved/ data/      # producto generado (git-ignored)
 ├── requirements.txt / requirements-cuda.txt / requirements-dev.txt / constraints.txt   # constraints.txt: versiones exactas de las transitivas (las del CI verde)
-├── descargar_datos_2020.sh / setup.sh   # descarga de datos / instalación rápida con verificación de CUDA
+├── descargar_datos_2020.sh / descargar_challenge2021.sh / setup.sh   # descarga de datos (Challenge 2020; Chapman-Shaoxing y Ningbo del 2021) / instalación rápida con verificación de CUDA
 ├── CONTEXT.md  # definición del pipeline (ICM)
 └── README.md
 ```
