@@ -16,6 +16,9 @@ keywords:
   - PhysioNet/CinC Challenge 2020
   - calibración
 authors:
-  - family-names: "[Apellidos: completar]"
-    given-names: "[Nombres: completar]"
+  - family-names: "Huillca Nuñez"
+    given-names: "Jefferson Junior"
+    affiliation: "Universidad Nacional de San Agustín de Arequipa, Escuela Profesional de Ingeniería Electrónica"
+  - family-names: "Diaz Velarde"
+    given-names: "Juergen Patrick"
     affiliation: "Universidad Nacional de San Agustín de Arequipa, Escuela Profesional de Ingeniería Electrónica"

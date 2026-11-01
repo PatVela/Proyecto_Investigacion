@@ -497,7 +497,7 @@ Los tests de los scripts de Windows (`deploy/*.ps1`) se omiten en otros sistemas
 7. **El reparto es por registro, no por paciente.** Se midió el solape: 18.6 % de los registros de test de PTB-XL y 62.6 % de los de PTB comparten paciente con train (PTB-XL no muestra inflación detectable del F1; PTB, con 99 registros, sí una diferencia grande; ver el hallazgo 10 de [docs/resultados_finales.md](docs/resultados_finales.md)). CPSC, CPSC-extra, Georgia e INCART no traen identificador de paciente.
 8. El dataset es más pequeño (43 101 registros frente a ≈ 91 000 ECG de ≈ 53 500 pacientes) y se usa solo para entrenar y evaluar este modelo: **no se compara con los resultados del PhysioNet/CinC Challenge**.
 
-Limitaciones conocidas: una sola corrida por receta (semillas 42 y 43), sin medir la variabilidad entre semillas, y sin validación externa en un dataset ajeno al Challenge.
+Limitaciones conocidas: una sola corrida por receta (semillas 42 y 43), sin medir la variabilidad entre semillas, y sin resultados de validación externa incluidos aquí; el procedimiento para evaluar en Chapman-Shaoxing y Ningbo está en «Evaluación externa en otras bases (opcional)».
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
