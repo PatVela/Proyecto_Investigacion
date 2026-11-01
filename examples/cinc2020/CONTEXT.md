@@ -6,7 +6,7 @@
 
 | Etapa | Scripts |
 |---|---|
-| 01 Datos | `build_datasets.py`, `audit_dx_codes.py`, `make_synthetic.py` |
+| 01 Datos | `build_datasets.py`, `build_external_test.py`, `audit_dx_codes.py`, `make_synthetic.py` |
 | 03 Calibrar | `calibrate.py` |
 | 04 Evaluar | `evaluate.py`, `ensemble_evaluate.py` |
 | 05 Comparar | `compare_models.py`, `bootstrap_ci.py` |

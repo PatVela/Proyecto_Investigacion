@@ -658,6 +658,84 @@ def build_datasets(
     return {"records": len(records), "counters": counters, "splits": {k: len(v) for k, v in splits.items()}, "processing": processing}
 
 
+def build_external_test(
+    data_dir: str | Path,
+    output_path: str | Path,
+    origin: str | None = None,
+    exclude_records: Iterable[str] = (),
+    workers: int = 6,
+    chunksize: int = 8,
+    write_batch_size: int = 32,
+    norm_mode: str = DEFAULT_NORM_MODE,
+    bandpass: bool = True,
+) -> dict:
+    """Escribe en un solo HDF5 de prueba todos los registros de un origen, sin reparto.
+
+    Es para evaluar un sistema ya entrenado en una base que no intervino en su diseño. Usa el mismo
+    escaneo y el mismo preprocesamiento que :func:`build_datasets` (una ventana centrada por registro),
+    pero no reparte y no exige positivos en todas las clases: una clase sin positivos queda en cero.
+    Los registros sin ninguna de las 12 clases se conservan.
+
+    ``origin`` es la carpeta que sigue a ``training`` (``chapman_shaoxing``); sin él entra todo lo
+    escaneado. ``exclude_records`` son nombres de archivo ``.hea`` sin extensión; se cuentan y se listan
+    en el resumen, y un nombre que no existe en ``data_dir`` es un error. Junto al HDF5 se escribe
+    ``<salida>.records.csv`` (un registro por fila) y ``<salida>.summary.json``.
+    """
+    data_dir = Path(data_dir).resolve()
+    output_path = Path(output_path).resolve()
+    records, counters = scan_records(data_dir, drop_no_selected_labels=False)
+
+    exclude = {str(name) for name in exclude_records}
+    stems = {Path(record["hea_path"]).stem for record in records}
+    unknown = sorted(exclude - stems)
+    if unknown:
+        raise ValueError("exclude_records no existen en data_dir: " + ", ".join(unknown))
+
+    if origin is not None:
+        records = [record for record in records if record["source_db"] == origin]
+        if not records:
+            raise RuntimeError(f"Ningún registro del origen {origin!r} en {data_dir}")
+    excluded = sorted(stem for stem in (Path(r["hea_path"]).stem for r in records) if stem in exclude)
+    kept = [record for record in records if Path(record["hea_path"]).stem not in exclude]
+    if not kept:
+        raise RuntimeError("No quedaron registros tras las exclusiones")
+
+    labels = np.stack([record["label"] for record in kept])
+    positives = {name: int(labels[:, i].sum()) for i, name in enumerate(CLASS_NAMES)}
+    processing = process_split_to_hdf5(
+        records=kept,
+        indices=range(len(kept)),
+        output_path=output_path,
+        num_workers=workers,
+        chunksize=chunksize,
+        write_batch_size=write_batch_size,
+        norm_mode=norm_mode,
+        bandpass=bandpass,
+        windows_max=1,
+    )
+
+    manifest = pd.DataFrame({
+        "record_file": [Path(r["hea_path"]).stem for r in kept],
+        "record_name": [r["record_name"] for r in kept],
+        "source_db": [r["source_db"] for r in kept],
+        "num_classes_positive": [int(r["label"].sum()) for r in kept],
+        "matched_classes": [";".join(r["matched_classes"]) for r in kept],
+    })
+    manifest.to_csv(output_path.with_name(output_path.name + ".records.csv"), index=False, lineterminator="\n")
+    summary = {
+        "origin": origin,
+        "records": len(kept),
+        "excluded": excluded,
+        "scan_counters": counters,
+        "positives": positives,
+        "records_without_any_class": int((labels.sum(axis=1) == 0).sum()),
+        "processing": processing,
+    }
+    output_path.with_name(output_path.name + ".summary.json").write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return summary
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
