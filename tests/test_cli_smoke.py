@@ -29,6 +29,7 @@ HELP_CASES = [
     ("tools/audit_signal_scaling", ["tools/audit_signal_scaling.py"]),
     ("tools/check_missing", ["tools/check_missing.py"]),
     ("tools/download_missing", ["tools/download_missing.py"]),
+    ("tools/verificar_challenge2021", ["tools/verificar_challenge2021.py"]),
     ("ecg/load", ["-m", "ecg.load"]),
     ("ecg/predict", ["-m", "ecg.predict"]),
     ("ecg/train", ["-m", "ecg.train"]),

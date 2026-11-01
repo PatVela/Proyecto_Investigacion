@@ -114,7 +114,8 @@ python tools/make_patient_groups.py --ptbxl-database data/externo/ptbxl_database
 python examples/cinc2020/build_datasets.py --data-dir dataset2020 --output-dir data/cinc2020_12_origen --holdout-origin georgia --groups-csv data/externo/patient_groups.csv --workers 8
 ```
 
-Para evaluar un sistema ya entrenado en una base que no intervino en su diseño (por ejemplo, las carpetas `chapman_shaoxing` y `ningbo` del Challenge 2021),
+Para evaluar un sistema ya entrenado en una base que no intervino en su diseño (por ejemplo, las carpetas `chapman_shaoxing` y `ningbo` del Challenge 2021, que baja
+`bash descargar_challenge2021.sh` a `dataset2021/` y comprueba `python tools/verificar_challenge2021.py`),
 `build_external_test.py` escribe todos los registros de un origen en un solo HDF5, con el mismo preprocesamiento que `build_datasets.py`, sin repartir y
 sin exigir positivos en todas las clases; `--exclude-record` aparta registros por nombre y los lista en `<salida>.summary.json`, y `<salida>.records.csv` trae un registro por fila:
 
