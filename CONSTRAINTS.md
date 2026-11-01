@@ -1,17 +1,19 @@
 # Nivel de calidad
 
-Última revisión: 2026-10-15. Cada umbral trae el comando que lo comprueba, dónde se hace cumplir y el valor medido hoy.
+Última revisión: 2026-11-01. Cada umbral trae el comando que lo comprueba, dónde se hace cumplir y el valor medido hoy.
 No confundir con [`constraints.txt`](constraints.txt) de la raíz: son los pins de pip, no este contrato.
 
 ## Umbrales
 
-| Dimensión | Umbral | Comando de verificación | Dónde se aplica | Valor medido hoy (2026-10-15) |
+| Dimensión | Umbral | Comando de verificación | Dónde se aplica | Valor medido hoy (2026-11-01) |
 |---|---|---|---|---|
-| 1. CI en verde | `tests` en verde en cada PR y en cada push a `main` (una ejecución `cancelled` por un push posterior no cuenta como fallo) | `gh run list --workflow tests --limit 3` | CI: [`tests.yml`](.github/workflows/tests.yml) | las 3 últimas `success`; último push a `main` (89477fb): `success`, 6 min 38 s. Una ejecución `cancelled` es un push a `main` sustituido por el siguiente |
+| 1. CI en verde | `tests` en verde en cada PR y en cada push a `main` (una ejecución `cancelled` por un push posterior no cuenta como fallo) | `gh run list --workflow tests --limit 3` | CI: [`tests.yml`](.github/workflows/tests.yml) | las 3 últimas `success`; último push a `main` (6b8f7dc, PR #39): `success`, 6 min 48 s. Una ejecución `cancelled` es un push a `main` sustituido por el siguiente |
 | 2. Pruebas omitidas | Solo los motivos de la lista de abajo; ninguna por dependencia faltante | `python -m pytest -q -rs -p no:cacheprovider` (las líneas `SKIPPED` solo pueden traer esos motivos) | CI (`python -m pytest -q -W ignore`) y manual | Windows, local: 622 pasadas, 0 omitidas, 8 min 42 s. CI Linux (89477fb): 619 pasadas y 3 omitidas (las 3 `@windows_only`) |
 | 3. `pip-audit` limpio | 0 vulnerabilidades conocidas: el job de `audit` termina en `success` | `gh run view $(gh run list --workflow audit --limit 1 --json databaseId -q '.[0].databaseId') --json jobs -q '.jobs[].conclusion'` | CI: [`audit.yml`](.github/workflows/audit.yml), lunes 06:00 UTC en `main`, a mano y en PR que toquen dependencias | Ejecución manual sobre `main` (23d8bc6, 2026-10-27): job `success`, «No known vulnerabilities found». La semanal del 2026-10-26 había fallado por 52 vulnerabilidades en pillow, pypdf, filelock, setuptools y certifi, corregidas subiendo sus versiones en `constraints.txt` y `requirements-dev.txt` |
-| 4. Documentación sin problemas | 0 problemas y todas las pruebas de enlaces y comandos pasan | `python tools/check_docs_commands.py` y `python -m pytest tests/test_docs_links.py tests/test_docs_commands.py -q -p no:cacheprovider` | CI (primer paso y suite) | 124 comandos, 0 problemas; 15 pruebas pasan (los comandos nuevos son `build_external_test.py` y `verificar_challenge2021.py`; `tasks/` ya no está en el repositorio y deja de revisarse) |
+| 4. Documentación sin problemas | 0 problemas y todas las pruebas de enlaces y comandos pasan | `python tools/check_docs_commands.py` y `python -m pytest tests/test_docs_links.py tests/test_docs_commands.py -q -p no:cacheprovider` | CI (primer paso y suite) | 129 comandos, 0 problemas; 15 pruebas pasan (los comandos nuevos son `build_external_test.py` y `verificar_challenge2021.py`; `tasks/` ya no está en el repositorio y deja de revisarse) |
 | 5. Cobertura | Solo informativa, sin umbral | propuesta pendiente de aprobación (abajo) | ninguno | no se mide |
+
+En local, `python -m pytest` sin ruta también recolecta `tesis/paquete_t19/tests` (copia del código dentro de una carpeta que no está en git) y falla en la recolección; se usa `python -m pytest tests`. El CI no tiene `tesis/`.
 
 En una PR, `audit` sale `success` como ejecución aunque el paso `pip-audit` falle (`continue-on-error`): por eso el comando de la dimensión 3 mira el job, no la ejecución.
 
@@ -35,7 +37,7 @@ Cambio exacto, solo informativo (sin `--cov-fail-under`):
 
 ## Medido, sin umbral
 
-Pruebas recolectadas: 655 en local, que son las 622 de `main`, las 20 de `tests/test_grouped_split.py` y `tests/test_masked_loss.py`, las 7 de `tests/test_external_build.py` y las 6 nuevas (5 de `tests/test_verificar_challenge2021.py` y el caso de `--help` en `tests/test_cli_smoke.py`) (en el último CI de `main`, 622: 619 pasadas y 3 omitidas). No debe bajar sin explicar qué se quitó y por qué. Bajaron 3 el 2026-10-15: se quitaron 12 (la métrica Challenge: 11 de `test_challenge_score.py` y 1 de `test_cli_smoke.py`; el proyecto solo usa la base de datos del Challenge y no compara con sus resultados), se añadieron 10 (`tests/test_dataset_build.py`, sobre el escaneo, el reparto y los HDF5) y se retiró 1 (una prueba de higiene de `tests/test_no_stale_paths.py` sobre un directorio local no versionado, que ahora se excluye desde la configuración local de git y no desde el repositorio).
+Pruebas recolectadas: 655 con `python -m pytest tests` (en el último CI de `main`, 655: 652 pasadas y 3 omitidas). No debe bajar sin explicar qué se quitó y por qué. Bajaron 3 el 2026-10-15: se quitaron 12 (la métrica Challenge: 11 de `test_challenge_score.py` y 1 de `test_cli_smoke.py`; el proyecto solo usa la base de datos del Challenge y no compara con sus resultados), se añadieron 10 (`tests/test_dataset_build.py`, sobre el escaneo, el reparto y los HDF5) y se retiró 1 (una prueba de higiene de `tests/test_no_stale_paths.py` sobre un directorio local no versionado, que ahora se excluye desde la configuración local de git y no desde el repositorio).
 
 ## Regla anti-degradación
 

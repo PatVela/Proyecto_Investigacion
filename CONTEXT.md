@@ -15,6 +15,8 @@ Secuencia que se repite por cada modelo/receta. Detalle de comandos: `examples/c
 
 Opcional, fuera de la secuencia: `tools/check_docs_commands.py` (valida los comandos de los .md), `tune_optuna.py` (búsqueda de hiperparámetros → `runs/models/optuna_cinc2020.db`), `make_synthetic.py` (dataset sintético para smoke tests).
 
+Opcional, evaluación externa (sistema ya entrenado, sin tocarlo): `descargar_challenge2021.sh` → `tools/verificar_challenge2021.py` → `examples/cinc2020/build_external_test.py` (un HDF5 de prueba por origen, p. ej. `data/cinc2021_externo/test_c.h5`; solo `chapman_shaoxing` y `ningbo`). Reparto alternativo por origen y por paciente: `tools/make_patient_groups.py` + `build_datasets.py --holdout-origin --groups-csv` (el defecto no cambia).
+
 ## Factory (estable entre corridas)
 
 `ecg/` (librería), `examples/cinc2020/config*.json` (recetas), `examples/cinc2020/official/` (tabla oficial de códigos, vendored), `requirements*.txt`, `constraints.txt` (versiones exactas de las transitivas), `tests/`. El bundle de despliegue (`models/`, `deploy/`, `webapp/examples/`) también va en git, pero se regenera cuando cambia el modelo final.
