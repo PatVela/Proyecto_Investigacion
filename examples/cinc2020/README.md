@@ -54,6 +54,7 @@ Esta carpeta contiene el pipeline experimental completo del proyecto: desde la d
 | Script | Propósito |
 |---|---|
 | `build_datasets.py` | Construye `train/val/test.h5` + CSV de distribución y resúmenes |
+| `build_external_test.py` | Construye un HDF5 de solo prueba con todos los registros de un origen, para evaluar un sistema ya entrenado en una base externa |
 | `evaluate.py` | Métricas multilabel + umbrales calibrados en validación |
 | `compare_models.py` | Compara dos evaluaciones con el mismo `threshold_beta` (p. ej. ResNet v1 vs v2) |
 | `robustness.py` | Robustez ante perturbaciones controladas de la señal |
@@ -111,6 +112,14 @@ con el paciente de cada registro de PTB-XL y PTB (los demás orígenes no traen 
 ```powershell
 python tools/make_patient_groups.py --ptbxl-database data/externo/ptbxl_database.csv --ptb-records data/externo/RECORDS
 python examples/cinc2020/build_datasets.py --data-dir dataset2020 --output-dir data/cinc2020_12_origen --holdout-origin georgia --groups-csv data/externo/patient_groups.csv --workers 8
+```
+
+Para evaluar un sistema ya entrenado en una base que no intervino en su diseño (por ejemplo, las carpetas `chapman_shaoxing` y `ningbo` del Challenge 2021),
+`build_external_test.py` escribe todos los registros de un origen en un solo HDF5, con el mismo preprocesamiento que `build_datasets.py`, sin repartir y
+sin exigir positivos en todas las clases; `--exclude-record` aparta registros por nombre y los lista en `<salida>.summary.json`, y `<salida>.records.csv` trae un registro por fila:
+
+```powershell
+python examples/cinc2020/build_external_test.py --data-dir dataset2021/physionet.org/files/challenge-2021/1.0.3 --origin chapman_shaoxing --output data/cinc2021_externo/test_c.h5 --workers 8
 ```
 
 Con `"mask_unannotated": true` en la configuración (y `"mask_min_positives"`, 1 por defecto), `ecg.train` no calcula la pérdida de las celdas
