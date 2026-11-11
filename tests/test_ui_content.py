@@ -75,7 +75,7 @@ def test_a_client_threshold_really_has_no_effect_with_class_thresholds(make_clie
     client = make_client(bundle=True, ECG_RATE_LIMIT_MAX=0)
     results = []
     for value in ("0.05", "0.95"):
-        body = client.post("/predict", data={"example": "HR09549", "threshold": value}).get_json()
+        body = client.post("/predict", data={"example": "E07827", "threshold": value}).get_json()
         assert body["ok"] and body["using_class_thresholds"] is True
         results.append([p["class"] for p in body["predictions"] if p["prediction"] == 1])
     assert results[0] == results[1]                        # por eso el campo se deshabilita en la interfaz

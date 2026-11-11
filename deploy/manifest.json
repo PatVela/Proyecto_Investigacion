@@ -1,5 +1,5 @@
 {
-  "created_utc": "2026-10-13T07:37:41+00:00",
+  "created_utc": "2026-11-11T03:49:38+00:00",
   "torch_version": "2.14.0+cu130",
   "label_schema": "cinc2020_12_grouped_snomed_v2",
   "ensemble_alpha": 0.5,
@@ -15,17 +15,17 @@
     "a": {
       "file": "resnet34_v1.pt",
       "bytes": 19354101,
-      "sha256": "91bec18eefb8f00234fe2ff742ea772b02739fd142edea768161d14502f05cbb",
-      "epoch": 25,
-      "val_loss": 0.4656075755461035,
+      "sha256": "24b4571d13fba646818366d03a1dd75665f403809d91fd9af3e1675965f44db5",
+      "epoch": 24,
+      "val_loss": 0.4719325008737854,
       "label_schema": "cinc2020_12_grouped_snomed_v2"
     },
     "b": {
       "file": "resnet34_v2.pt",
       "bytes": 19354101,
-      "sha256": "dbb6c208ce9cf047dcb292bfb0792e7d6d60c8053d61d7a182444f07a21d94ee",
-      "epoch": 92,
-      "val_loss": 0.5358700642349027,
+      "sha256": "c62618fc47c8d02ae0d66539273d374456689f5fbb0217d78b7da18fcdc62967",
+      "epoch": 87,
+      "val_loss": 0.5776834551850817,
       "label_schema": "cinc2020_12_grouped_snomed_v2"
     }
   },

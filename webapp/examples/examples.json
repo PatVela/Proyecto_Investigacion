@@ -14,25 +14,25 @@
       "NSR"
     ],
     "reference_probabilities": {
-      "NSR": 0.98903,
-      "AxisDev": 0.07096,
-      "MI": 0.04057,
-      "TAb": 0.24496,
-      "AF": 0.00287,
-      "LVH": 0.01245,
-      "VEctopy": 0.00508,
-      "AVBlock": 0.00502,
-      "STach": 0.00167,
-      "BBB": 0.04895,
-      "SB": 0.00282,
-      "AEctopy_Junctional": 0.00806
+      "NSR": 0.99349,
+      "AxisDev": 0.01863,
+      "MI": 0.02795,
+      "TAb": 0.22331,
+      "AF": 0.00177,
+      "LVH": 0.01374,
+      "VEctopy": 0.0056,
+      "AVBlock": 0.00455,
+      "STach": 0.00149,
+      "BBB": 0.05328,
+      "SB": 0.00362,
+      "AEctopy_Junctional": 0.00702
     }
   },
   {
-    "id": "A3763",
-    "record": "A3763",
+    "id": "E09078",
+    "record": "E09078",
     "kind": "correct",
-    "source_db": "cpsc_2018",
+    "source_db": "georgia",
     "dx_codes": [
       "164889003"
     ],
@@ -43,23 +43,23 @@
       "AF"
     ],
     "reference_probabilities": {
-      "NSR": 0.12495,
-      "AxisDev": 0.04605,
-      "MI": 0.10124,
-      "TAb": 0.34819,
-      "AF": 0.69104,
-      "LVH": 0.01534,
-      "VEctopy": 0.21785,
-      "AVBlock": 0.0462,
-      "STach": 0.08887,
-      "BBB": 0.29581,
-      "SB": 0.00527,
-      "AEctopy_Junctional": 0.19337
+      "NSR": 0.01542,
+      "AxisDev": 0.0133,
+      "MI": 0.0474,
+      "TAb": 0.04003,
+      "AF": 0.96372,
+      "LVH": 0.00992,
+      "VEctopy": 0.01194,
+      "AVBlock": 0.0091,
+      "STach": 0.00154,
+      "BBB": 0.08026,
+      "SB": 0.00388,
+      "AEctopy_Junctional": 0.03155
     }
   },
   {
-    "id": "E02917",
-    "record": "E02917",
+    "id": "E00792",
+    "record": "E00792",
     "kind": "correct",
     "source_db": "georgia",
     "dx_codes": [
@@ -72,23 +72,23 @@
       "STach"
     ],
     "reference_probabilities": {
-      "NSR": 0.0459,
-      "AxisDev": 0.00721,
-      "MI": 0.0197,
-      "TAb": 0.30476,
-      "AF": 0.0028,
-      "LVH": 0.06841,
-      "VEctopy": 0.01248,
-      "AVBlock": 0.00519,
-      "STach": 0.96893,
-      "BBB": 0.03165,
-      "SB": 0.00252,
-      "AEctopy_Junctional": 0.01367
+      "NSR": 0.23467,
+      "AxisDev": 0.05651,
+      "MI": 0.23414,
+      "TAb": 0.24641,
+      "AF": 0.00325,
+      "LVH": 0.08308,
+      "VEctopy": 0.0101,
+      "AVBlock": 0.009,
+      "STach": 0.65017,
+      "BBB": 0.12822,
+      "SB": 0.00383,
+      "AEctopy_Junctional": 0.01938
     }
   },
   {
-    "id": "E07527",
-    "record": "E07527",
+    "id": "E04333",
+    "record": "E04333",
     "kind": "correct",
     "source_db": "georgia",
     "dx_codes": [
@@ -101,23 +101,23 @@
       "SB"
     ],
     "reference_probabilities": {
-      "NSR": 0.38784,
-      "AxisDev": 0.00743,
-      "MI": 0.01371,
-      "TAb": 0.07758,
-      "AF": 0.00536,
-      "LVH": 0.01688,
-      "VEctopy": 0.01243,
-      "AVBlock": 0.00416,
-      "STach": 0.00167,
-      "BBB": 0.01293,
-      "SB": 0.83443,
-      "AEctopy_Junctional": 0.00998
+      "NSR": 0.28535,
+      "AxisDev": 0.00495,
+      "MI": 0.28935,
+      "TAb": 0.12793,
+      "AF": 0.00332,
+      "LVH": 0.00647,
+      "VEctopy": 0.10805,
+      "AVBlock": 0.00579,
+      "STach": 0.00136,
+      "BBB": 0.02076,
+      "SB": 0.35735,
+      "AEctopy_Junctional": 0.05636
     }
   },
   {
-    "id": "A4268",
-    "record": "A4268",
+    "id": "A1119",
+    "record": "A1119",
     "kind": "correct",
     "source_db": "cpsc_2018",
     "dx_codes": [
@@ -130,23 +130,23 @@
       "BBB"
     ],
     "reference_probabilities": {
-      "NSR": 0.03353,
-      "AxisDev": 0.02236,
-      "MI": 0.03072,
-      "TAb": 0.06152,
-      "AF": 0.00766,
-      "LVH": 0.0157,
-      "VEctopy": 0.00812,
-      "AVBlock": 0.0078,
-      "STach": 0.00159,
-      "BBB": 0.965,
-      "SB": 0.00244,
-      "AEctopy_Junctional": 0.04503
+      "NSR": 0.00548,
+      "AxisDev": 0.00563,
+      "MI": 0.05048,
+      "TAb": 0.07286,
+      "AF": 0.00144,
+      "LVH": 0.00955,
+      "VEctopy": 0.02313,
+      "AVBlock": 0.00457,
+      "STach": 0.00142,
+      "BBB": 0.97741,
+      "SB": 0.00332,
+      "AEctopy_Junctional": 0.0087
     }
   },
   {
-    "id": "Q1259",
-    "record": "Q1259",
+    "id": "Q2649",
+    "record": "Q2649",
     "kind": "correct",
     "source_db": "cpsc_2018_extra",
     "dx_codes": [
@@ -159,58 +159,50 @@
       "MI"
     ],
     "reference_probabilities": {
-      "NSR": 0.00801,
-      "AxisDev": 0.0038,
-      "MI": 0.96079,
-      "TAb": 0.03318,
-      "AF": 0.00321,
-      "LVH": 0.0114,
-      "VEctopy": 0.06921,
-      "AVBlock": 0.00457,
-      "STach": 0.00147,
-      "BBB": 0.00763,
-      "SB": 0.00262,
-      "AEctopy_Junctional": 0.01899
+      "NSR": 0.00212,
+      "AxisDev": 0.00653,
+      "MI": 0.98311,
+      "TAb": 0.07081,
+      "AF": 0.00252,
+      "LVH": 0.01046,
+      "VEctopy": 0.04938,
+      "AVBlock": 0.00558,
+      "STach": 0.00162,
+      "BBB": 0.01789,
+      "SB": 0.0135,
+      "AEctopy_Junctional": 0.02104
     }
   },
   {
-    "id": "HR09549",
-    "record": "HR09549",
+    "id": "E07827",
+    "record": "E07827",
     "kind": "mixed",
-    "source_db": "ptb-xl",
+    "source_db": "georgia",
     "dx_codes": [
-      "164884008",
-      "164889003",
-      "164934002",
-      "698252002"
+      "428750005",
+      "39732003"
     ],
     "true_classes": [
-      "TAb",
-      "AF",
-      "VEctopy",
-      "BBB"
+      "AxisDev",
+      "TAb"
     ],
     "reference_predicted_classes": [
       "MI",
-      "TAb",
-      "AF",
-      "LVH",
-      "VEctopy",
-      "BBB"
+      "TAb"
     ],
     "reference_probabilities": {
-      "NSR": 0.08601,
-      "AxisDev": 0.32555,
-      "MI": 0.79731,
-      "TAb": 0.3983,
-      "AF": 0.9,
-      "LVH": 0.50223,
-      "VEctopy": 0.99903,
-      "AVBlock": 0.01874,
-      "STach": 0.01098,
-      "BBB": 0.45391,
-      "SB": 0.00152,
-      "AEctopy_Junctional": 0.03076
+      "NSR": 0.04562,
+      "AxisDev": 0.01068,
+      "MI": 0.77371,
+      "TAb": 0.35306,
+      "AF": 0.00263,
+      "LVH": 0.01065,
+      "VEctopy": 0.02334,
+      "AVBlock": 0.00523,
+      "STach": 0.00151,
+      "BBB": 0.03864,
+      "SB": 0.00549,
+      "AEctopy_Junctional": 0.02651
     }
   }
 ]

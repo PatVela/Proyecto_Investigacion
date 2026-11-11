@@ -1,11 +1,13 @@
 # Registros de ejemplo
 
-Siete registros de ECG de 12 derivaciones (10 s, 500 Hz) tomados del **conjunto de test** del
-PhysioNet/Computing in Cardiology Challenge 2020. Permiten probar la demo sin datos propios:
+Siete registros de ECG de 12 derivaciones (10 s, 500 Hz) del PhysioNet/Computing in Cardiology
+Challenge 2020, tomados de las **pruebas A y B del reentrenamiento final** (ninguno participó en el
+entrenamiento ni en la validación del paquete de `models/`). Permiten probar la demo sin datos propios:
 seis con predicción acertada del ensemble y uno con diferencias entre predicción y etiqueta
 (para mostrar también los límites del modelo).
 
-Se generan con `python tools/build_examples.py --predictions runs/eval/ensemble-f1-platt/predictions_test.csv --dataset dataset2020`
+Se generan con `python tools/build_examples.py --predictions runs/t19/bundle/predictions_AB.csv --dataset dataset2020`
+(predicciones del sistema P3 en las pruebas A y B; comando completo en `webapp/README.md`)
 (selección reproducible, `--seed 0`). Si solo cambia la calibración o los umbrales, `--refresh-references` (sin `--dataset`) actualiza las probabilidades de referencia de los mismos siete registros. `examples.json` guarda además las probabilidades de referencia de
 la evaluación, con las que `tests/test_examples.py` comprueba la app.
 
