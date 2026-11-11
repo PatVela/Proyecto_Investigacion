@@ -28,7 +28,7 @@ BUNDLE_PRESENT = (REPO_ROOT / "deploy" / "ensemble.env").exists() and (REPO_ROOT
 def real_signal(tmp_path_factory):
     """Ventana real preprocesada (10 s, 12 derivaciones) de un registro de ejemplo."""
     work = tmp_path_factory.mktemp("signal")
-    prepared = pred.prepare_saved_input([EXAMPLES / "A3763" / "A3763.hea", EXAMPLES / "A3763" / "A3763.mat"], work)
+    prepared = pred.prepare_saved_input([EXAMPLES / "E09078" / "E09078.hea", EXAMPLES / "E09078" / "E09078.mat"], work)
     return np.asarray(prepared["processed_signal"], dtype=np.float32)
 
 
@@ -89,14 +89,14 @@ def test_pdf_report_shrinks_and_keeps_its_content(tmp_path, monkeypatch):
     monkeypatch.setenv("ECG_RATE_LIMIT_MAX", "0")
     monkeypatch.setenv("ECG_DEVICE", "cpu")
     client = create_app().test_client()
-    body = client.post("/predict", data={"example": "A3763"}).get_json()
+    body = client.post("/predict", data={"example": "E09078"}).get_json()
     pdf_url = re.search(r"/results/[0-9a-f]{12}/[^\"']+\.pdf", str(body)).group(0)
     pdf_bytes = client.get(pdf_url).data
     assert len(pdf_bytes) < 600_000                                                 # antes ≈ 952 KB
 
     reader = PdfReader(io.BytesIO(pdf_bytes))
     text = " ".join(page.extract_text() for page in reader.pages)
-    assert "A3763" in text and "AF" in text                                         # el informe sigue diciendo lo mismo
+    assert "E09078" in text and "AF" in text                                         # el informe sigue diciendo lo mismo
     big = [im for page in reader.pages for im in page.images if im.image.size[0] > 2000]
     assert big, "el trazado ECG sigue incrustado a su resolución completa"
 

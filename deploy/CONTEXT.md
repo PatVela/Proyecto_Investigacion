@@ -2,7 +2,8 @@
 
 **Trabajo:** que la webapp corra en esta PC sin `saved/` ni `runs/`. `models/` guarda los dos pesos del ensemble (`resnet34_v1.pt` = A, `resnet34_v2.pt` = B, ≈19 MB c/u, sin estado del optimizador) y `deploy/` la calibración, los umbrales, las métricas y el lanzador de Windows.
 
-- **Entradas (solo al regenerar):** los `best.pt` de A y B en `saved/`; `runs/eval/ensemble-f1-platt/`; `platt_validation.csv` de cada modelo y `platt_ensemble_validation.csv`; `runs/reports/` (`model_comparison.csv`, `robustness.csv`).
+- **Paquete actual (2026-11-10):** el sistema principal del reentrenamiento final, P3 (`saved/t19/t19_v1` y `t19_v2`, semillas 42 y 43, calibración afín y umbrales F1 de `runs/t19/eval/p3_A/`); ejemplos de las pruebas A y B.
+- **Entradas (solo al regenerar):** los `best.pt` de A y B en `saved/`; la evaluación del ensemble en una carpeta llamada `ensemble-f1-platt` (`runs/t19/bundle/ensemble-f1-platt/`, copia de `runs/t19/eval/p3_A/`); `platt_validation.csv` de cada modelo y `platt_ensemble_validation.csv`; `runs/t19/bundle/reports/` (`model_comparison.csv`, `robustness.csv`). Comandos en `webapp/README.md`.
 - **Proceso:** `tools/export_inference_bundle.py` (comando completo en su docstring y en `webapp/README.md`, Ejecución local). Se niega a escribir si `--eval-dir` no corresponde a la calibración y al `--alpha` indicados. Solo escribe los archivos listados abajo: no vacía la carpeta.
 - **Salidas (generadas, no se editan):** `models/*.pt`; `deploy/manifest.json` (SHA-256, época, val_loss, alpha, versiones); `deploy/ensemble.env` (variables `ECG_*` que carga `webapp/wsgi.py`, rutas relativas a la raíz del repo); `deploy/platt_a.csv`, `platt_b.csv`, `platt_ensemble.csv`; `deploy/results/<eval>/` (métricas, curvas ROC/PR y umbrales, sin predicciones por registro); `deploy/reports/`.
 - **A mano:** este archivo y `deploy/start_local.ps1` (waitress en `127.0.0.1`; `-Lan`, `-Tunnel`, `-UseGpu`). El exportador no los toca.

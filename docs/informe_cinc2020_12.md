@@ -53,7 +53,7 @@ Pasos:
 9. recorte centrado / multi-ventana o padding hasta 5000 muestras;
 10. guardar HDF5 train/val/test.
 
-El split usa `MultilabelStratifiedShuffleSplit`; no hay fallback por fuente. Es un split **por registro**: no agrupa por paciente (las cabeceras de CINC2020 no traen ID de paciente, y PTB-XL tiene varios registros por paciente), así que una fuga por paciente no se puede medir con estos datos. Ninguna ventana ni registro aparece en dos splits, pero el 3.0 % del test y el 2.1 % de validación tienen una señal idéntica a la de un registro de un split anterior; quitarlos mueve el F1 del test en −0.0002.
+El split usa `MultilabelStratifiedShuffleSplit`; no hay fallback por fuente. Es un split **por registro**: no agrupa por paciente (las cabeceras de CINC2020 no traen ID de paciente, y PTB-XL tiene varios registros por paciente), así que la fuga por paciente solo se puede medir donde hay metadatos externos: con los de PhysioNet, 18.6 % de los registros de test de PTB-XL y 62.6 % de los de PTB comparten paciente con train (hallazgo 10 de [resultados_finales.md](resultados_finales.md)); CPSC, CPSC-extra, Georgia e INCART no traen identificador. El reparto alternativo por origen y por paciente (`build_datasets.py --holdout-origin --groups-csv`) existe, pero el defecto no lo usa. Ninguna ventana ni registro aparece en dos splits, pero el 3.0 % del test y el 2.1 % de validación tienen una señal idéntica a la de un registro de un split anterior; quitarlos mueve el F1 del test en −0.0002.
 
 ## Modelo
 
@@ -72,6 +72,7 @@ Implementación: `ecg/train.py`.
 - ReduceLROnPlateau.
 - Early stopping.
 - AMP opcional.
+- Pérdida enmascarada opcional (`mask_unannotated`): no cuenta las celdas origen×clase sin positivos en train; apagada por defecto.
 - Logs reproducibles en `history.csv` y `training_summary.json`.
 
 ## Evaluación
@@ -105,3 +106,6 @@ La webapp usa el mismo preprocesamiento que el entrenamiento (`ecg/signal.py`), 
 3. Etiquetas SNOMED agrupadas en 12 clases.
 4. Formulación multilabel real.
 5. Métricas por clase en lugar de matriz multiclase única.
+6. No hay comparación con cardiólogos ni estándar de oro de un comité: las etiquetas son las del dataset.
+7. El reparto es por registro, no por paciente (ver «Preprocesamiento»).
+8. El dataset es más pequeño y no se compara con los resultados del PhysioNet/CinC Challenge.

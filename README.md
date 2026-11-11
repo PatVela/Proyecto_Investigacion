@@ -406,6 +406,7 @@ Notas:
 │   └── util.py             # checkpoints, parámetros y seeds
 ├── examples/cinc2020/      # pipeline: datos, evaluación y experimentos
 │   ├── build_datasets.py / evaluate.py / compare_models.py
+│   ├── build_external_test.py  # HDF5 de prueba de un origen externo (Chapman-Shaoxing, Ningbo)
 │   ├── robustness.py
 │   ├── calibrate.py / ensemble_evaluate.py
 │   ├── error_analysis.py / export_onnx.py
@@ -415,7 +416,7 @@ Notas:
 │   ├── sex_breakdown.py / benchmark_latency.py  # auditorías: sexo y latencia
 │   ├── config*.json        # configs ResNet, ResNet v2, regular y sintético
 │   └── official/           # tabla oficial de códigos del Challenge (vendored, no modificar)
-├── tools/                  # descarga/verificación CINC2020 y de Chapman-Shaoxing y Ningbo, auditorías, bundle de despliegue, prueba de humo y verificador de comandos de los .md
+├── tools/                  # descarga/verificación CINC2020 y de Chapman-Shaoxing y Ningbo, grupos de paciente, auditorías, bundle de despliegue, prueba de humo y verificador de comandos de los .md
 ├── webapp/                 # dashboard Flask + informe PDF
 │   ├── app.py / prediction.py / report_pdf.py / wsgi.py
 │   ├── labels.py / plotting.py          # comparación con etiquetas reales; trazado en papel milimetrado
@@ -461,6 +462,8 @@ La demo corre en la propia PC, sin servidor ni nube. El bundle (pesos de inferen
 * **Comparación de evaluaciones**: dos runs (p. ej. ResNet v1 vs v2) con idéntico dataset, split y métricas (`compare_models.py`).
 * **Robustez controlada**: ruido gaussiano, baseline wander, escalado de amplitud y apagado de derivaciones (`robustness.py`).
 * **Errores por origen**: exact-match y F1 por hospital, y diagnóstico de las celdas origen×clase sin anotar (`error_analysis.py --train-h5`).
+* **Reparto por origen y por paciente** (alternativo, el defecto no cambia): un origen entero retenido como prueba y grupos de paciente sin partir (`build_datasets.py --holdout-origin --groups-csv`, `tools/make_patient_groups.py`), con pérdida enmascarada opcional de las celdas sin anotar (`mask_unannotated`).
+* **Evaluación externa**: HDF5 de solo prueba de bases ajenas al diseño (`build_external_test.py`; ver «Evaluación externa en otras bases (opcional)»).
 * **Diagnóstico por registro**: inspección de casos individuales (`_archive/diagnose_prediction.py`, `_archive/debug_record_prediction.py`).
 * **Figuras empíricas e IC bootstrap**: curvas ROC/PR con punto de operación, barras de robustez e intervalos por bootstrap (`make_figures.py`, `bootstrap_ci.py`).
 * **Auditorías**: desglose por sexo y latencia de inferencia (`sex_breakdown.py`, `benchmark_latency.py`).
@@ -494,7 +497,7 @@ Los tests de los scripts de Windows (`deploy/*.ps1`) se omiten en otros sistemas
 4. El problema se conserva multilabel; no se fuerza una clase única.
 5. La evaluación usa métricas por clase y matrices 2×2 independientes.
 6. **No hay comparación con cardiólogos.** Hannun et al. comparan el modelo con seis cardiólogos certificados sobre un conjunto de prueba con estándar de oro de un comité; aquí las etiquetas son las del dataset (varias fuentes y criterios) y no se midió el acuerdo entre humanos. Los resultados no permiten hablar de nivel cardiólogo.
-7. **El reparto es por registro, no por paciente.** Se midió el solape: 18.6 % de los registros de test de PTB-XL y 62.6 % de los de PTB comparten paciente con train (PTB-XL no muestra inflación detectable del F1; PTB, con 99 registros, sí una diferencia grande; ver el hallazgo 10 de [docs/resultados_finales.md](docs/resultados_finales.md)). CPSC, CPSC-extra, Georgia e INCART no traen identificador de paciente.
+7. **El reparto es por registro, no por paciente.** Se midió el solape: 18.6 % de los registros de test de PTB-XL y 62.6 % de los de PTB comparten paciente con train (PTB-XL no muestra inflación detectable del F1; PTB, con 99 registros, sí una diferencia grande; ver el hallazgo 10 de [docs/resultados_finales.md](docs/resultados_finales.md)). CPSC, CPSC-extra, Georgia e INCART no traen identificador de paciente. Existe un reparto alternativo por origen y por paciente (`build_datasets.py --holdout-origin --groups-csv`), pero el modelo desplegado no lo usa.
 8. El dataset es más pequeño (43 101 registros frente a ≈ 91 000 ECG de ≈ 53 500 pacientes) y se usa solo para entrenar y evaluar este modelo: **no se compara con los resultados del PhysioNet/CinC Challenge**.
 
 Limitaciones conocidas: una sola corrida por receta (semillas 42 y 43), sin medir la variabilidad entre semillas, y sin resultados de validación externa incluidos aquí; el procedimiento para evaluar en Chapman-Shaoxing y Ningbo está en «Evaluación externa en otras bases (opcional)».
@@ -522,6 +525,7 @@ Limitaciones conocidas: una sola corrida por receta (semillas 42 y 43), sin medi
 - [x] Bundle de inferencia + configuración por entorno + waitress: la webapp corre sin `saved/` ni `runs/`, en esta PC con Windows 11 (CPU, solo accesible localmente por defecto)
 - [x] Endurecimiento de la webapp: ReDoS en el texto pegado, tope de tamaño del `.mat`, `/use_model` apagado por defecto, tope de cuerpo en waitress, escape de comillas
 - [x] Protocolo de reporte común (mismo `threshold_beta`) y verificador de comandos de la documentación
+- [x] Reparto alternativo por origen y por paciente, pérdida enmascarada de celdas sin anotar y constructor de HDF5 de prueba externa (Chapman-Shaoxing y Ningbo)
 - [ ] Probar la demo en uso real desde otro dispositivo de la red local
 - [ ] Entrenamiento distribuido multi-GPU
 - [x] Script de búsqueda de hiperparámetros con Optuna (`tune_optuna.py`)

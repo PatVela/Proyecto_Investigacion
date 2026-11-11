@@ -219,7 +219,7 @@ Un visitante que agota su límite (20 solicitudes por minuto) recibe 429, mientr
 `127.0.0.1` no se ven afectados; anteponer IPs falsas en `X-Forwarded-For` no sirve para esquivarlo.
 
 **Tamaño de las descargas.** Para que el túnel (y cualquier conexión lenta) sea usable, las descargas pesadas se redujeron sin
-cambiar ningún resultado (tamaños en KB y MB decimales, medidos con el ejemplo A3763):
+cambiar ningún resultado (tamaños en KB y MB decimales, medidos con el ejemplo A3763, del paquete anterior; desde 2026-11-10 la prueba usa E09078):
 
 | Descarga | Antes | Ahora | Cómo |
 |---|---|---|---|
@@ -264,12 +264,20 @@ La pantalla puede apagarse; la última orden hace que cerrar la tapa no suspenda
 | `deploy/manifest.json` | SHA-256, época y `val_loss` de cada modelo, alpha, método de calibración, versión de torch |
 | `deploy/platt_a.csv`, `platt_b.csv`, `platt_ensemble.csv` | Calibración afín de cada modelo y del promedio (`ECG_PLATT*` en `deploy/ensemble.env`) |
 | `deploy/results/<eval>/`, `deploy/reports/` | Métricas, curvas ROC/PR, umbrales, comparación y robustez (sin rutas locales) |
-| `webapp/examples/` | Siete registros de test (CC BY 4.0; ver su `README.md`) |
+| `webapp/examples/` | Siete registros de las pruebas A y B (CC BY 4.0; ver su `README.md`) |
+
+El paquete versionado es el sistema principal del reentrenamiento final (P3: v1 y v2 de las semillas 42 y 43, calibración
+afín y umbrales F1), exportado el 2026-11-10. El exportador nombra `deploy/results/` como la carpeta de `--eval-dir`, por eso la
+evaluación de P3 se copia con el nombre `ensemble-f1-platt`:
 
 ```bash
-python tools/export_inference_bundle.py --checkpoint-a <best.pt v1> --checkpoint-b <best.pt v2> --eval-dir runs/eval/ensemble-f1-platt --platt-a runs/eval/eval-resnet/platt_validation.csv --platt-b runs/eval/eval-resnet-v2/platt_validation.csv --platt-ensemble runs/eval/ensemble-f1-platt/platt_ensemble_validation.csv --reports-dir runs/reports
-python tools/build_examples.py --predictions runs/eval/ensemble-f1-platt/predictions_test.csv --refresh-references   # mismos 7 ejemplos, referencias nuevas
-# (selección desde cero: --dataset dataset2020 en lugar de --refresh-references)
+mkdir -p runs/t19/bundle/reports && cp -r runs/t19/eval/p3_A runs/t19/bundle/ensemble-f1-platt
+python examples/cinc2020/compare_models.py --eval-a runs/t19/eval/p1_A --eval-b runs/t19/eval/p2_A --label-a "ResNet v1" --label-b "ResNet v2" --output runs/t19/bundle/reports/model_comparison.csv
+cp runs/t19/robustez/p2_A.csv runs/t19/bundle/reports/robustness.csv
+python tools/export_inference_bundle.py --checkpoint-a saved/t19/t19_v1/<run>/best.pt --checkpoint-b saved/t19/t19_v2/<run>/best.pt --eval-dir runs/t19/bundle/ensemble-f1-platt --platt-a runs/t19/eval/p1/platt_validation.csv --platt-b runs/t19/eval/p2/platt_validation.csv --platt-ensemble runs/t19/eval/p3_A/platt_ensemble_validation.csv --reports-dir runs/t19/bundle/reports
+{ cat runs/t19/eval/p3_A/predictions_test.csv; tail -n +2 runs/t19/eval/p3_B/predictions_test.csv; } > runs/t19/bundle/predictions_AB.csv
+python tools/build_examples.py --predictions runs/t19/bundle/predictions_AB.csv --dataset dataset2020   # selección desde cero
+# (si solo cambian calibración o umbrales: --refresh-references en lugar de --dataset, mismos 7 ejemplos)
 ```
 
 El exportador se niega (`ValueError`, sin escribir nada) si `--eval-dir` no corresponde a la calibración y al `--alpha` indicados: sus umbrales se eligieron sobre probabilidades ya calibradas (MI 0,56 con temperatura frente a 0,33 con calibración afín).
