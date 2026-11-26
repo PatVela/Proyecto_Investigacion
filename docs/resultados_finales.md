@@ -1,5 +1,7 @@
 # Resultados finales — ResNet-34 CINC2020-12
 
+> **Nota (noviembre de 2026).** Este documento describe el sistema anterior: reparto aleatorio por registro (33 759 / 6 486 / 6 421 ventanas) y una sola corrida por receta. El paquete de inferencia vigente es P3 del reentrenamiento final, con reparto por origen y por paciente, validación n = 4 913 y prueba A n = 4 949; ver [deploy/CONTEXT.md](../deploy/CONTEXT.md), `deploy/results/ensemble-f1-platt/` y [REPRODUCIBILIDAD.md](REPRODUCIBILIDAD.md). Las cifras de este documento corresponden al sistema anterior; las del sistema vigente son las del artículo.
+
 ## Configuración experimental
 
 - Datos: PhysioNet/CinC Challenge 2020 (6 subconjuntos), esquema agrupado v2 de 12 clases SNOMED.

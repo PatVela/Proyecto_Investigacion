@@ -109,14 +109,6 @@ def _human_device(value) -> str:
     return {"cuda": "GPU (CUDA)", "cpu": "CPU"}.get(str(value), str(value or "—"))
 
 
-def _confidence_level(prob: float) -> str:
-    if prob >= 0.80:
-        return "ALTA"
-    if prob >= 0.50:
-        return "MODERADA"
-    return "BAJA"
-
-
 def _fmt_windows(prediction: dict) -> str:
     n = int(prediction.get("num_windows") or 1)
     secs = prediction.get("window_seconds", 10)
@@ -432,11 +424,10 @@ def _verdict_box(prediction, positives, s_verdict, s_small,
         names = [p.get("class", "") for p in positives]
         probs = [float(p.get("probability", 0.0) or 0.0) for p in positives]
         top = max(probs) if probs else 0.0
-        level = _confidence_level(top)
         if set(names) == {"NSR"}:
             bg, border = green_bg, green
             title = '<font color="#15803d"><b>RITMO SINUSAL DENTRO DE LÍMITES NORMALES</b></font>'
-            detail = (f"El modelo asigna <b>NSR {_fmt_pct(top)}</b> (confianza {level}). "
+            detail = (f"El modelo asigna <b>NSR {_fmt_pct(top)}</b> (puntaje del modelo, no una certeza diagnóstica). "
                       f"No se activó ninguna clase patológica sobre su umbral.")
         else:
             bg, border = (amber_bg, red) if any(n == "NSR" for n in names) else (red_bg, red)
@@ -448,7 +439,7 @@ def _verdict_box(prediction, positives, s_verdict, s_small,
                 for p in positives
             )
             title = '<font color="#b91c1c"><b>HALLAZGOS COMPATIBLES CON LAS SIGUIENTES CLASES</b></font>'
-            detail = f"{items}<br/><br/>Confianza máxima del modelo: <b>{level} ({_fmt_pct(top)})</b>."
+            detail = f"{items}<br/><br/>Puntaje máximo del modelo: <b>{_fmt_pct(top)}</b> (probabilidad del modelo; no es una confianza diagnóstica validada)."
         if fb.get("applied"):
             detail += (f"<br/><i>Nota: NSR fue añadida por regla post hoc (ninguna clase superó su umbral "
                        f"y P(NSR) ≥ {fb.get('min_nsr_probability')}).</i>")

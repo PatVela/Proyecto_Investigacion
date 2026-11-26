@@ -106,7 +106,7 @@ Para tener una copia local funcionando, siga estos pasos.
 
 ### Prerrequisitos
 
-* Python 3.10 o superior.
+* Python 3.10 o superior (mínimo declarado). **Verificado solo con Python 3.13** (en R11: 3.13.17 en un clon limpio, con 655 pruebas automáticas; ver `docs/REPRODUCIBILIDAD.md`); con 3.10 a 3.12 no se ha probado.
 * ~15 GB de disco libre si va a descargar CINC2020 completo.
 * 16 GB de RAM recomendados (el pipeline precarga los HDF5 a memoria).
 * GPU NVIDIA opcional (el código corre en CPU; con CUDA instale PyTorch según `requirements-cuda.txt`).
@@ -128,6 +128,7 @@ Notas generales:
 * Si la GPU se queda sin memoria (`CUDA out of memory`), baje `batch_size` a 32 en el JSON de configuración y reentrene.
 * No modifique `num_workers: 0` (la precarga de HDF5 usa ~9 GB de RAM).
 * PyTorch se instala aparte con CUDA (ver Paso 0); el proyecto no usa `torchvision`.
+* **Qué sistema describe esta guía.** Los pasos 0–10 reconstruyen el flujo por defecto (reparto aleatorio por registro, una corrida por receta). El sistema del artículo, que es el de `models/` y `deploy/`, se entrenó con el reparto por origen y por paciente; sus pasos y lo que se ha verificado y lo que no de su reproducibilidad están en [docs/REPRODUCIBILIDAD.md](docs/REPRODUCIBILIDAD.md).
 
 Nombres usados en la guía:
 
@@ -497,10 +498,10 @@ Los tests de los scripts de Windows (`deploy/*.ps1`) se omiten en otros sistemas
 4. El problema se conserva multilabel; no se fuerza una clase única.
 5. La evaluación usa métricas por clase y matrices 2×2 independientes.
 6. **No hay comparación con cardiólogos.** Hannun et al. comparan el modelo con seis cardiólogos certificados sobre un conjunto de prueba con estándar de oro de un comité; aquí las etiquetas son las del dataset (varias fuentes y criterios) y no se midió el acuerdo entre humanos. Los resultados no permiten hablar de nivel cardiólogo.
-7. **El reparto es por registro, no por paciente.** Se midió el solape: 18.6 % de los registros de test de PTB-XL y 62.6 % de los de PTB comparten paciente con train (PTB-XL no muestra inflación detectable del F1; PTB, con 99 registros, sí una diferencia grande; ver el hallazgo 10 de [docs/resultados_finales.md](docs/resultados_finales.md)). CPSC, CPSC-extra, Georgia e INCART no traen identificador de paciente. Existe un reparto alternativo por origen y por paciente (`build_datasets.py --holdout-origin --groups-csv`), pero el modelo desplegado no lo usa.
+7. **Reparto del sistema desplegado.** El paquete de inferencia (`models/`, `deploy/`) es el sistema principal del reentrenamiento final (P3: v1 y v2, semillas 42 y 43), entrenado con un reparto por origen y, en PTB-XL y PTB, por paciente (`build_datasets.py --holdout-origin --groups-csv`); Georgia queda fuera como prueba B. CPSC 2018, CPSC-Extra e INCART no traen identificador de paciente, de modo que allí un mismo paciente podría estar a ambos lados sin que se sepa (31.9 % de la prueba A). El solape medido con el reparto por registro de las primeras versiones (18.6 % de los registros de test de PTB-XL y 62.6 % de los de PTB compartían paciente con train; hallazgo 10 de [docs/resultados_finales.md](docs/resultados_finales.md)) corresponde al sistema anterior, descrito en ese documento.
 8. El dataset es más pequeño (43 101 registros frente a ≈ 91 000 ECG de ≈ 53 500 pacientes) y se usa solo para entrenar y evaluar este modelo: **no se compara con los resultados del PhysioNet/CinC Challenge**.
 
-Limitaciones conocidas: una sola corrida por receta (semillas 42 y 43), sin medir la variabilidad entre semillas, y sin resultados de validación externa incluidos aquí; el procedimiento para evaluar en Chapman-Shaoxing y Ningbo está en «Evaluación externa en otras bases (opcional)».
+Limitaciones conocidas: v1 y v2 se entrenaron con 10 semillas cada una y el sistema se evaluó en dos bases externas (Chapman-Shaoxing y Ningbo, Challenge 2021), pero esos resultados están en el artículo y **no** en este repositorio; aquí solo se publican el paquete de inferencia del sistema principal (pesos de v1 y v2 de las semillas 42 y 43, calibración y umbrales) y las ocho métricas globales de su prueba A. Las ablaciones, la CNN y las variantes con pérdida enmascarada son de una sola corrida, y no hay aquí ni sus pesos ni las configuraciones de las variantes enmascaradas y de las ablaciones. El procedimiento para evaluar en Chapman-Shaoxing y Ningbo está en «Evaluación externa en otras bases (opcional)». Qué se comprobó y qué no del sistema del artículo, y con qué nivel de prueba, está en [docs/REPRODUCIBILIDAD.md](docs/REPRODUCIBILIDAD.md); este repositorio **no** se ha demostrado capaz de reproducir las cifras del artículo mediante una ejecución. <!-- COMPLETAR: referencia del artículo cuando exista; no inventarla -->
 
 <p align="right">(<a href="#readme-top">volver arriba</a>)</p>
 
