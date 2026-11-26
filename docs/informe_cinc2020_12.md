@@ -107,5 +107,5 @@ La webapp usa el mismo preprocesamiento que el entrenamiento (`ecg/signal.py`), 
 4. Formulación multilabel real.
 5. Métricas por clase en lugar de matriz multiclase única.
 6. No hay comparación con cardiólogos ni estándar de oro de un comité: las etiquetas son las del dataset.
-7. El reparto es por registro, no por paciente (ver «Preprocesamiento»).
+7. El reparto por defecto es por registro, no por paciente (ver «Preprocesamiento»). El sistema del artículo y el paquete de inferencia vigente (`models/`, `deploy/`) se entrenaron con el reparto por origen y por paciente; ver el punto 7 de «Diferencias frente a Hannun et al.» del [README](../README.md) y [REPRODUCIBILIDAD.md](REPRODUCIBILIDAD.md).
 8. El dataset es más pequeño y no se compara con los resultados del PhysioNet/CinC Challenge.
